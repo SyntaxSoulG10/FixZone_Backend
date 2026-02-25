@@ -1,5 +1,6 @@
 package com.fixzone.fixzon_backend;
 
+import com.fixzone.fixzon_backend.model.Customer;
 import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -41,21 +42,24 @@ public class FixzonBackendApplication {
 								LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"),
 
 						// Customers
-						new User(UUID.fromString("00000000-0000-0000-0000-000000010006"), "David Thompson",
+						new Customer(UUID.fromString("00000000-0000-0000-0000-000000010006"), "David Thompson",
 								"david.t@example.com", "+12025550106", "pass123", "CUSTOMER", true, LocalDateTime.now(),
-								LocalDateTime.now(), "system", LocalDateTime.now(), "system"),
-						new User(UUID.fromString("00000000-0000-0000-0000-000000010007"), "Jennifer Lopez",
+								LocalDateTime.now(), "system", LocalDateTime.now(), "system", "CUST-001", "EMAIL"),
+						new Customer(UUID.fromString("00000000-0000-0000-0000-000000010007"), "Jennifer Lopez",
 								"j.lopez@example.com", "+12025550107", "pass123", "CUSTOMER", true, LocalDateTime.now(),
-								LocalDateTime.now(), "system", LocalDateTime.now(), "system"),
-						new User(UUID.fromString("00000000-0000-0000-0000-000000010008"), "Chris Lee",
+								LocalDateTime.now(), "system", LocalDateTime.now(), "system", "CUST-002", "PHONE"),
+						new Customer(UUID.fromString("00000000-0000-0000-0000-000000010008"), "Chris Lee",
 								"chris.lee@example.com", "+12025550108", "pass123", "CUSTOMER", true,
-								LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"),
-						new User(UUID.fromString("00000000-0000-0000-0000-000000010009"), "Amanda White",
+								LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
+								"CUST-003", "SMS"),
+						new Customer(UUID.fromString("00000000-0000-0000-0000-000000010009"), "Amanda White",
 								"amanda.white@example.com", "+12025550109", "pass123", "CUSTOMER", true,
-								LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"),
-						new User(UUID.fromString("00000000-0000-0000-0000-000000010010"), "Kevin Martin",
+								LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
+								"CUST-004", "EMAIL"),
+						new Customer(UUID.fromString("00000000-0000-0000-0000-000000010010"), "Kevin Martin",
 								"kevin.martin@example.com", "+12025550110", "pass123", "CUSTOMER", true,
-								LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"),
+								LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
+								"CUST-005", "PHONE"),
 
 						// Owners
 						new User(UUID.fromString("00000000-0000-0000-0000-000000010011"), "Elizabeth Taylor",
