@@ -2,6 +2,7 @@ package com.fixzone.fixzon_backend;
 
 import com.fixzone.fixzon_backend.model.Customer;
 import com.fixzone.fixzon_backend.model.Manager;
+import com.fixzone.fixzon_backend.model.SuperAdmin;
 import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -27,22 +28,22 @@ public class FixzonBackendApplication {
 			if (userRepository.count() == 0) {
 				List<User> users = new ArrayList<>();
 
-				// Admins
-				users.add(new User(UUID.fromString("00000000-0000-0000-0000-000000010001"), "James Wilson",
+				// Admins (Initialized as SuperAdmin to appear in super_admin table)
+				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010001"), "James Wilson",
 						"james.wilson@fixzone.com", "+12025550101", "pass123", "ADMIN", true,
-						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-				users.add(new User(UUID.fromString("00000000-0000-0000-0000-000000010002"), "Linda Garcia",
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "AD-001"));
+				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010002"), "Linda Garcia",
 						"linda.garcia@fixzone.com", "+12025550102", "pass123", "ADMIN", true,
-						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-				users.add(new User(UUID.fromString("00000000-0000-0000-0000-000000010003"), "Robert Chen",
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "AD-002"));
+				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010003"), "Robert Chen",
 						"robert.chen@fixzone.com", "+12025550103", "pass123", "ADMIN", true,
-						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-				users.add(new User(UUID.fromString("00000000-0000-0000-0000-000000010004"), "Sarah Miller",
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "AD-003"));
+				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010004"), "Sarah Miller",
 						"sarah.miller@fixzone.com", "+12025550104", "pass123", "ADMIN", true,
-						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-				users.add(new User(UUID.fromString("00000000-0000-0000-0000-000000010005"), "Michael Davis",
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "AD-004"));
+				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010005"), "Michael Davis",
 						"michael.davis@fixzone.com", "+12025550105", "pass123", "ADMIN", true,
-						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "AD-005"));
 
 				// Customers
 				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010006"), "David Thompson",
