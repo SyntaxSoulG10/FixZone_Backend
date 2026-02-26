@@ -2,6 +2,7 @@ package com.fixzone.fixzon_backend;
 
 import com.fixzone.fixzon_backend.model.Customer;
 import com.fixzone.fixzon_backend.model.Manager;
+import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.model.SuperAdmin;
 import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.repository.UserRepository;
@@ -66,21 +67,26 @@ public class FixzonBackendApplication {
 						"CUST-005", "PHONE"));
 
 				// Owners
-				users.add(new User(UUID.fromString("00000000-0000-0000-0000-000000010011"), "Elizabeth Taylor",
+				users.add(new Owner(UUID.fromString("00000000-0000-0000-0000-000000010011"), "Elizabeth Taylor",
 						"e.tay Taylor@fixzone.com", "+12025550111", "pass123", "OWNER", true,
-						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-				users.add(new User(UUID.fromString("00000000-0000-0000-0000-000000010012"), "Richard Moore",
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-001",
+						"Taylor Logistics", "contact@taylorlogs.com", "+15550111"));
+				users.add(new Owner(UUID.fromString("00000000-0000-0000-0000-000000010012"), "Richard Moore",
 						"richard.moore@fixzone.com", "+12025550112", "pass123", "OWNER", true,
-						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-				users.add(new User(UUID.fromString("00000000-0000-0000-0000-000000010013"), "Susan Anderson",
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-002",
+						"Moore Repairs", "info@moore.com", "+15550112"));
+				users.add(new Owner(UUID.fromString("00000000-0000-0000-0000-000000010013"), "Susan Anderson",
 						"s.anderson@fixzone.com", "+12025550113", "pass123", "OWNER", true, LocalDateTime.now(),
-						LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-				users.add(new User(UUID.fromString("00000000-0000-0000-0000-000000010014"), "Thomas Jackson",
+						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-003", "Anderson Autos",
+						"sales@anderson.com", "+15550113"));
+				users.add(new Owner(UUID.fromString("00000000-0000-0000-0000-000000010014"), "Thomas Jackson",
 						"t.jackson@fixzone.com", "+12025550114", "pass123", "OWNER", true, LocalDateTime.now(),
-						LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-				users.add(new User(UUID.fromString("00000000-0000-0000-0000-000000010015"), "Margaret Harris",
+						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-004", "Jackson Tech",
+						"support@jackson.com", "+15550114"));
+				users.add(new Owner(UUID.fromString("00000000-0000-0000-0000-000000010015"), "Margaret Harris",
 						"m.harris@fixzone.com", "+12025550115", "pass123", "OWNER", true, LocalDateTime.now(),
-						LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-005", "Harris Group",
+						"margaret@harris.com", "+15550115"));
 
 				// Managers
 				UUID center1Id = UUID.fromString("c0000000-0000-0000-0000-000000000001");
