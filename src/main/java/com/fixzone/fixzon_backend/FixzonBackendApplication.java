@@ -46,25 +46,27 @@ public class FixzonBackendApplication {
 						"michael.davis@fixzone.com", "+12025550105", "pass123", "ADMIN", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "AD-005"));
 
-				// Customers
-				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010006"), "David Thompson",
-						"david.t@example.com", "+12025550106", "pass123", "CUSTOMER", true, LocalDateTime.now(),
-						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "CUST-001", "EMAIL"));
-				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010007"), "Jennifer Lopez",
-						"j.lopez@example.com", "+12025550107", "pass123", "CUSTOMER", true, LocalDateTime.now(),
-						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "CUST-002", "PHONE"));
-				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010008"), "Chris Lee",
-						"chris.lee@example.com", "+12025550108", "pass123", "CUSTOMER", true,
+				// Customers (Names matching frontend dummy data)
+				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010006"), "Kasun Perera",
+						"kasun.perera@example.com", "+94771234567", "pass123", "CUSTOMER", true, LocalDateTime.now(),
+						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "CUST-001", "EMAIL",
+						12, 15600.0, "VIP", "https://i.pravatar.cc/150?u=1"));
+				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010007"), "Nimali Silva",
+						"nimali.silva@example.com", "+94711234568", "pass123", "CUSTOMER", true, LocalDateTime.now(),
+						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "CUST-002", "PHONE",
+						5, 3500.0, "Active", "https://i.pravatar.cc/150?u=2"));
+				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010008"), "Ruwan Fernando",
+						"ruwan.f@example.com", "+94761234569", "pass123", "CUSTOMER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
-						"CUST-003", "SMS"));
-				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010009"), "Amanda White",
-						"amanda.white@example.com", "+12025550109", "pass123", "CUSTOMER", true,
+						"CUST-003", "SMS", 8, 8900.0, "Active", "https://i.pravatar.cc/150?u=3"));
+				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010009"), "Dilshan Bandara",
+						"dilshan.b@example.com", "+94701234570", "pass123", "CUSTOMER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
-						"CUST-004", "EMAIL"));
-				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010010"), "Kevin Martin",
-						"kevin.martin@example.com", "+12025550110", "pass123", "CUSTOMER", true,
+						"CUST-004", "EMAIL", 1, 450.0, "New", "https://i.pravatar.cc/150?u=4"));
+				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010010"), "Chamari Atapattu",
+						"chamari.a@example.com", "+94751234571", "pass123", "CUSTOMER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
-						"CUST-005", "PHONE"));
+						"CUST-005", "PHONE", 20, 25000.0, "VIP", "https://i.pravatar.cc/150?u=5"));
 
 				// Owners
 				users.add(new Owner(UUID.fromString("00000000-0000-0000-0000-000000010011"), "Elizabeth Taylor",
