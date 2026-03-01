@@ -5,12 +5,17 @@ import com.fixzone.fixzon_backend.model.Manager;
 import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.model.SuperAdmin;
 import com.fixzone.fixzon_backend.model.User;
+import com.fixzone.fixzon_backend.model.ServiceCenter;
+import com.fixzone.fixzon_backend.model.ServicePackage;
+import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
+import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import com.fixzone.fixzon_backend.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +29,9 @@ public class FixzonBackendApplication {
 	}
 
 	@Bean
-	public CommandLineRunner dataLoader(UserRepository userRepository) {
+	public CommandLineRunner dataLoader(UserRepository userRepository,
+			ServiceCenterRepository serviceCenterRepository,
+			ServicePackageRepository servicePackageRepository) {
 		return args -> {
 			if (userRepository.count() == 0) {
 				List<User> users = new ArrayList<>();
@@ -67,26 +74,35 @@ public class FixzonBackendApplication {
 						"CUST-005", "PHONE"));
 
 				// Owners
-				users.add(new Owner(UUID.fromString("00000000-0000-0000-0000-000000010011"), "Elizabeth Taylor",
-						"e.tay Taylor@fixzone.com", "+12025550111", "pass123", "OWNER", true,
+				Owner owner1 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010011"), "Elizabeth Taylor",
+						"e.taylor@fixzone.com", "+12025550111", "pass123", "OWNER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-001",
-						"Taylor Logistics", "contact@taylorlogs.com", "+15550111"));
-				users.add(new Owner(UUID.fromString("00000000-0000-0000-0000-000000010012"), "Richard Moore",
+						"Taylor Logistics", "contact@taylorlogs.com", "+15550111");
+				users.add(owner1);
+
+				Owner owner2 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010012"), "Richard Moore",
 						"richard.moore@fixzone.com", "+12025550112", "pass123", "OWNER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-002",
-						"Moore Repairs", "info@moore.com", "+15550112"));
-				users.add(new Owner(UUID.fromString("00000000-0000-0000-0000-000000010013"), "Susan Anderson",
+						"Moore Repairs", "info@moore.com", "+15550112");
+				users.add(owner2);
+
+				Owner owner3 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010013"), "Susan Anderson",
 						"s.anderson@fixzone.com", "+12025550113", "pass123", "OWNER", true, LocalDateTime.now(),
 						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-003", "Anderson Autos",
-						"sales@anderson.com", "+15550113"));
-				users.add(new Owner(UUID.fromString("00000000-0000-0000-0000-000000010014"), "Thomas Jackson",
+						"sales@anderson.com", "+15550113");
+				users.add(owner3);
+
+				Owner owner4 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010014"), "Thomas Jackson",
 						"t.jackson@fixzone.com", "+12025550114", "pass123", "OWNER", true, LocalDateTime.now(),
 						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-004", "Jackson Tech",
-						"support@jackson.com", "+15550114"));
-				users.add(new Owner(UUID.fromString("00000000-0000-0000-0000-000000010015"), "Margaret Harris",
+						"support@jackson.com", "+15550114");
+				users.add(owner4);
+
+				Owner owner5 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010015"), "Margaret Harris",
 						"m.harris@fixzone.com", "+12025550115", "pass123", "OWNER", true, LocalDateTime.now(),
 						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-005", "Harris Group",
-						"margaret@harris.com", "+15550115"));
+						"margaret@harris.com", "+15550115");
+				users.add(owner5);
 
 				// Managers
 				UUID center1Id = UUID.fromString("c0000000-0000-0000-0000-000000000001");
@@ -113,6 +129,94 @@ public class FixzonBackendApplication {
 
 				userRepository.saveAll(users);
 				System.out.println("Realistic mock users loaded into database.");
+
+				// Service Centers
+				if (serviceCenterRepository.count() == 0) {
+					List<ServiceCenter> centers = new ArrayList<>();
+
+					ServiceCenter center1 = new ServiceCenter(
+							center1Id,
+							owner1,
+							"Taylor Express Maintenance",
+							"123 Main St, New York",
+							"+1-555-0101",
+							"08:00 - 18:00",
+							new BigDecimal("4.8"),
+							true,
+							LocalDateTime.now(), "system", LocalDateTime.now(), "system",
+							new String[] { "Toyota", "Honda", "Ford" });
+					centers.add(center1);
+
+					ServiceCenter center2 = new ServiceCenter(
+							center2Id,
+							owner2,
+							"Moore Precision Repairs",
+							"456 Oak Ave, Los Angeles",
+							"+1-555-0102",
+							"09:00 - 19:00",
+							new BigDecimal("4.5"),
+							true,
+							LocalDateTime.now(), "system", LocalDateTime.now(), "system",
+							new String[] { "BMW", "Mercedes", "Audi" });
+					centers.add(center2);
+
+					serviceCenterRepository.saveAll(centers);
+					System.out.println("Mock service centers loaded into database.");
+
+					// Service Packages
+					if (servicePackageRepository.count() == 0) {
+						List<ServicePackage> packages = new ArrayList<>();
+
+						// Packages for Center 1
+						packages.add(new ServicePackage(
+								UUID.randomUUID(),
+								center1,
+								"Basic Maintenance",
+								"Routine",
+								"Oil change, filter replacement, and multi-point inspection.",
+								new BigDecimal("89.99"),
+								60,
+								true,
+								LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+
+						packages.add(new ServicePackage(
+								UUID.randomUUID(),
+								center1,
+								"Full Service",
+								"Comprehensive",
+								"Includes basic maintenance plus brake check and fluid top-offs.",
+								new BigDecimal("149.99"),
+								120,
+								true,
+								LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+
+						// Packages for Center 2
+						packages.add(new ServicePackage(
+								UUID.randomUUID(),
+								center2,
+								"Performance Tuning",
+								"Specialized",
+								"Engine diagnostic and performance optimization.",
+								new BigDecimal("299.99"),
+								180,
+								true,
+								LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+
+						packages.add(new ServicePackage(
+								UUID.randomUUID(),
+								center2,
+								"Brake System Overhaul",
+								"Repair",
+								"Replacement of pads, rotors, and brake fluid flush.",
+								new BigDecimal("399.99"),
+								240,
+								true,
+								LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+
+						servicePackageRepository.saveAll(packages);
+						System.out.println("Mock service packages loaded into database.");
+					}
+				}
 			}
 		};
 	}
