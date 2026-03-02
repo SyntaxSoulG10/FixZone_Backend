@@ -91,10 +91,22 @@ public class FixzonBackendApplication {
 				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010016"), "John Doe",
 						"john.d@fixzone.lk", "+94776789012", "pass123", "MANAGER", true, LocalDateTime.now(),
 						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-001", center1Id));
-				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010017"), "Jane Smith",
-						"jane.s@fixzone.lk", "+94777890123", "pass123", "MANAGER", true,
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010017"), "Chamari Athapaththu",
+						"chamari.a@fixzone.lk", "+94777890123", "pass123", "MANAGER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-002",
 						center2Id));
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010018"), "Wanindu Hasaranga",
+						"wanindu.h@fixzone.lk", "+94778901234", "pass123", "MANAGER", true,
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-003",
+						center3Id));
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010019"), "Isuru Udana",
+						"isuru.u@fixzone.lk", "+94779012345", "pass123", "MANAGER", true,
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-004",
+						center4Id));
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010020"), "Kusal Mendis",
+						"kusal.m@fixzone.lk", "+94770123456", "pass123", "MANAGER", true,
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-005",
+						center5Id));
 
 				userRepository.saveAll(users);
 				System.out.println("Mock users loaded.");
