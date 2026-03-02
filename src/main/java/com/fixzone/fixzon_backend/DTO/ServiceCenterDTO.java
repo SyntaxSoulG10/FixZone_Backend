@@ -24,4 +24,8 @@ public class ServiceCenterDTO {
     private LocalDateTime updatedAt;
     private String updatedBy;
     private String[] supportedVehicleBrands;
+    private String managerName;
+    private BigDecimal revenue;
+    private Integer mechanicsCount;
+    private Integer currentCapacity;
 }

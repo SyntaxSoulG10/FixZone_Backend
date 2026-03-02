@@ -53,6 +53,10 @@ public class ServiceCenterService {
         existingCenter.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : existingCenter.getIsActive());
         existingCenter.setUpdatedBy(dto.getUpdatedBy());
         existingCenter.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
+        existingCenter.setManagerName(dto.getManagerName());
+        existingCenter.setRevenue(dto.getRevenue());
+        existingCenter.setMechanicsCount(dto.getMechanicsCount());
+        existingCenter.setCurrentCapacity(dto.getCurrentCapacity());
 
         return convertToDTO(serviceCenterRepository.save(existingCenter));
     }
@@ -75,7 +79,11 @@ public class ServiceCenterService {
                 center.getCreatedBy(),
                 center.getUpdatedAt(),
                 center.getUpdatedBy(),
-                center.getSupportedVehicleBrands());
+                center.getSupportedVehicleBrands(),
+                center.getManagerName(),
+                center.getRevenue(),
+                center.getMechanicsCount(),
+                center.getCurrentCapacity());
     }
 
     private ServiceCenter convertToEntity(ServiceCenterDTO dto) {
@@ -97,6 +105,10 @@ public class ServiceCenterService {
         center.setCreatedBy(dto.getCreatedBy());
         center.setUpdatedBy(dto.getUpdatedBy());
         center.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
+        center.setManagerName(dto.getManagerName());
+        center.setRevenue(dto.getRevenue());
+        center.setMechanicsCount(dto.getMechanicsCount());
+        center.setCurrentCapacity(dto.getCurrentCapacity());
         return center;
     }
 }

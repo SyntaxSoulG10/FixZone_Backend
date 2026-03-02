@@ -59,6 +59,18 @@ public class ServiceCenter {
     @Column(name = "supported_vehicle_brands", columnDefinition = "text[]")
     private String[] supportedVehicleBrands;
 
+    @Column(name = "manager_name", length = 150)
+    private String managerName;
+
+    @Column(name = "revenue", precision = 15, scale = 2)
+    private BigDecimal revenue = BigDecimal.ZERO;
+
+    @Column(name = "mechanics_count")
+    private Integer mechanicsCount = 0;
+
+    @Column(name = "current_capacity")
+    private Integer currentCapacity = 0;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
