@@ -11,7 +11,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/owners")
-@CrossOrigin(origins = "*")
 public class OwnerController {
 
     @Autowired
