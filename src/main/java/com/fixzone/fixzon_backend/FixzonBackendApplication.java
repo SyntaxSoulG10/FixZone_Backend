@@ -6,9 +6,13 @@ import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.model.SuperAdmin;
 import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
+<<<<<<< HEAD
 import com.fixzone.fixzon_backend.model.ServicePackage;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
+=======
+import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
+>>>>>>> eff09d0f1f8be759cbd2dc1c7e8301225046b533
 import com.fixzone.fixzon_backend.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -30,8 +34,12 @@ public class FixzonBackendApplication {
 
 	@Bean
 	public CommandLineRunner dataLoader(UserRepository userRepository,
+<<<<<<< HEAD
 			ServiceCenterRepository serviceCenterRepository,
 			ServicePackageRepository servicePackageRepository) {
+=======
+			ServiceCenterRepository serviceCenterRepository) {
+>>>>>>> eff09d0f1f8be759cbd2dc1c7e8301225046b533
 		return args -> {
 			if (userRepository.count() == 0) {
 				List<User> users = new ArrayList<>();
@@ -74,6 +82,7 @@ public class FixzonBackendApplication {
 						"CUST-005", "PHONE"));
 
 				// Owners
+<<<<<<< HEAD
 				Owner owner1 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010011"), "Kamal Gunaratne",
 						"kamal.g@lankaauto.lk", "+94701234567", "pass123", "OWNER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-001",
@@ -103,6 +112,36 @@ public class FixzonBackendApplication {
 						"sandunika.d@islandrepairs.lk", "+94705678901", "pass123", "OWNER", true, LocalDateTime.now(),
 						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-005", "Island Repairs",
 						"admin@islandrepairs.lk", "+94115678901");
+=======
+				Owner owner1 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010011"), "Elizabeth Taylor",
+						"e.taylor@fixzone.com", "+12025550111", "pass123", "OWNER", true,
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-001",
+						"Taylor Logistics", "contact@taylorlogs.com", "+15550111");
+				users.add(owner1);
+
+				Owner owner2 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010012"), "Richard Moore",
+						"richard.moore@fixzone.com", "+12025550112", "pass123", "OWNER", true,
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-002",
+						"Moore Repairs", "info@moore.com", "+15550112");
+				users.add(owner2);
+
+				Owner owner3 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010013"), "Susan Anderson",
+						"s.anderson@fixzone.com", "+12025550113", "pass123", "OWNER", true, LocalDateTime.now(),
+						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-003", "Anderson Autos",
+						"sales@anderson.com", "+15550113");
+				users.add(owner3);
+
+				Owner owner4 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010014"), "Thomas Jackson",
+						"t.jackson@fixzone.com", "+12025550114", "pass123", "OWNER", true, LocalDateTime.now(),
+						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-004", "Jackson Tech",
+						"support@jackson.com", "+15550114");
+				users.add(owner4);
+
+				Owner owner5 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010015"), "Margaret Harris",
+						"m.harris@fixzone.com", "+12025550115", "pass123", "OWNER", true, LocalDateTime.now(),
+						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-005", "Harris Group",
+						"margaret@harris.com", "+15550115");
+>>>>>>> eff09d0f1f8be759cbd2dc1c7e8301225046b533
 				users.add(owner5);
 
 				// Managers
@@ -136,16 +175,26 @@ public class FixzonBackendApplication {
 				if (serviceCenterRepository.count() == 0) {
 					List<ServiceCenter> centers = new ArrayList<>();
 
+<<<<<<< HEAD
 					ServiceCenter center1 = new ServiceCenter(
 							center1Id,
 							owner1,
 							"Lanka Express Auto Care",
 							"No. 45, Galle Road, Colombo 03",
 							"+94112345678",
+=======
+					centers.add(new ServiceCenter(
+							center1Id,
+							owner1,
+							"Taylor Express Maintenance",
+							"123 Main St, New York",
+							"+1-555-0101",
+>>>>>>> eff09d0f1f8be759cbd2dc1c7e8301225046b533
 							"08:00 - 18:00",
 							new BigDecimal("4.8"),
 							true,
 							LocalDateTime.now(), "system", LocalDateTime.now(), "system",
+<<<<<<< HEAD
 							new String[] { "Toyota", "Honda", "Nissan" });
 					centers.add(center1);
 
@@ -155,10 +204,21 @@ public class FixzonBackendApplication {
 							"Colombo Precision Service",
 							"No. 12, Kandy Road, Kiribathgoda",
 							"+94113456789",
+=======
+							new String[] { "Toyota", "Honda", "Ford" }));
+
+					centers.add(new ServiceCenter(
+							center2Id,
+							owner2,
+							"Moore Precision Repairs",
+							"456 Oak Ave, Los Angeles",
+							"+1-555-0102",
+>>>>>>> eff09d0f1f8be759cbd2dc1c7e8301225046b533
 							"09:00 - 19:00",
 							new BigDecimal("4.5"),
 							true,
 							LocalDateTime.now(), "system", LocalDateTime.now(), "system",
+<<<<<<< HEAD
 							new String[] { "BMW", "Mercedes", "Audi" });
 					centers.add(center2);
 
@@ -218,6 +278,12 @@ public class FixzonBackendApplication {
 						servicePackageRepository.saveAll(packages);
 						System.out.println("Mock service packages loaded into database.");
 					}
+=======
+							new String[] { "BMW", "Mercedes", "Audi" }));
+
+					serviceCenterRepository.saveAll(centers);
+					System.out.println("Mock service centers loaded into database.");
+>>>>>>> eff09d0f1f8be759cbd2dc1c7e8301225046b533
 				}
 			}
 		};

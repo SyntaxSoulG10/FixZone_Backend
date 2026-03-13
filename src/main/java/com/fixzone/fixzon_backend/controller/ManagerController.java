@@ -11,7 +11,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/managers")
-@CrossOrigin(origins = "*")
 public class ManagerController {
 
     @Autowired
