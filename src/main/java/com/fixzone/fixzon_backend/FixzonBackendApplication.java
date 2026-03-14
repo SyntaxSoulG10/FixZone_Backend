@@ -6,13 +6,9 @@ import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.model.SuperAdmin;
 import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
-<<<<<<< HEAD
 import com.fixzone.fixzon_backend.model.ServicePackage;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
-=======
-import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
->>>>>>> eff09d0f1f8be759cbd2dc1c7e8301225046b533
 import com.fixzone.fixzon_backend.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -34,85 +30,50 @@ public class FixzonBackendApplication {
 
 	@Bean
 	public CommandLineRunner dataLoader(UserRepository userRepository,
-<<<<<<< HEAD
 			ServiceCenterRepository serviceCenterRepository,
 			ServicePackageRepository servicePackageRepository) {
-=======
-			ServiceCenterRepository serviceCenterRepository) {
->>>>>>> eff09d0f1f8be759cbd2dc1c7e8301225046b533
 		return args -> {
 			if (userRepository.count() == 0) {
 				List<User> users = new ArrayList<>();
 
 				// Admins (Initialized as SuperAdmin to appear in super_admin table)
-				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010001"), "Kusal Perera",
-						"kusal.perera@fixzone.lk", "+94771234567", "pass123", "ADMIN", true,
+				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010001"), "James Wilson",
+						"james.wilson@fixzone.com", "+12025550101", "pass123", "ADMIN", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "AD-001"));
-				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010002"), "Dilini Jayawardena",
-						"dilini.j@fixzone.lk", "+94772345678", "pass123", "ADMIN", true,
+				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010002"), "Linda Garcia",
+						"linda.garcia@fixzone.com", "+12025550102", "pass123", "ADMIN", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "AD-002"));
-				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010003"), "Manoj Gunaratne",
-						"manoj.g@fixzone.lk", "+94773456789", "pass123", "ADMIN", true,
+				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010003"), "Robert Chen",
+						"robert.chen@fixzone.com", "+12025550103", "pass123", "ADMIN", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "AD-003"));
-				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010004"), "Nilupul Silva",
-						"nilupul.s@fixzone.lk", "+94774567890", "pass123", "ADMIN", true,
+				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010004"), "Sarah Miller",
+						"sarah.miller@fixzone.com", "+12025550104", "pass123", "ADMIN", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "AD-004"));
-				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010005"), "Chaminda Silva",
-						"chaminda.s@fixzone.lk", "+94775678901", "pass123", "ADMIN", true,
+				users.add(new SuperAdmin(UUID.fromString("00000000-0000-0000-0000-000000010005"), "Michael Davis",
+						"michael.davis@fixzone.com", "+12025550105", "pass123", "ADMIN", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "AD-005"));
 
 				// Customers
-				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010006"), "Aruna Kumara",
-						"aruna.k@gmail.com", "+94711122334", "pass123", "CUSTOMER", true, LocalDateTime.now(),
+				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010006"), "David Thompson",
+						"david.t@example.com", "+12025550106", "pass123", "CUSTOMER", true, LocalDateTime.now(),
 						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "CUST-001", "EMAIL"));
-				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010007"), "Malini Perera",
-						"malini.p@yahoo.com", "+94712233445", "pass123", "CUSTOMER", true, LocalDateTime.now(),
+				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010007"), "Jennifer Lopez",
+						"j.lopez@example.com", "+12025550107", "pass123", "CUSTOMER", true, LocalDateTime.now(),
 						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "CUST-002", "PHONE"));
-				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010008"), "Suresh Lakmal",
-						"suresh.l@outlook.com", "+94713344556", "pass123", "CUSTOMER", true,
+				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010008"), "Chris Lee",
+						"chris.lee@example.com", "+12025550108", "pass123", "CUSTOMER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
 						"CUST-003", "SMS"));
-				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010009"), "Ishani Maduwanthi",
-						"ishani.m@gmail.com", "+94714455667", "pass123", "CUSTOMER", true,
+				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010009"), "Amanda White",
+						"amanda.white@example.com", "+12025550109", "pass123", "CUSTOMER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
 						"CUST-004", "EMAIL"));
-				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010010"), "Ruwan Bandara",
-						"ruwan.b@gmail.com", "+94715566778", "pass123", "CUSTOMER", true,
+				users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010010"), "Kevin Martin",
+						"kevin.martin@example.com", "+12025550110", "pass123", "CUSTOMER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
 						"CUST-005", "PHONE"));
 
 				// Owners
-<<<<<<< HEAD
-				Owner owner1 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010011"), "Kamal Gunaratne",
-						"kamal.g@lankaauto.lk", "+94701234567", "pass123", "OWNER", true,
-						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-001",
-						"Lanka Auto Solutions", "contact@lankaauto.lk", "+94112345678");
-				users.add(owner1);
-
-				Owner owner2 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010012"), "Nuwan Sameera",
-						"nuwan.s@hybridcare.lk", "+94702345678", "pass123", "OWNER", true,
-						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-002",
-						"Hybrid Care Lanka", "info@hybridcare.lk", "+94113456789");
-				users.add(owner2);
-
-				Owner owner3 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010013"),
-						"Chathuri Priyadharshani",
-						"chathuri.p@revv.lk", "+94703456789", "pass123", "OWNER", true, LocalDateTime.now(),
-						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-003", "Revv Motors",
-						"sales@revv.lk", "+94114567890");
-				users.add(owner3);
-
-				Owner owner4 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010014"), "Upul Tharanga",
-						"upul.t@southernfix.lk", "+94704567890", "pass123", "OWNER", true, LocalDateTime.now(),
-						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-004", "Southern Fix",
-						"support@southernfix.lk", "+94912345678");
-				users.add(owner4);
-
-				Owner owner5 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010015"), "Sandunika De Silva",
-						"sandunika.d@islandrepairs.lk", "+94705678901", "pass123", "OWNER", true, LocalDateTime.now(),
-						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-005", "Island Repairs",
-						"admin@islandrepairs.lk", "+94115678901");
-=======
 				Owner owner1 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010011"), "Elizabeth Taylor",
 						"e.taylor@fixzone.com", "+12025550111", "pass123", "OWNER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-001",
@@ -141,30 +102,28 @@ public class FixzonBackendApplication {
 						"m.harris@fixzone.com", "+12025550115", "pass123", "OWNER", true, LocalDateTime.now(),
 						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-005", "Harris Group",
 						"margaret@harris.com", "+15550115");
->>>>>>> eff09d0f1f8be759cbd2dc1c7e8301225046b533
 				users.add(owner5);
 
 				// Managers
 				UUID center1Id = UUID.fromString("c0000000-0000-0000-0000-000000000001");
 				UUID center2Id = UUID.fromString("c0000000-0000-0000-0000-000000000002");
 
-				// Managers
-				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010016"), "Pathum Nissanka",
-						"pathum.n@fixzone.lk", "+94721234567", "pass123", "MANAGER", true, LocalDateTime.now(),
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010016"), "Steven Clark",
+						"s.clark@fixzone.com", "+12025550116", "pass123", "MANAGER", true, LocalDateTime.now(),
 						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-001", center1Id));
-				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010017"), "Vishakha Jayawardena",
-						"vishakha.j@fixzone.lk", "+94722345678", "pass123", "MANAGER", true,
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010017"), "Mary Lewis",
+						"mary.lewis@fixzone.com", "+12025550117", "pass123", "MANAGER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-002",
 						center1Id));
-				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010018"), "Dinidu Buddhika",
-						"dinidu.b@fixzone.lk", "+94723456789", "pass123", "MANAGER", true,
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010018"), "Paul Walker",
+						"paul.walker@fixzone.com", "+12025550118", "pass123", "MANAGER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-003",
 						center2Id));
-				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010019"), "Tharushi Karunaratne",
-						"tharushi.k@fixzone.lk", "+94724567890", "pass123", "MANAGER", true, LocalDateTime.now(),
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010019"), "Karen Young",
+						"k.young@fixzone.com", "+12025550119", "pass123", "MANAGER", true, LocalDateTime.now(),
 						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-004", center2Id));
-				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010020"), "Asela Gunaratne",
-						"asela.g@fixzone.lk", "+94725678901", "pass123", "MANAGER", true,
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010020"), "Mark Allen",
+						"mark.allen@fixzone.com", "+12025550120", "pass123", "MANAGER", true,
 						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-005",
 						center1Id));
 
@@ -175,36 +134,16 @@ public class FixzonBackendApplication {
 				if (serviceCenterRepository.count() == 0) {
 					List<ServiceCenter> centers = new ArrayList<>();
 
-<<<<<<< HEAD
-					ServiceCenter center1 = new ServiceCenter(
-							center1Id,
-							owner1,
-							"Lanka Express Auto Care",
-							"No. 45, Galle Road, Colombo 03",
-							"+94112345678",
-=======
 					centers.add(new ServiceCenter(
 							center1Id,
 							owner1,
 							"Taylor Express Maintenance",
 							"123 Main St, New York",
 							"+1-555-0101",
->>>>>>> eff09d0f1f8be759cbd2dc1c7e8301225046b533
 							"08:00 - 18:00",
 							new BigDecimal("4.8"),
 							true,
 							LocalDateTime.now(), "system", LocalDateTime.now(), "system",
-<<<<<<< HEAD
-							new String[] { "Toyota", "Honda", "Nissan" });
-					centers.add(center1);
-
-					ServiceCenter center2 = new ServiceCenter(
-							center2Id,
-							owner2,
-							"Colombo Precision Service",
-							"No. 12, Kandy Road, Kiribathgoda",
-							"+94113456789",
-=======
 							new String[] { "Toyota", "Honda", "Ford" }));
 
 					centers.add(new ServiceCenter(
@@ -213,77 +152,28 @@ public class FixzonBackendApplication {
 							"Moore Precision Repairs",
 							"456 Oak Ave, Los Angeles",
 							"+1-555-0102",
->>>>>>> eff09d0f1f8be759cbd2dc1c7e8301225046b533
 							"09:00 - 19:00",
 							new BigDecimal("4.5"),
 							true,
 							LocalDateTime.now(), "system", LocalDateTime.now(), "system",
-<<<<<<< HEAD
-							new String[] { "BMW", "Mercedes", "Audi" });
-					centers.add(center2);
-
-					serviceCenterRepository.saveAll(centers);
-					System.out.println("Mock service centers loaded into database.");
-
-					// Service Packages
-					if (servicePackageRepository.count() == 0) {
-						List<ServicePackage> packages = new ArrayList<>();
-
-						// Packages for Center 1
-						packages.add(new ServicePackage(
-								UUID.randomUUID(),
-								center1,
-								"Basic Maintenance",
-								"Routine",
-								"Oil change, filter replacement, and multi-point inspection.",
-								new BigDecimal("4500.00"),
-								60,
-								true,
-								LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-
-						packages.add(new ServicePackage(
-								UUID.randomUUID(),
-								center1,
-								"Full Service",
-								"Comprehensive",
-								"Includes basic maintenance plus brake check and fluid top-offs.",
-								new BigDecimal("12500.00"),
-								120,
-								true,
-								LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-
-						// Packages for Center 2
-						packages.add(new ServicePackage(
-								UUID.randomUUID(),
-								center2,
-								"Performance Tuning",
-								"Specialized",
-								"Engine diagnostic and performance optimization.",
-								new BigDecimal("25000.00"),
-								180,
-								true,
-								LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-
-						packages.add(new ServicePackage(
-								UUID.randomUUID(),
-								center2,
-								"Brake System Overhaul",
-								"Repair",
-								"Replacement of pads, rotors, and brake fluid flush.",
-								new BigDecimal("35000.00"),
-								240,
-								true,
-								LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-
-						servicePackageRepository.saveAll(packages);
-						System.out.println("Mock service packages loaded into database.");
-					}
-=======
 							new String[] { "BMW", "Mercedes", "Audi" }));
 
 					serviceCenterRepository.saveAll(centers);
 					System.out.println("Mock service centers loaded into database.");
->>>>>>> eff09d0f1f8be759cbd2dc1c7e8301225046b533
+				}
+			}
+
+			if (servicePackageRepository.count() == 0) {
+				ServiceCenter center1 = serviceCenterRepository.findById(UUID.fromString("c0000000-0000-0000-0000-000000000001")).orElse(null);
+				ServiceCenter center2 = serviceCenterRepository.findById(UUID.fromString("c0000000-0000-0000-0000-000000000002")).orElse(null);
+
+				if (center1 != null && center2 != null) {
+					List<ServicePackage> packages = new ArrayList<>();
+					packages.add(new ServicePackage(UUID.randomUUID(), center1, "Basic Service", "MAINTENANCE", "Basic vehicle maintenance package", new BigDecimal("150.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+					packages.add(new ServicePackage(UUID.randomUUID(), center1, "Premium Service", "MAINTENANCE", "Premium vehicle maintenance package with extras", new BigDecimal("300.00"), 240, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+					packages.add(new ServicePackage(UUID.randomUUID(), center2, "Tire Rotation", "REPAIR", "Tire rotation and balancing", new BigDecimal("50.00"), 60, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+					servicePackageRepository.saveAll(packages);
+					System.out.println("Mock service packages loaded into database.");
 				}
 			}
 		};
