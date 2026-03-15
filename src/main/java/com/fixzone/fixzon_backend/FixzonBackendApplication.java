@@ -101,9 +101,28 @@ public class FixzonBackendApplication {
 						"margaret@harris.com", "+15550115");
 				users.add(owner5);
 
-				// Managers are not seeded here to avoid foreign-key issues with service centers
+				// Managers
 				UUID center1Id = UUID.fromString("c0000000-0000-0000-0000-000000000001");
 				UUID center2Id = UUID.fromString("c0000000-0000-0000-0000-000000000002");
+
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010016"), "Steven Clark",
+						"s.clark@fixzone.com", "+12025550116", "pass123", "MANAGER", true, LocalDateTime.now(),
+						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-001", center1Id));
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010017"), "Mary Lewis",
+						"mary.lewis@fixzone.com", "+12025550117", "pass123", "MANAGER", true,
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-002",
+						center1Id));
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010018"), "Paul Walker",
+						"paul.walker@fixzone.com", "+12025550118", "pass123", "MANAGER", true,
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-003",
+						center2Id));
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010019"), "Karen Young",
+						"k.young@fixzone.com", "+12025550119", "pass123", "MANAGER", true, LocalDateTime.now(),
+						LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-004", center2Id));
+				users.add(new Manager(UUID.fromString("00000000-0000-0000-0000-000000010020"), "Mark Allen",
+						"mark.allen@fixzone.com", "+12025550120", "pass123", "MANAGER", true,
+						LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "MGR-005",
+						center1Id));
 
 				userRepository.saveAll(users);
 				System.out.println("Realistic mock users loaded into database.");
