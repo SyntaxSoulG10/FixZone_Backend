@@ -24,7 +24,7 @@ public class ServiceCenter {
     private String brDocumentUrl;
     
     @Column(precision = 2, scale = 1)
-    private Double reviewScore;
+    private java.math.BigDecimal reviewScore;
 
     @ManyToOne
     @JoinColumn(name = "owner_id")
@@ -53,8 +53,8 @@ public class ServiceCenter {
     public void setBrNumber(String brNumber) { this.brNumber = brNumber; }
     public String getBrDocumentUrl() { return brDocumentUrl; }
     public void setBrDocumentUrl(String brDocumentUrl) { this.brDocumentUrl = brDocumentUrl; }
-    public Double getReviewScore() { return reviewScore; }
-    public void setReviewScore(Double reviewScore) { this.reviewScore = reviewScore; }
+    public java.math.BigDecimal getReviewScore() { return reviewScore; }
+    public void setReviewScore(java.math.BigDecimal reviewScore) { this.reviewScore = reviewScore; }
     public User getOwner() { return owner; }
     public void setOwner(User owner) { this.owner = owner; }
 }
