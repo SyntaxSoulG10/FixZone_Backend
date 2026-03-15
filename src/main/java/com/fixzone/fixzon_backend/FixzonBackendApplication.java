@@ -19,7 +19,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.context.annotation.Bean;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -235,7 +235,7 @@ public class FixzonBackendApplication {
                                 List<Booking> bookings = new ArrayList<>();
                                 UUID customerId = UUID.fromString("00000000-0000-0000-0000-000000010006"); // David Thompson
                                 UUID vehicleId = UUID.fromString("10000000-0000-0000-0000-000000000001");
-                                UUID packageId = UUID.fromString("20000000-0000-0000-0000-000000000001");
+
                                 UUID mechanicId = UUID.fromString("00000000-0000-0000-0000-000000010016"); // Steven Clark
 
                                 bookings.add(new Booking(
@@ -245,7 +245,7 @@ public class FixzonBackendApplication {
                                                         customerId,
                                                         vehicleId,
                                                         null,
-                                                        LocalDateTime.now().plusDays(2),
+                                                        LocalDateTime.now().plusDays(2), 
                                                         mechanicId,
                                                         "CONFIRMED",
                                                 "HIGH",
