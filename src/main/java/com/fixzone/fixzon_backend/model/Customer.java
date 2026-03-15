@@ -9,6 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "customers")
+@PrimaryKeyJoinColumn(name = "user_id")
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
