@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/super-admins")
+@CrossOrigin(origins = "*")
 public class SuperAdminController {
 
     @Autowired
