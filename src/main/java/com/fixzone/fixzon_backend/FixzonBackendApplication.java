@@ -35,8 +35,9 @@ public class FixzonBackendApplication {
                                         InvoiceRepository invoiceRepository,
                                         PaymentRecordRepository paymentRecordRepository) {
         return args -> {
-            System.out.println("Starting Data Seeding...");
+            System.out.println("--- STARTING DATA SEEDING ---");
             
+            // 1. Create Baseline Data (Owners, Customers, Centers)
             if (userRepository.count() == 0) {
                 List<User> users = new ArrayList<>();
                 Owner owner1 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010011"), "Elizabeth Taylor", "e.taylor@fixzone.com", "+12025550111", "pass123", "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-001", "Taylor Logistics", "contact@taylorlogs.com", "+15550111");
@@ -47,14 +48,17 @@ public class FixzonBackendApplication {
                 userRepository.saveAll(users);
                 
                 List<ServiceCenter> centers = new ArrayList<>();
-                centers.add(new ServiceCenter(UUID.fromString("c0000000-0000-0000-0000-000000000001"), owner1, "Taylor Maintenance", "NY", "+1-555-0101", "08:00 - 18:00", new BigDecimal("4.8"), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system", new String[]{"Toyota"}));
-                centers.add(new ServiceCenter(UUID.fromString("c0000000-0000-0000-0000-000000000002"), owner2, "Moore Repairs", "LA", "+1-555-0102", "09:00 - 19:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system", new String[]{"BMW"}));
+                centers.add(new ServiceCenter(UUID.fromString("c0000000-0000-0000-0000-000000000001"), owner1, "Taylor Express NY", "New York", "+1-555-0101", "08:00 - 18:00", new BigDecimal("4.8"), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system", new String[]{"Toyota", "Honda"}));
+                centers.add(new ServiceCenter(UUID.fromString("c0000000-0000-0000-0000-000000000002"), owner2, "Moore Precision LA", "Los Angeles", "+1-555-0102", "09:00 - 19:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system", new String[]{"BMW", "Audi"}));
                 serviceCenterRepository.saveAll(centers);
                 System.out.println("Base users and centers seeded.");
             }
 
-            if (invoiceRepository.count() < 10) {
-                System.out.println("Generating financial data...");
+            if (invoiceRepository.count() < 150) { 
+                System.out.println("Generating 150 truly random financial records...");
+                paymentRecordRepository.deleteAll();
+                invoiceRepository.deleteAll();
+
                 UUID center1Id = UUID.fromString("c0000000-0000-0000-0000-000000000001");
                 UUID center2Id = UUID.fromString("c0000000-0000-0000-0000-000000000002");
                 UUID customerId = UUID.fromString("00000000-0000-0000-0000-000000010006");
@@ -63,26 +67,33 @@ public class FixzonBackendApplication {
                 List<Invoice> invs = new ArrayList<>();
                 List<PaymentRecord> pays = new ArrayList<>();
 
-                for (int i = 0; i < 80; i++) {
+                for (int i = 0; i < 150; i++) {
                     UUID invId = UUID.randomUUID();
-                    long daysBack = (long)(Math.random() * 200);
+                    long daysBack = (long)(Math.random() * 180);
                     LocalDateTime dt = now.minusDays(daysBack);
                     
-                    double amount = 500.0 + (Math.random() * 1000.0);
-                    BigDecimal total = new BigDecimal(amount).setScale(2, RoundingMode.HALF_UP);
-                    BigDecimal online = total.multiply(new BigDecimal("0.20")).setScale(2, RoundingMode.HALF_UP);
+                    // Truly random values, no fixed formula
+                    double randOnline = 150.0 + (Math.random() * 450.0); // 150 to 600
+                    double randCash = 700.0 + (Math.random() * 2300.0); // 700 to 3000
 
-                    invs.add(new Invoice(invId, "INV-MOCK-" + i, (i%2==0)?center1Id:center2Id, null, customerId, 
-                        total.multiply(new BigDecimal("0.8")), total.multiply(new BigDecimal("0.2")), BigDecimal.ZERO, total, 
-                        "PAID", dt, dt, dt, "system", dt, "system"));
+                    BigDecimal onlineAmt = new BigDecimal(randOnline).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal cashAmt = new BigDecimal(randCash).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal totalAmt = onlineAmt.add(cashAmt);
 
-                    pays.add(new PaymentRecord(UUID.randomUUID(), invId, (i%2==0)?center1Id:center2Id, 
-                        online, "CREDIT_CARD", "TX-M-" + i, "Completed", dt, dt, "system", dt, "system"));
+                    BigDecimal tax = totalAmt.multiply(new BigDecimal("0.1")).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal subtotal = totalAmt.subtract(tax);
+
+                    invs.add(new Invoice(invId, "INV-RND-" + (1000 + i), (Math.random() > 0.5) ? center1Id : center2Id, null, customerId, 
+                        subtotal, tax, BigDecimal.ZERO, totalAmt, "PAID", dt, dt, dt, "system", dt, "system"));
+
+                    pays.add(new PaymentRecord(UUID.randomUUID(), invId, (Math.random() > 0.5) ? center1Id : center2Id, 
+                        onlineAmt, (Math.random() > 0.5) ? "CREDIT_CARD" : "ONLINE_BANKING", "TXN-RD-" + i, "Completed", dt, dt, "system", dt, "system"));
                 }
                 invoiceRepository.saveAll(invs);
                 paymentRecordRepository.saveAll(pays);
-                System.out.println("80 financial records seeded successfully.");
+                System.out.println("150 random financial records seeded.");
             }
+            System.out.println("--- DATA SEEDING COMPLETE ---");
         };
     }
 }
