@@ -4,41 +4,38 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "service_centers")
+@Table(name = "service_packages")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ServiceCenter {
+public class ServicePackage {
 
     @Id
-    @Column(name = "center_id")
-    private UUID centerId;
+    @Column(name = "package_id")
+    private UUID packageId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id", nullable = false)
-    private User owner;
+    @Column(name = "center_id", nullable = false)
+    private UUID centerId;
 
     @Column(name = "name", nullable = false, length = 150)
     private String name;
 
-    @Column(name = "address", length = 255)
-    private String address;
+    @Column(name = "type", length = 100)
+    private String type; // Can be used for comma-separated features
 
-    @Column(name = "contact_phone", length = 20)
-    private String contactPhone;
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
-    @Column(name = "opening_hours", length = 150)
-    private String openingHours;
+    @Column(name = "base_price", precision = 10, scale = 2)
+    private BigDecimal basePrice;
 
-    @Column(name = "rating", precision = 2, scale = 1)
-    private BigDecimal rating;
+    @Column(name = "estimated_duration_mins")
+    private Integer estimatedDurationMins;
 
     @Column(name = "is_active")
     private Boolean isActive = true;
@@ -55,15 +52,11 @@ public class ServiceCenter {
     @Column(name = "updated_by", length = 100)
     private String updatedBy;
 
-    @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(name = "supported_vehicle_brands", columnDefinition = "text[]")
-    private String[] supportedVehicleBrands;
-
-    @Column(name = "status", length = 30)
-    private String status = "APPROVED";
-
     @PrePersist
     protected void onCreate() {
+        if (packageId == null) {
+            packageId = UUID.randomUUID();
+        }
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }

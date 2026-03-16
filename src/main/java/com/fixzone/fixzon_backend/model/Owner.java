@@ -32,10 +32,11 @@ public class Owner extends User {
             LocalDateTime updatedAt, String updatedBy, String ownerCode, String companyName, String companyEmail,
             String companyNumber) {
         super(userId, fullName, email, phone, passwordHash, role, emailVerified, lastLoginAt, createdAt, createdBy,
-                updatedAt, updatedBy);
+                updatedAt, updatedBy, "Active");
         this.ownerCode = ownerCode;
         this.companyName = companyName;
         this.companyEmail = companyEmail;
         this.companyNumber = companyNumber;
     }
+
 }

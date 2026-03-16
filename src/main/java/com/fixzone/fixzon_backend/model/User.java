@@ -51,6 +51,10 @@ public class User {
     @Column(name = "updated_by", length = 100)
     private String updatedBy;
 
+    @Column(name = "status", length = 30)
+    private String status = "Active";
+
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

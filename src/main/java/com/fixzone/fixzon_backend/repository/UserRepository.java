@@ -1,12 +1,13 @@
 package com.fixzone.fixzon_backend.repository;
  
-import com.fixzone.fixzon_backend.entity.User;
-import com.fixzone.fixzon_backend.enums.Role;
+import com.fixzone.fixzon_backend.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
+import java.util.UUID;
  
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
-    boolean existsByRole(Role role);
-    long countByRole(Role role);
+    boolean existsByRole(String role);
+    long countByRole(String role);
 }
+

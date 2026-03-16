@@ -1,15 +1,17 @@
 package com.fixzone.fixzon_backend.entity;
 
+import com.fixzone.fixzon_backend.model.User;
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Entity
 @Table(name = "subscriptions")
 public class Subscription {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "subscription_id")
+    private UUID id;
 
     @Column(nullable = false)
     private LocalDate startDate;
@@ -24,14 +26,21 @@ public class Subscription {
     private String billingHistory;
 
     @OneToOne
-    @JoinColumn(name = "owner_id")
+    @JoinColumn(name = "owner_user_id")
     private User owner;
 
-    public Subscription() {}
+    public Subscription() {
+        this.id = UUID.randomUUID();
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.id == null) this.id = UUID.randomUUID();
+    }
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
     public LocalDate getEndDate() { return endDate; }

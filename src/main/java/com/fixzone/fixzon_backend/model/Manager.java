@@ -25,8 +25,9 @@ public class Manager extends User {
             Boolean emailVerified, LocalDateTime lastLoginAt, LocalDateTime createdAt, String createdBy,
             LocalDateTime updatedAt, String updatedBy, String managerCode, UUID managedCenterId) {
         super(userId, fullName, email, phone, passwordHash, role, emailVerified, lastLoginAt, createdAt, createdBy,
-                updatedAt, updatedBy);
+                updatedAt, updatedBy, "Active");
         this.managerCode = managerCode;
         this.managedCenterId = managedCenterId;
     }
+
 }

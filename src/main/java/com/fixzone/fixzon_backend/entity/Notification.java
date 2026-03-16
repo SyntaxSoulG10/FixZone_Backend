@@ -1,15 +1,16 @@
 package com.fixzone.fixzon_backend.entity;
 
+import com.fixzone.fixzon_backend.model.User;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "notifications")
 public class Notification {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @Column(nullable = false)
     private String title;
@@ -22,20 +23,23 @@ public class Notification {
     private LocalDateTime createdAt;
 
     @ManyToOne
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "recipient_user_id")
     private User recipient;
 
-    public Notification() {}
+    public Notification() {
+        this.id = UUID.randomUUID();
+    }
 
     @PrePersist
     protected void onCreate() {
+        if (this.id == null) this.id = UUID.randomUUID();
         this.createdAt = LocalDateTime.now();
         this.isRead = false;
     }
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getMessage() { return message; }

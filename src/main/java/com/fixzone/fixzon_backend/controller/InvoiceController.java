@@ -9,7 +9,9 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/invoices")
+@CrossOrigin("*")
 public class InvoiceController {
+
 
     private final InvoiceService invoiceService;
 

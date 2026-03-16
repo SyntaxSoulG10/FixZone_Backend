@@ -6,10 +6,12 @@ import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.model.Invoice;
 import com.fixzone.fixzon_backend.model.PaymentRecord;
+import com.fixzone.fixzon_backend.model.ServicePackage;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.UserRepository;
 import com.fixzone.fixzon_backend.repository.InvoiceRepository;
 import com.fixzone.fixzon_backend.repository.PaymentRecordRepository;
+import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -33,7 +35,9 @@ public class FixzonBackendApplication {
     public CommandLineRunner dataLoader(UserRepository userRepository,
                                         ServiceCenterRepository serviceCenterRepository,
                                         InvoiceRepository invoiceRepository,
-                                        PaymentRecordRepository paymentRecordRepository) {
+                                        PaymentRecordRepository paymentRecordRepository,
+                                        ServicePackageRepository servicePackageRepository) {
+
         return args -> {
             System.out.println("--- STARTING DATA SEEDING ---");
             
@@ -44,14 +48,32 @@ public class FixzonBackendApplication {
                 Owner owner2 = new Owner(UUID.fromString("00000000-0000-0000-0000-000000010012"), "Richard Moore", "richard.moore@fixzone.com", "+12025550112", "pass123", "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-002", "Moore Repairs", "info@moore.com", "+15550112");
                 users.add(owner1);
                 users.add(owner2);
-                users.add(new Customer(UUID.fromString("00000000-0000-0000-0000-000000010006"), "David Thompson", "david.t@example.com", "+12025550106", "pass123", "CUSTOMER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "CUST-001", "EMAIL"));
+                Customer cust1 = new Customer(UUID.fromString("00000000-0000-0000-0000-000000010006"), "David Thompson", "david.t@example.com", "+12025550106", "pass123", "CUSTOMER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "CUST-001", "EMAIL");
+                cust1.setVisits(12);
+                cust1.setTotalSpent(new BigDecimal("15600.00"));
+                users.add(cust1);
                 userRepository.saveAll(users);
                 
                 List<ServiceCenter> centers = new ArrayList<>();
-                centers.add(new ServiceCenter(UUID.fromString("c0000000-0000-0000-0000-000000000001"), owner1, "Taylor Express NY", "New York", "+1-555-0101", "08:00 - 18:00", new BigDecimal("4.8"), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system", new String[]{"Toyota", "Honda"}));
-                centers.add(new ServiceCenter(UUID.fromString("c0000000-0000-0000-0000-000000000002"), owner2, "Moore Precision LA", "Los Angeles", "+1-555-0102", "09:00 - 19:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system", new String[]{"BMW", "Audi"}));
+                UUID center1Id = UUID.fromString("c0000000-0000-0000-0000-000000000001");
+                UUID center2Id = UUID.fromString("c0000000-0000-0000-0000-000000000002");
+                
+                centers.add(new ServiceCenter(center1Id, owner1, "Taylor Express NY", "New York", "+1-555-0101", "08:00 - 18:00", new BigDecimal("4.8"), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system", new String[]{"Toyota", "Honda"}, "APPROVED"));
+                centers.add(new ServiceCenter(center2Id, owner2, "Moore Precision LA", "Los Angeles", "+1-555-0102", "09:00 - 19:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system", new String[]{"BMW", "Audi"}, "APPROVED"));
                 serviceCenterRepository.saveAll(centers);
+
+                // Seed Service Packages
+                if (servicePackageRepository.count() == 0) {
+                    List<ServicePackage> pkgs = new ArrayList<>();
+                    pkgs.add(new ServicePackage(UUID.randomUUID(), center1Id, "Full Service Gold", "Oil Change, Filter, Brake Check", "Comprehensive vehicle inspection and maintenance.", new BigDecimal("250.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+                    pkgs.add(new ServicePackage(UUID.randomUUID(), center1Id, "Basic Care", "Oil Change, Fluid Top-up", "Quick check-up for your daily driver.", new BigDecimal("85.00"), 45, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+                    pkgs.add(new ServicePackage(UUID.randomUUID(), center2Id, "Performance Tune-up", "ECU Remapping, Injector Cleaning", "Maximize your vehicle's output.", new BigDecimal("450.00"), 180, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+                    servicePackageRepository.saveAll(pkgs);
+                    System.out.println("Service packages seeded.");
+                }
+
                 System.out.println("Base users and centers seeded.");
+
             }
 
             if (invoiceRepository.count() < 150) { 
