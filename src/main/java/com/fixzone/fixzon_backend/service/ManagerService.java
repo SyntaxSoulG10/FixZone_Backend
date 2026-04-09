@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -24,6 +25,7 @@ public class ManagerService {
     }
 
     public ManagerDTO getManagerById(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         return managerRepository.findById(id)
                 .map(this::convertToDTO)
                 .orElse(null);
@@ -39,26 +41,32 @@ public class ManagerService {
     }
 
     public ManagerDTO updateManager(UUID id, ManagerDTO managerDTO) {
+        Objects.requireNonNull(id, "ID must not be null");
         if (managerRepository.existsById(id)) {
             Manager manager = convertToEntity(managerDTO);
-            manager.setUserId(id);
-            Manager savedManager = managerRepository.save(manager);
-            return convertToDTO(savedManager);
+            if (manager != null) {
+                manager.setUserId(id);
+                Manager savedManager = managerRepository.save(manager);
+                return convertToDTO(savedManager);
+            }
         }
         return null;
     }
 
     public void deleteManager(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         managerRepository.deleteById(id);
     }
 
     private ManagerDTO convertToDTO(Manager manager) {
+        if (manager == null) return null;
         ManagerDTO dto = new ManagerDTO();
         BeanUtils.copyProperties(manager, dto);
         return dto;
     }
 
     private Manager convertToEntity(ManagerDTO dto) {
+        if (dto == null) return null;
         Manager manager = new Manager();
         BeanUtils.copyProperties(dto, manager);
         return manager;

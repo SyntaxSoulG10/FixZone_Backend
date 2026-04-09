@@ -1,12 +1,15 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.DTO.ServiceCenterDTO;
+import com.fixzone.fixzon_backend.DTO.ServicePackageDTO;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
+import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import com.fixzone.fixzon_backend.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -15,19 +18,24 @@ public class ServiceCenterService {
 
     private final ServiceCenterRepository serviceCenterRepository;
     private final UserRepository userRepository;
+    private final ServicePackageRepository servicePackageRepository;
 
-    public ServiceCenterService(ServiceCenterRepository serviceCenterRepository, UserRepository userRepository) {
+    public ServiceCenterService(ServiceCenterRepository serviceCenterRepository, 
+                               UserRepository userRepository,
+                               ServicePackageRepository servicePackageRepository) {
         this.serviceCenterRepository = serviceCenterRepository;
         this.userRepository = userRepository;
+        this.servicePackageRepository = servicePackageRepository;
     }
 
     public List<ServiceCenterDTO> getAllServiceCenters() {
-        return serviceCenterRepository.findAll().stream()
+        return serviceCenterRepository.findByIsActive(true).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
     public ServiceCenterDTO getServiceCenterById(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         ServiceCenter center = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
         return convertToDTO(center);
@@ -42,6 +50,7 @@ public class ServiceCenterService {
     }
 
     public ServiceCenterDTO updateServiceCenter(UUID id, ServiceCenterDTO dto) {
+        Objects.requireNonNull(id, "ID must not be null");
         ServiceCenter existingCenter = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
 
@@ -58,11 +67,13 @@ public class ServiceCenterService {
     }
 
     public void deleteServiceCenter(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         serviceCenterRepository.deleteById(id);
     }
 
     private ServiceCenterDTO convertToDTO(ServiceCenter center) {
-        return new ServiceCenterDTO(
+        if (center == null) return null;
+        ServiceCenterDTO dto = new ServiceCenterDTO(
                 center.getCenterId(),
                 center.getOwner() != null ? center.getOwner().getUserId() : null,
                 center.getName(),
@@ -75,17 +86,34 @@ public class ServiceCenterService {
                 center.getCreatedBy(),
                 center.getUpdatedAt(),
                 center.getUpdatedBy(),
-                center.getSupportedVehicleBrands());
+                center.getSupportedVehicleBrands(),
+                null // Packages will be populated below
+        );
+
+        // Populate active packages for this center
+        List<ServicePackageDTO> packages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId())
+                .stream()
+                .map(pkg -> {
+                    ServicePackageDTO pkgDto = new ServicePackageDTO();
+                    org.springframework.beans.BeanUtils.copyProperties(Objects.requireNonNull(pkg), pkgDto);
+                    pkgDto.setCenterId(center.getCenterId()); // Manually set the UUID for the DTO
+                    return pkgDto;
+                })
+                .collect(Collectors.toList());
+        dto.setServicePackages(packages);
+
+        return dto;
     }
 
+    @SuppressWarnings("null")
     private ServiceCenter convertToEntity(ServiceCenterDTO dto) {
         ServiceCenter center = new ServiceCenter();
         center.setCenterId(dto.getCenterId());
 
-        if (dto.getOwnerId() != null) {
+        if (dto != null && dto.getOwnerId() != null) {
             User owner = userRepository.findById(dto.getOwnerId())
                     .orElseThrow(() -> new RuntimeException("Owner not found with id: " + dto.getOwnerId()));
-            center.setOwner(owner);
+            center.setOwner(Objects.requireNonNull(owner));
         }
 
         center.setName(dto.getName());

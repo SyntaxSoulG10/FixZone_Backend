@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ServicePackageRepository extends JpaRepository<ServicePackage, UUID> {
-    List<ServicePackage> findByCenterId(UUID centerId);
+    List<ServicePackage> findByServiceCenter_CenterId(UUID centerId);
+    List<ServicePackage> findByServiceCenter_CenterIdAndIsActiveTrue(UUID centerId);
     List<ServicePackage> findByIsActiveTrue();
 }

@@ -24,4 +24,5 @@ public class ServiceCenterDTO {
     private LocalDateTime updatedAt;
     private String updatedBy;
     private String[] supportedVehicleBrands;
+    private java.util.List<ServicePackageDTO> servicePackages;
 }

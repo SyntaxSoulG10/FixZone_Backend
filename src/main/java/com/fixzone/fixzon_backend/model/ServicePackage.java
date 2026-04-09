@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "service_packages")
@@ -19,8 +20,10 @@ public class ServicePackage {
     @Column(name = "package_id")
     private UUID packageId;
 
-    @Column(name = "center_id", nullable = false)
-    private UUID centerId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "center_id", nullable = false)
+    @JsonIgnore
+    private ServiceCenter serviceCenter;
 
     @Column(name = "name", nullable = false, length = 150)
     private String name;

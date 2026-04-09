@@ -5,6 +5,7 @@ import com.fixzone.fixzon_backend.model.PaymentRecord;
 import com.fixzone.fixzon_backend.repository.PaymentRecordRepository;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -24,6 +25,7 @@ public class PaymentRecordService {
     }
 
     public PaymentRecordDTO getPaymentById(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         PaymentRecord payment = paymentRecordRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Payment record not found with id: " + id));
         return convertToDTO(payment);
@@ -61,23 +63,28 @@ public class PaymentRecordService {
         return convertToDTO(paymentRecordRepository.save(payment));
     }
 
+    @SuppressWarnings("null")
     public PaymentRecordDTO updatePayment(UUID id, PaymentRecordDTO dto) {
+        Objects.requireNonNull(id, "ID must not be null");
         PaymentRecord existing = paymentRecordRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Payment record not found with id: " + id));
 
-        existing.setInvoiceId(dto.getInvoiceId());
-        existing.setCenterId(dto.getCenterId());
-        existing.setAmount(dto.getAmount());
-        existing.setMethod(dto.getMethod());
-        existing.setProviderTransactionId(dto.getProviderTransactionId());
-        existing.setStatus(dto.getStatus());
-        existing.setProcessedAt(dto.getProcessedAt());
-        existing.setUpdatedBy(dto.getUpdatedBy());
+        if (dto != null) {
+            existing.setInvoiceId(dto.getInvoiceId());
+            existing.setCenterId(dto.getCenterId());
+            existing.setAmount(dto.getAmount());
+            existing.setMethod(dto.getMethod());
+            existing.setProviderTransactionId(dto.getProviderTransactionId());
+            existing.setStatus(dto.getStatus());
+            existing.setProcessedAt(dto.getProcessedAt());
+            existing.setUpdatedBy(dto.getUpdatedBy());
+        }
 
-        return convertToDTO(paymentRecordRepository.save(existing));
+        return convertToDTO(Objects.requireNonNull(paymentRecordRepository.save(existing)));
     }
 
     public void deletePayment(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         paymentRecordRepository.deleteById(id);
     }
 

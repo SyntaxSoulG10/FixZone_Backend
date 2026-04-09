@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -24,6 +25,7 @@ public class OwnerService {
     }
 
     public OwnerDTO getOwnerById(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         return ownerRepository.findById(id)
                 .map(this::convertToDTO)
                 .orElse(null);
@@ -39,26 +41,32 @@ public class OwnerService {
     }
 
     public OwnerDTO updateOwner(UUID id, OwnerDTO ownerDTO) {
+        Objects.requireNonNull(id, "ID must not be null");
         if (ownerRepository.existsById(id)) {
             Owner owner = convertToEntity(ownerDTO);
-            owner.setUserId(id);
-            Owner saved = ownerRepository.save(owner);
-            return convertToDTO(saved);
+            if (owner != null) {
+                owner.setUserId(id);
+                Owner saved = ownerRepository.save(owner);
+                return convertToDTO(saved);
+            }
         }
         return null;
     }
 
     public void deleteOwner(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         ownerRepository.deleteById(id);
     }
 
     private OwnerDTO convertToDTO(Owner owner) {
+        if (owner == null) return null;
         OwnerDTO dto = new OwnerDTO();
         BeanUtils.copyProperties(owner, dto);
         return dto;
     }
 
     private Owner convertToEntity(OwnerDTO dto) {
+        if (dto == null) return null;
         Owner owner = new Owner();
         BeanUtils.copyProperties(dto, owner);
         return owner;
