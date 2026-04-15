@@ -63,7 +63,6 @@ public class PaymentRecordService {
         return convertToDTO(paymentRecordRepository.save(payment));
     }
 
-    @SuppressWarnings("null")
     public PaymentRecordDTO updatePayment(UUID id, PaymentRecordDTO dto) {
         Objects.requireNonNull(id, "ID must not be null");
         PaymentRecord existing = paymentRecordRepository.findById(id)

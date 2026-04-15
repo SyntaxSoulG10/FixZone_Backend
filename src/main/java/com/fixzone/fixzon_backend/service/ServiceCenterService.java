@@ -105,7 +105,6 @@ public class ServiceCenterService {
         return dto;
     }
 
-    @SuppressWarnings("null")
     private ServiceCenter convertToEntity(ServiceCenterDTO dto) {
         ServiceCenter center = new ServiceCenter();
         center.setCenterId(dto.getCenterId());

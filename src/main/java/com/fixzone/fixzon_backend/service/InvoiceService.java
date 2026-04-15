@@ -69,7 +69,6 @@ public class InvoiceService {
         return convertToDTO(invoiceRepository.save(invoice));
     }
 
-    @SuppressWarnings("null")
     public InvoiceDTO updateInvoice(UUID id, InvoiceDTO dto) {
         Objects.requireNonNull(id, "ID must not be null");
         Invoice existing = invoiceRepository.findById(id)

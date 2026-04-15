@@ -44,7 +44,6 @@ public class ServicePackageService {
                 .orElse(null);
     }
 
-    @SuppressWarnings("null")
     public ServicePackageDTO createPackage(ServicePackageDTO dto) {
         ServicePackage model = new ServicePackage();
         BeanUtils.copyProperties(Objects.requireNonNull(dto), model, "packageId", "createdAt");
@@ -58,7 +57,6 @@ public class ServicePackageService {
         return convertToDTO(saved);
     }
 
-    @SuppressWarnings("null")
     public ServicePackageDTO updatePackage(UUID id, ServicePackageDTO dto) {
         Objects.requireNonNull(id, "ID must not be null");
         return repository.findById(id).map(existing -> {

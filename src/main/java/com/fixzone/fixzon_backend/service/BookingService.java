@@ -63,7 +63,6 @@ public class BookingService {
         return convertToDTO(bookingRepository.save(booking));
     }
 
-    @SuppressWarnings("null")
     public BookingDTO updateBooking(UUID id, BookingDTO dto) {
         Objects.requireNonNull(id, "ID must not be null");
         Booking existing = bookingRepository.findById(id)
