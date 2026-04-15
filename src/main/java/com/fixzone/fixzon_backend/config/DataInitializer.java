@@ -67,13 +67,13 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        // If we have less than 20 users (our target), let's clear and re-seed to avoid partial data conflicts
+        // If we already have 20 users (our target), skip initialization
         if (userRepository.count() >= 20) {
             System.out.println("Data already exists (20+ users), skipping initialization.");
             return;
         }
 
-        System.out.println("--- CLEARING OLD DATA AND STARTING FRESH SEEDING ---");
+        System.out.println("--- CLEARING OLD DATA AND STARTING FRESH SRI LANKAN SEEDING ---");
         
         // Deletion in order to respect foreign key constraints
         analyticsRepository.deleteAll();
@@ -91,8 +91,6 @@ public class DataInitializer implements CommandLineRunner {
         ownerRepository.deleteAll();
         superAdminRepository.deleteAll();
         userRepository.deleteAll();
-
-        System.out.println("--- STARTING REFINED SRI LANKAN DATA SEEDING (NON-CRICKETERS) ---");
 
         // 1. Super Admins (5)
         List<SuperAdmin> superAdmins = new ArrayList<>();
@@ -127,7 +125,7 @@ public class DataInitializer implements CommandLineRunner {
         }
         serviceCenterRepository.saveAll(centers);
 
-        // 5. Managers (5) - Now linked to centers
+        // 5. Managers (5)
         List<Manager> managers = new ArrayList<>();
         String[] managerNames = {"Roshan Wijesinghe", "Hasitha Abeyratne", "Mahesh Amarasinghe", "Prabath Rathnayake", "Vishwa Kumara"};
         for (int i = 0; i < 5; i++) {
@@ -135,7 +133,7 @@ public class DataInitializer implements CommandLineRunner {
         }
         managerRepository.saveAll(managers);
 
-        // 6. Service Packages (5 per center)
+        // 6. Service Packages
         List<ServicePackage> packages = new ArrayList<>();
         String[] pkgNames = {"Full Service", "Brake Check", "Hybrid Diagnostics", "Interior Detailing", "Nano Coating"};
         BigDecimal[] prices = {new BigDecimal("18000.00"), new BigDecimal("4500.00"), new BigDecimal("12000.00"), new BigDecimal("7500.00"), new BigDecimal("45000.00")};
@@ -215,6 +213,6 @@ public class DataInitializer implements CommandLineRunner {
         }
         analyticsRepository.saveAll(analyticsRecords);
 
-        System.out.println("--- REFINED SRI LANKAN DATA SEEDING COMPLETE ---");
+        System.out.println("--- SRI LANKAN DATA SEEDING COMPLETE ---");
     }
 }

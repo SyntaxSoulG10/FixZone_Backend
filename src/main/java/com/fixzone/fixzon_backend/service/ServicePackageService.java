@@ -6,57 +6,85 @@ import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
+
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional(readOnly = true)
 public class ServicePackageService {
 
     private final ServicePackageRepository repository;
+    private final ServiceCenterRepository centerRepository;
 
-    public ServicePackageService(ServicePackageRepository repository) {
+    public ServicePackageService(ServicePackageRepository repository, ServiceCenterRepository centerRepository) {
         this.repository = repository;
+        this.centerRepository = centerRepository;
     }
 
     public List<ServicePackageDTO> getAllPackages() {
-        return repository.findAll().stream()
+        return repository.findByIsActiveTrue().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
     public List<ServicePackageDTO> getPackagesByCenter(UUID centerId) {
-        return repository.findByCenterId(centerId).stream()
+        return repository.findByServiceCenter_CenterIdAndIsActiveTrue(centerId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
     public ServicePackageDTO getPackageById(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         return repository.findById(id)
                 .map(this::convertToDTO)
                 .orElse(null);
     }
 
+    @SuppressWarnings("null")
     public ServicePackageDTO createPackage(ServicePackageDTO dto) {
         ServicePackage model = new ServicePackage();
-        BeanUtils.copyProperties(dto, model, "packageId", "createdAt");
-        ServicePackage saved = repository.save(model);
+        BeanUtils.copyProperties(Objects.requireNonNull(dto), model, "packageId", "createdAt");
+        
+        if (dto.getCenterId() != null) {
+            model.setServiceCenter(centerRepository.findById(dto.getCenterId())
+                .orElseThrow(() -> new RuntimeException("Service Center not found")));
+        }
+        
+        ServicePackage saved = Objects.requireNonNull(repository.save(model));
         return convertToDTO(saved);
     }
 
+    @SuppressWarnings("null")
     public ServicePackageDTO updatePackage(UUID id, ServicePackageDTO dto) {
+        Objects.requireNonNull(id, "ID must not be null");
         return repository.findById(id).map(existing -> {
-            BeanUtils.copyProperties(dto, existing, "packageId", "centerId", "createdAt");
-            return convertToDTO(repository.save(existing));
+            if (dto != null) {
+                BeanUtils.copyProperties(dto, existing, "packageId", "createdAt");
+                if (dto.getCenterId() != null) {
+                    existing.setServiceCenter(centerRepository.findById(Objects.requireNonNull(dto.getCenterId()))
+                        .orElseThrow(() -> new RuntimeException("Service Center not found")));
+                }
+            }
+            return convertToDTO(Objects.requireNonNull(repository.save(existing)));
         }).orElse(null);
     }
 
     public void deletePackage(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         repository.deleteById(id);
     }
 
     private ServicePackageDTO convertToDTO(ServicePackage model) {
+        if (model == null) return null;
         ServicePackageDTO dto = new ServicePackageDTO();
         BeanUtils.copyProperties(model, dto);
+        if (model.getServiceCenter() != null) {
+            dto.setCenterId(model.getServiceCenter().getCenterId());
+        }
         return dto;
     }
 }

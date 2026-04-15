@@ -23,6 +23,7 @@ public class UserService {
     }
 
     private UserDTO convertToDTO(User user) {
+        if (user == null) return null;
         UserDTO dto = new UserDTO();
         BeanUtils.copyProperties(user, dto);
         return dto;

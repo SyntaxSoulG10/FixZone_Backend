@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -37,6 +38,7 @@ public class AdminService {
     }
 
     public ServiceCenter approveServiceCenter(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         ServiceCenter sc = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service Center not found"));
         sc.setStatus("APPROVED");
@@ -50,6 +52,7 @@ public class AdminService {
     }
 
     public ServiceCenter rejectServiceCenter(UUID id, String reason) {
+        Objects.requireNonNull(id, "ID must not be null");
         ServiceCenter sc = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service Center not found"));
         sc.setStatus("REJECTED");
@@ -62,6 +65,7 @@ public class AdminService {
     }
 
     public ServiceCenter updateServiceCenterStatus(UUID id, String status) {
+        Objects.requireNonNull(id, "ID must not be null");
         ServiceCenter sc = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service Center not found"));
         sc.setStatus(status); // SUSPENDED, ACTIVE
@@ -71,6 +75,7 @@ public class AdminService {
     // --- User Account Management ---
 
     public User updateUserStatus(UUID id, String status) {
+        Objects.requireNonNull(id, "ID must not be null");
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setStatus(status); // Active, Suspended
