@@ -121,7 +121,8 @@ public class DataInitializer implements CommandLineRunner {
         List<ServiceCenter> centers = new ArrayList<>();
         String[] locations = {"Colombo 03", "Kandy Town", "Galle Fort", "Jaffna Central", "Negombo Coastal"};
         for (int i = 0; i < 5; i++) {
-            centers.add(new ServiceCenter(UUID.randomUUID(), owners.get(i), companies[i] + " HQ", locations[i], "+9411400000" + i, "08:00 - 18:00", new BigDecimal("4." + (5 + i)), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system", new String[]{"Toyota", "Nissan", "Suzuki"}, "APPROVED"));
+            // Note: Added null for servicePackages list argument
+            centers.add(new ServiceCenter(UUID.randomUUID(), owners.get(i), companies[i] + " HQ", locations[i], "+9411400000" + i, "08:00 - 18:00", new BigDecimal("4." + (5 + i)), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system", new String[]{"Toyota", "Nissan", "Suzuki"}, "APPROVED", null));
         }
         serviceCenterRepository.saveAll(centers);
 
@@ -139,7 +140,8 @@ public class DataInitializer implements CommandLineRunner {
         BigDecimal[] prices = {new BigDecimal("18000.00"), new BigDecimal("4500.00"), new BigDecimal("12000.00"), new BigDecimal("7500.00"), new BigDecimal("45000.00")};
         for (ServiceCenter center : centers) {
             for (int i = 0; i < pkgNames.length; i++) {
-                packages.add(new ServicePackage(UUID.randomUUID(), center.getCenterId(), pkgNames[i] + " (" + center.getAddress() + ")", "Package", "Premium " + pkgNames[i] + " in " + center.getAddress(), prices[i], 60 + (i * 30), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+                // Note: centerId replaced with ServiceCenter object
+                packages.add(new ServicePackage(UUID.randomUUID(), center, pkgNames[i] + " (" + center.getAddress() + ")", "Package", "Premium " + pkgNames[i] + " in " + center.getAddress(), prices[i], 60 + (i * 30), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
             }
         }
         servicePackageRepository.saveAll(packages);
