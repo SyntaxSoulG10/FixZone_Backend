@@ -1,6 +1,5 @@
-package com.fixzone.fixzon_backend.entity;
+package com.fixzone.fixzon_backend.model;
 
-import com.fixzone.fixzon_backend.model.User;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;

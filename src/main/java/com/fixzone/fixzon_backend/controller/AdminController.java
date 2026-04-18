@@ -1,8 +1,8 @@
 package com.fixzone.fixzon_backend.controller;
  
-import com.fixzone.fixzon_backend.model.ServiceCenter;
-import com.fixzone.fixzon_backend.model.User;
-import com.fixzone.fixzon_backend.entity.Notification;
+import com.fixzone.fixzon_backend.DTO.NotificationDTO;
+import com.fixzone.fixzon_backend.DTO.ServiceCenterDTO;
+import com.fixzone.fixzon_backend.DTO.UserDTO;
 import com.fixzone.fixzon_backend.service.AdminService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,45 +27,46 @@ public class AdminController {
     }
  
     @GetMapping("/users")
-    public ResponseEntity<List<User>> getAllUsers() {
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
         return ResponseEntity.ok(adminService.getAllUsers());
     }
  
     @PostMapping("/users/{id}/status")
-    public ResponseEntity<User> updateUserStatus(
+    public ResponseEntity<UserDTO> updateUserStatus(
             @PathVariable UUID id, @RequestParam String status) {
         return ResponseEntity.ok(adminService.updateUserStatus(id, status));
     }
  
     @GetMapping("/service-centers")
-    public ResponseEntity<List<ServiceCenter>> getAllServiceCenters() {
+    public ResponseEntity<List<ServiceCenterDTO>> getAllServiceCenters() {
         return ResponseEntity.ok(adminService.getAllServiceCenters());
     }
  
     @GetMapping("/service-centers/pending")
-    public ResponseEntity<List<ServiceCenter>> getPendingServiceCenters() {
+    public ResponseEntity<List<ServiceCenterDTO>> getPendingServiceCenters() {
         return ResponseEntity.ok(adminService.getPendingServiceCenters());
     }
  
     @PostMapping("/service-centers/{id}/approve")
-    public ResponseEntity<ServiceCenter> approveServiceCenter(@PathVariable UUID id) {
+    public ResponseEntity<ServiceCenterDTO> approveServiceCenter(@PathVariable UUID id) {
         return ResponseEntity.ok(adminService.approveServiceCenter(id));
     }
  
     @PostMapping("/service-centers/{id}/reject")
-    public ResponseEntity<ServiceCenter> rejectServiceCenter(
+    public ResponseEntity<ServiceCenterDTO> rejectServiceCenter(
             @PathVariable UUID id, @RequestParam String reason) {
         return ResponseEntity.ok(adminService.rejectServiceCenter(id, reason));
     }
  
     @PostMapping("/service-centers/{id}/status")
-    public ResponseEntity<ServiceCenter> updateServiceCenterStatus(
+    public ResponseEntity<ServiceCenterDTO> updateServiceCenterStatus(
             @PathVariable UUID id, @RequestParam String status) {
         return ResponseEntity.ok(adminService.updateServiceCenterStatus(id, status));
     }
  
     @GetMapping("/notifications")
-    public ResponseEntity<List<Notification>> getNotifications() {
+    public ResponseEntity<List<NotificationDTO>> getNotifications() {
         return ResponseEntity.ok(adminService.getAdminNotifications());
     }
 }
+

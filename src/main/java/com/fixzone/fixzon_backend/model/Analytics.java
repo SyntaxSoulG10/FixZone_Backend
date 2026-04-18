@@ -1,6 +1,5 @@
-package com.fixzone.fixzon_backend.entity;
+package com.fixzone.fixzon_backend.model;
 
-import com.fixzone.fixzon_backend.model.ServiceCenter;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.UUID;

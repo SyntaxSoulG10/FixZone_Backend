@@ -1,6 +1,5 @@
 package com.fixzone.fixzon_backend.config;
 
-import com.fixzone.fixzon_backend.entity.*;
 import com.fixzone.fixzon_backend.model.*;
 import com.fixzone.fixzon_backend.repository.*;
 import org.springframework.boot.CommandLineRunner;
