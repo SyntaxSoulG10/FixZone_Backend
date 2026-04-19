@@ -78,7 +78,8 @@ public class AdminService {
         return convertToDTO(serviceCenterRepository.save(sc));
     }
 
-    // --- User Account Management ---
+    // --- User Account Management & Platform Security ---
+    // Methods for managing global user access, status transitions, and administrative oversight.
 
     public UserDTO updateUserStatus(UUID id, String status) {
         Objects.requireNonNull(id, "ID must not be null");
