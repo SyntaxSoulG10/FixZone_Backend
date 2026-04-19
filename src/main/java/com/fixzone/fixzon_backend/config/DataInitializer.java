@@ -67,10 +67,12 @@ public class DataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) throws Exception {
         // If we already have 20 users (our target), skip initialization
+/* 
         if (userRepository.count() >= 20) {
             System.out.println("Data already exists (20+ users), skipping initialization.");
             return;
         }
+*/
 
         System.out.println("--- CLEARING OLD DATA AND STARTING FRESH SRI LANKAN SEEDING ---");
         
@@ -121,7 +123,7 @@ public class DataInitializer implements CommandLineRunner {
         String[] locations = {"Colombo 03", "Kandy Town", "Galle Fort", "Jaffna Central", "Negombo Coastal"};
         for (int i = 0; i < 5; i++) {
             // Note: Added null for servicePackages list argument
-            centers.add(new ServiceCenter(UUID.randomUUID(), owners.get(i), companies[i] + " HQ", locations[i], "+9411400000" + i, "08:00 - 18:00", new BigDecimal("4." + (5 + i)), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system", new String[]{"Toyota", "Nissan", "Suzuki"}, "APPROVED", null));
+            centers.add(new ServiceCenter(UUID.randomUUID(), owners.get(i), companies[i] + " HQ", locations[i], "+9411400000" + i, "08:00 - 18:00", new BigDecimal("4." + (5 + i)), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system", new String[]{"Toyota", "Nissan", "Suzuki"}, "APPROVED", null, null, null, null, null));
         }
         serviceCenterRepository.saveAll(centers);
 
@@ -214,6 +216,41 @@ public class DataInitializer implements CommandLineRunner {
         }
         analyticsRepository.saveAll(analyticsRecords);
 
-        System.out.println("--- SRI LANKAN DATA SEEDING COMPLETE ---");
+        // --- NEW PENDING REGISTRATION REQUESTS FOR TASK 1 ---
+        System.out.println("Adding PENDING registration requests for testing...");
+        
+        // Create a Pending Owner
+        Owner pendingOwner = new Owner(UUID.randomUUID(), "Kusal Mendis", "kusal@test.com", "+94775000000", passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "OWN-PEND-01", "Mendis Auto", "contact@mendis.lk", "+94112555555");
+        ownerRepository.save(pendingOwner);
+
+        // Create a Pending Service Center with Documents
+        ServiceCenter pendingCenter = new ServiceCenter();
+        pendingCenter.setCenterId(UUID.randomUUID());
+        pendingCenter.setOwner(pendingOwner);
+        pendingCenter.setName("Kandy Auto Care");
+        pendingCenter.setAddress("Dalada Vidiya, Kandy");
+        pendingCenter.setContactPhone("+94812222222");
+        pendingCenter.setStatus("PENDING");
+        pendingCenter.setIsActive(false);
+        pendingCenter.setBusinessRegUrl("https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf");
+        pendingCenter.setNicUrl("https://ui-avatars.com/api/?name=NIC-Sample&background=random");
+        pendingCenter.setSupportedVehicleBrands(new String[]{"Toyota", "Honda"});
+        serviceCenterRepository.save(pendingCenter);
+
+        // Create another Pending Service Center
+        ServiceCenter pendingCenter2 = new ServiceCenter();
+        pendingCenter2.setCenterId(UUID.randomUUID());
+        pendingCenter2.setOwner(pendingOwner); // Same owner for simplicity
+        pendingCenter2.setName("Galle Speed Works");
+        pendingCenter2.setAddress("Marine Drive, Galle");
+        pendingCenter2.setContactPhone("+94912222222");
+        pendingCenter2.setStatus("PENDING");
+        pendingCenter2.setIsActive(false);
+        pendingCenter2.setBusinessRegUrl("https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf");
+        pendingCenter2.setNicUrl("https://ui-avatars.com/api/?name=NIC-Sample&background=random");
+        pendingCenter2.setSupportedVehicleBrands(new String[]{"Mitsubishi", "Suzuki"});
+        serviceCenterRepository.save(pendingCenter2);
+
+        System.out.println("--- SRI LANKAN DATA SEEDING COMPLETE WITH PENDING REQUESTS ---");
     }
 }

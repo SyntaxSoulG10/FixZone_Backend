@@ -24,5 +24,10 @@ public class ServiceCenterDTO {
     private LocalDateTime updatedAt;
     private String updatedBy;
     private String[] supportedVehicleBrands;
+    private String status;
+    private String businessRegUrl;
+    private String taxIdUrl;
+    private String nicUrl;
+    private String rejectionReason;
     private java.util.List<ServicePackageDTO> servicePackages;
 }

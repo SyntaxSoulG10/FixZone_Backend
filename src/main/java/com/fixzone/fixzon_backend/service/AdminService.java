@@ -62,6 +62,7 @@ public class AdminService {
                 .orElseThrow(() -> new RuntimeException("Service Center not found"));
         sc.setStatus("REJECTED");
         sc.setIsActive(false);
+        sc.setRejectionReason(reason);
         
         createNotification(sc.getOwner(), "Registration Rejected", 
             "Your registration for '" + sc.getName() + "' was rejected. Reason: " + reason, "WARNING");

@@ -7,6 +7,7 @@ import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import com.fixzone.fixzon_backend.repository.UserRepository;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Objects;
@@ -73,29 +74,20 @@ public class ServiceCenterService {
 
     private ServiceCenterDTO convertToDTO(ServiceCenter center) {
         if (center == null) return null;
-        ServiceCenterDTO dto = new ServiceCenterDTO(
-                center.getCenterId(),
-                center.getOwner() != null ? center.getOwner().getUserId() : null,
-                center.getName(),
-                center.getAddress(),
-                center.getContactPhone(),
-                center.getOpeningHours(),
-                center.getRating(),
-                center.getIsActive(),
-                center.getCreatedAt(),
-                center.getCreatedBy(),
-                center.getUpdatedAt(),
-                center.getUpdatedBy(),
-                center.getSupportedVehicleBrands(),
-                null // Packages will be populated below
-        );
+        
+        ServiceCenterDTO dto = new ServiceCenterDTO();
+        BeanUtils.copyProperties(center, dto);
+        
+        if (center.getOwner() != null) {
+            dto.setOwnerId(center.getOwner().getUserId());
+        }
 
         // Populate active packages for this center
         List<ServicePackageDTO> packages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId())
                 .stream()
                 .map(pkg -> {
                     ServicePackageDTO pkgDto = new ServicePackageDTO();
-                    org.springframework.beans.BeanUtils.copyProperties(Objects.requireNonNull(pkg), pkgDto);
+                    BeanUtils.copyProperties(Objects.requireNonNull(pkg), pkgDto);
                     pkgDto.setCenterId(center.getCenterId()); // Manually set the UUID for the DTO
                     return pkgDto;
                 })
