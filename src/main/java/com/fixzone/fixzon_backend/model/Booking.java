@@ -1,11 +1,13 @@
 package com.fixzone.fixzon_backend.model;
 
+import com.fixzone.fixzon_backend.enums.BookingStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.util.UUID;
 
 @Entity
@@ -15,15 +17,21 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Booking {
 
+    // =========================
+    // 🔑 PRIMARY KEY
+    // =========================
     @Id
     @Column(name = "booking_id")
     private UUID bookingId;
 
-    @Column(name = "center_id", nullable = false)
-    private UUID centerId;
-
+    // =========================
+    // 🏢 MULTI-TENANT FIELDS
+    // =========================
     @Column(name = "tenant_id", nullable = false)
     private UUID tenantId;
+
+    @Column(name = "center_id", nullable = false)
+    private UUID centerId;
 
     @Column(name = "customer_id", nullable = false)
     private UUID customerId;
@@ -34,21 +42,64 @@ public class Booking {
     @Column(name = "package_id")
     private UUID packageId;
 
-    @Column(name = "preferred_date_time")
-    private LocalDateTime preferredDateTime;
+    // =========================
+    // 📅 BOOKING SCHEDULE
+    // =========================
+    @Column(name = "booking_date")
+    private LocalDate bookingDate;
 
-    @Column(name = "assigned_mechanic_id")
-    private UUID assignedMechanicId;
+    @Column(name = "booking_time")
+    private LocalTime bookingTime;
 
+    @Column(name = "special_request", length = 1000)
+    private String specialRequest;
+
+    // =========================
+    // 🔄 STATUS MANAGEMENT
+    // =========================
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)
-    private String status;
+    private BookingStatus status;
 
-    @Column(name = "priority", length = 50)
-    private String priority;
+    @Column(name = "is_cancelled")
+    private Boolean isCancelled = false;
 
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    // =========================
+    // 💰 PRICING & PAYMENT
+    // =========================
     @Column(name = "estimated_cost", precision = 10, scale = 2)
     private BigDecimal estimatedCost;
 
+    @Column(name = "booking_fee", precision = 10, scale = 2)
+    private BigDecimal bookingFee;
+
+    @Column(name = "cancellation_penalty", precision = 10, scale = 2)
+    private BigDecimal cancellationPenalty;
+
+    @Column(name = "is_paid")
+    private Boolean isPaid = false;
+
+    @Column(name = "payment_id")
+    private UUID paymentId;
+
+    // =========================
+    // 🔁 RESCHEDULE CONTROL
+    // =========================
+    @Column(name = "reschedule_count")
+    private Integer rescheduleCount = 0;
+
+    // =========================
+    // 🛠 OPERATIONS
+    // =========================
+    @Column(name = "assigned_mechanic_id")
+    private UUID assignedMechanicId;
+
+    // =========================
+    // 📊 AUDIT FIELDS
+    // =========================
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -61,6 +112,9 @@ public class Booking {
     @Column(name = "updated_by", length = 100)
     private String updatedBy;
 
+    // =========================
+    // ⚙️ AUTO METHODS
+    // =========================
     @PrePersist
     protected void onCreate() {
         if (bookingId == null) {
@@ -68,6 +122,18 @@ public class Booking {
         }
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (status == null) {
+            status = BookingStatus.PENDING_PAYMENT;
+        }
+        if (isPaid == null) {
+            isPaid = false;
+        }
+        if (rescheduleCount == null) {
+            rescheduleCount = 0;
+        }
+        if (isCancelled == null) {
+            isCancelled = false;
         }
     }
 
