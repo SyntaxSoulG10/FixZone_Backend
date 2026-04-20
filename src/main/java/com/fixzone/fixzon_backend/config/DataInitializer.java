@@ -187,7 +187,8 @@ public class DataInitializer implements CommandLineRunner {
                     Invoice inv = new Invoice(invId, mainOwner.getOwnerCode(), mainCenter.getCenterId(), b.getBookingId(), b.getCustomerId(), subtot, tax, BigDecimal.ZERO, total, "PAID", date.plusHours(2), date.plusDays(1), date, "system", date, "system");
                     invoices.add(inv);
                     
-                    payments.add(new PaymentRecord(UUID.randomUUID(), invId, mainCenter.getCenterId(), total, "CASH", "TXN-" + months[m] + "-" + i, "Completed", date.plusHours(2), date.plusHours(2), "system", date.plusHours(2), "system"));
+                    String method = i % 2 == 0 ? "CASH" : "CARD";
+                    payments.add(new PaymentRecord(UUID.randomUUID(), invId, mainCenter.getCenterId(), total, method, "TXN-" + months[m] + "-" + i, "Completed", date.plusHours(2), date.plusHours(2), "system", date.plusHours(2), "system"));
                 }
             }
         }
