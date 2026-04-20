@@ -106,7 +106,7 @@ public class DataInitializer implements CommandLineRunner {
         String[] ownerNames = {"Janaka Ranasinghe", "Tharindu Perera", "Eranga Fernando", "Piyal Sirisena", "Malith Gunawardena"};
         String[] companies = {"Ranasinghe Motors", "Perera Auto", "Fernando Repairs", "Sirisena Garage", "Gunawardena Services"};
         for (int i = 0; i < 5; i++) {
-            owners.add(new Owner(UUID.randomUUID(), ownerNames[i], "owner" + (i + 1) + "@fixzone.lk", "+9477100000" + i, passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150?u=" + ownerNames[i].replace(" ", "+"), "OWN-00" + (i + 1), companies[i], "contact@" + ownerNames[i].toLowerCase().replace(" ", "") + ".lk", "+9411200000" + i));
+            owners.add(new Owner(UUID.randomUUID(), ownerNames[i], "owner" + (i + 1) + "@fixzone.lk", "+9477100000" + i, passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150?u=" + ownerNames[i].replace(" ", "+"), "FIX00" + (i + 1), companies[i], "contact@" + ownerNames[i].toLowerCase().replace(" ", "") + ".lk", "+9411200000" + i));
         }
         ownerRepository.saveAll(owners);
 
@@ -147,36 +147,69 @@ public class DataInitializer implements CommandLineRunner {
         }
         servicePackageRepository.saveAll(packages);
 
-        // 7. Bookings
+        // 7. & 8. Bookings & Invoices (Historical Data for Analytics)
+        System.out.println("Seeding historical data for FIX001...");
         List<Booking> bookings = new ArrayList<>();
-        for (int i = 0; i < 5; i++) {
+        List<Invoice> invoices = new ArrayList<>();
+        List<PaymentRecord> payments = new ArrayList<>();
+        
+        Owner mainOwner = owners.get(0); // FIX-001
+        ServiceCenter mainCenter = centers.get(0);
+        
+        // Months to seed: Jan, Feb, Mar, Apr (current)
+        int[] bookingCounts = {15, 22, 28, 35};
+        int[] months = {1, 2, 3, 4};
+        
+        for (int m = 0; m < months.length; m++) {
+            for (int i = 0; i < bookingCounts[m]; i++) {
+                LocalDateTime date = LocalDateTime.of(2026, months[m], (i % 28) + 1, 10, 0);
+                
+                Booking b = new Booking();
+                b.setBookingId(UUID.randomUUID());
+                b.setCenterId(mainCenter.getCenterId());
+                b.setTenantId(mainOwner.getUserId());
+                b.setCustomerId(customers.get(i % 5).getUserId());
+                b.setVehicleId(UUID.randomUUID());
+                b.setPackageId(packages.get(i % 5).getPackageId());
+                b.setPreferredDateTime(date.plusDays(1));
+                b.setStatus(i % 10 == 0 ? "PENDING" : "COMPLETED");
+                b.setPriority("NORMAL");
+                b.setEstimatedCost(packages.get(i % 5).getBasePrice());
+                b.setCreatedAt(date);
+                bookings.add(b);
+                
+                if (!b.getStatus().equals("PENDING")) {
+                    UUID invId = UUID.randomUUID();
+                    BigDecimal total = b.getEstimatedCost();
+                    BigDecimal tax = total.multiply(new BigDecimal("0.1")).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal subtot = total.subtract(tax);
+                    
+                    Invoice inv = new Invoice(invId, mainOwner.getOwnerCode(), mainCenter.getCenterId(), b.getBookingId(), b.getCustomerId(), subtot, tax, BigDecimal.ZERO, total, "PAID", date.plusHours(2), date.plusDays(1), date, "system", date, "system");
+                    invoices.add(inv);
+                    
+                    payments.add(new PaymentRecord(UUID.randomUUID(), invId, mainCenter.getCenterId(), total, "CASH", "TXN-" + months[m] + "-" + i, "Completed", date.plusHours(2), date.plusHours(2), "system", date.plusHours(2), "system"));
+                }
+            }
+        }
+        
+        // Add some data for other owners too
+        for (int i = 1; i < 5; i++) {
             Booking b = new Booking();
             b.setBookingId(UUID.randomUUID());
             b.setCenterId(centers.get(i).getCenterId());
-            b.setTenantId(owners.get(i).getUserId()); 
+            b.setTenantId(owners.get(i).getUserId());
             b.setCustomerId(customers.get(i).getUserId());
             b.setVehicleId(UUID.randomUUID());
             b.setPackageId(packages.get(i).getPackageId());
-            b.setPreferredDateTime(LocalDateTime.now().plusDays(i + 1));
+            b.setPreferredDateTime(LocalDateTime.now().plusDays(1));
             b.setStatus("PENDING");
             b.setPriority("NORMAL");
             b.setEstimatedCost(packages.get(i).getBasePrice());
+            b.setCreatedAt(LocalDateTime.now());
             bookings.add(b);
         }
-        bookingRepository.saveAll(bookings);
 
-        // 8. Invoices & Payments
-        List<Invoice> invoices = new ArrayList<>();
-        List<PaymentRecord> payments = new ArrayList<>();
-        for (int i = 0; i < 5; i++) {
-            UUID invId = UUID.randomUUID();
-            BigDecimal total = packages.get(i).getBasePrice();
-            BigDecimal tax = total.multiply(new BigDecimal("0.1")).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal subtot = total.subtract(tax);
-            Invoice inv = new Invoice(invId, "INV-GEN-" + (1000 + i), centers.get(i).getCenterId(), bookings.get(i).getBookingId(), customers.get(i).getUserId(), subtot, tax, BigDecimal.ZERO, total, "PAID", LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system");
-            invoices.add(inv);
-            payments.add(new PaymentRecord(UUID.randomUUID(), invId, centers.get(i).getCenterId(), total, "ONLINE_BANKING", "TXN-GEN-" + i, "Completed", LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-        }
+        bookingRepository.saveAll(bookings);
         invoiceRepository.saveAll(invoices);
         paymentRecordRepository.saveAll(payments);
 
@@ -220,7 +253,7 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("Adding PENDING registration requests for testing...");
         
         // Create a Pending Owner
-        Owner pendingOwner = new Owner(UUID.randomUUID(), "Kusal Mendis", "kusal@test.com", "+94775000000", passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150?u=Kusal+Mendis", "OWN-PEND-01", "Mendis Auto", "contact@mendis.lk", "+94112555555");
+        Owner pendingOwner = new Owner(UUID.randomUUID(), "Kusal Mendis", "kusal@test.com", "+94775000000", passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150?u=Kusal+Mendis", "FIXPEND01", "Mendis Auto", "contact@mendis.lk", "+94112555555");
         ownerRepository.save(pendingOwner);
 
         // Create a Pending Service Center with Documents
