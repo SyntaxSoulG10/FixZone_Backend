@@ -97,7 +97,7 @@ public class DataInitializer implements CommandLineRunner {
         List<SuperAdmin> superAdmins = new ArrayList<>();
         String[] adminNames = {"Aruna Kumara", "Ruwan Silva", "Gihan Fernando", "Amila Jayasinghe", "Suraj De Silva"};
         for (int i = 0; i < 5; i++) {
-            superAdmins.add(new SuperAdmin(UUID.randomUUID(), adminNames[i], "admin" + (i + 1) + "@fixzone.lk", "+9411555000" + i, passwordEncoder.encode("Admin123!"), "ROLE_SUPER_ADMIN", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", null, "ADM-00" + (i + 1)));
+            superAdmins.add(new SuperAdmin(UUID.randomUUID(), adminNames[i], "admin" + (i + 1) + "@fixzone.lk", "+9411555000" + i, passwordEncoder.encode("Admin123!"), "ROLE_SUPER_ADMIN", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150?u=" + adminNames[i].replace(" ", "+"), "ADM-00" + (i + 1)));
         }
         superAdminRepository.saveAll(superAdmins);
 
@@ -106,7 +106,7 @@ public class DataInitializer implements CommandLineRunner {
         String[] ownerNames = {"Janaka Ranasinghe", "Tharindu Perera", "Eranga Fernando", "Piyal Sirisena", "Malith Gunawardena"};
         String[] companies = {"Ranasinghe Motors", "Perera Auto", "Fernando Repairs", "Sirisena Garage", "Gunawardena Services"};
         for (int i = 0; i < 5; i++) {
-            owners.add(new Owner(UUID.randomUUID(), ownerNames[i], "owner" + (i + 1) + "@fixzone.lk", "+9477100000" + i, passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", null, "OWN-00" + (i + 1), companies[i], "contact@" + ownerNames[i].toLowerCase().replace(" ", "") + ".lk", "+9411200000" + i));
+            owners.add(new Owner(UUID.randomUUID(), ownerNames[i], "owner" + (i + 1) + "@fixzone.lk", "+9477100000" + i, passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150?u=" + ownerNames[i].replace(" ", "+"), "OWN-00" + (i + 1), companies[i], "contact@" + ownerNames[i].toLowerCase().replace(" ", "") + ".lk", "+9411200000" + i));
         }
         ownerRepository.saveAll(owners);
 
@@ -114,7 +114,7 @@ public class DataInitializer implements CommandLineRunner {
         List<Customer> customers = new ArrayList<>();
         String[] customerNames = {"Lakmal Senaratne", "Indika Bandara", "Saman Kumara", "Upul Kumara", "Ranjan Perera"};
         for (int i = 0; i < 5; i++) {
-            customers.add(new Customer(UUID.randomUUID(), customerNames[i], "customer" + (i + 1) + "@fixzone.lk", "+9477300000" + i, passwordEncoder.encode("pass123"), "CUSTOMER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", null, "CUST-00" + (i + 1), "EMAIL"));
+            customers.add(new Customer(UUID.randomUUID(), customerNames[i], "customer" + (i + 1) + "@fixzone.lk", "+9477300000" + i, passwordEncoder.encode("pass123"), "CUSTOMER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150?u=" + customerNames[i].replace(" ", "+"), "CUST-00" + (i + 1), "EMAIL"));
         }
         customerRepository.saveAll(customers);
 
@@ -129,9 +129,9 @@ public class DataInitializer implements CommandLineRunner {
 
         // 5. Managers (5)
         List<Manager> managers = new ArrayList<>();
-        String[] managerNames = {"Roshan Wijesinghe", "Hasitha Abeyratne", "Mahesh Amarasinghe", "Prabath Rathnayake", "Vishwa Kumara"};
+        String[] managerNames = {"Roshan Wijesinghe", "Hasitha Abeyratne", "Maheshi Amarasinghe", "Praba Rathnayake", "Vishwa Kumara"};
         for (int i = 0; i < 5; i++) {
-            managers.add(new Manager(UUID.randomUUID(), managerNames[i], "manager" + (i + 1) + "@fixzone.lk", "+9477200000" + i, passwordEncoder.encode("pass123"), "MANAGER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", null, "MGR-00" + (i + 1), centers.get(i).getCenterId()));
+            managers.add(new Manager(UUID.randomUUID(), managerNames[i], "manager" + (i + 1) + "@fixzone.lk", "+9477200000" + i, passwordEncoder.encode("pass123"), "MANAGER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150?u=" + managerNames[i].replace(" ", "+"), "MGR-00" + (i + 1), centers.get(i).getCenterId()));
         }
         managerRepository.saveAll(managers);
 
@@ -220,7 +220,7 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("Adding PENDING registration requests for testing...");
         
         // Create a Pending Owner
-        Owner pendingOwner = new Owner(UUID.randomUUID(), "Kusal Mendis", "kusal@test.com", "+94775000000", passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", null, "OWN-PEND-01", "Mendis Auto", "contact@mendis.lk", "+94112555555");
+        Owner pendingOwner = new Owner(UUID.randomUUID(), "Kusal Mendis", "kusal@test.com", "+94775000000", passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150?u=Kusal+Mendis", "OWN-PEND-01", "Mendis Auto", "contact@mendis.lk", "+94112555555");
         ownerRepository.save(pendingOwner);
 
         // Create a Pending Service Center with Documents
