@@ -8,6 +8,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -60,7 +61,22 @@ public class ServiceCenter {
     private String[] supportedVehicleBrands;
 
     @Column(name = "status", length = 30)
-    private String status = "APPROVED";
+    private String status = "PENDING";
+
+    @Column(name = "business_reg_url")
+    private String businessRegUrl;
+
+    @Column(name = "tax_id_url")
+    private String taxIdUrl;
+
+    @Column(name = "nic_url")
+    private String nicUrl;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+    
+    @OneToMany(mappedBy = "serviceCenter", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ServicePackage> servicePackages;
 
     @PrePersist
     protected void onCreate() {

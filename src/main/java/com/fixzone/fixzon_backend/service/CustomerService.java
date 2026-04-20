@@ -23,6 +23,7 @@ public class CustomerService {
     }
 
     private CustomerDTO convertToDTO(Customer customer) {
+        if (customer == null) return null;
         CustomerDTO dto = new CustomerDTO();
         BeanUtils.copyProperties(customer, dto);
         return dto;

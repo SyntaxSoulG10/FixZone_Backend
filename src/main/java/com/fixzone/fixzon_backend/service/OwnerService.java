@@ -8,59 +8,96 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+// The @Service annotation registers this class as a Spring component.
+// We use a service layer to contain all the business logic, isolating the database and the controller layers.
 @Service
 public class OwnerService {
 
-    @Autowired
-    private OwnerRepository ownerRepository;
+    private final OwnerRepository ownerRepository;
 
-    public List<OwnerDTO> getAllOwners() {
+    // Constructor injection is preferred over field injection (@Autowired on the field).
+    // This allows the dependencies to be mocking-friendly for testing.
+    @Autowired
+    public OwnerService(OwnerRepository ownerRepository) {
+        this.ownerRepository = ownerRepository;
+    }
+
+    public List<OwnerDTO> retrieveAllOwners() {
+        // We retrieve all entities and map them to DTOs so that sensitive entity properties
+        // do not accidentally leak out to the frontend application.
         return ownerRepository.findAll().stream()
-                .map(this::convertToDTO)
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
-    public OwnerDTO getOwnerById(UUID id) {
-        return ownerRepository.findById(id)
-                .map(this::convertToDTO)
+    public OwnerDTO retrieveOwnerById(UUID targetOwnerId) {
+        // Enforce non-null constraints before interacting with the database
+        Objects.requireNonNull(targetOwnerId, "The Owner ID parameter must not be null.");
+        
+        return ownerRepository.findById(targetOwnerId)
+                .map(this::transformToDataTransferObject)
                 .orElse(null);
     }
 
-    public OwnerDTO createOwner(OwnerDTO ownerDTO) {
-        Owner owner = convertToEntity(ownerDTO);
-        if (owner.getUserId() == null) {
-            owner.setUserId(UUID.randomUUID());
+    public OwnerDTO registerOwner(OwnerDTO newOwnerRegistrationData) {
+        // Transform the DTO back to a JPA Entity because repositories only understand Entities.
+        Owner newOwnerEntity = transformToDatabaseEntity(newOwnerRegistrationData);
+        
+        // Ensure a unique identifier exists before saving to the database.
+        if (newOwnerEntity != null && newOwnerEntity.getUserId() == null) {
+            newOwnerEntity.setUserId(UUID.randomUUID());
         }
-        Owner saved = ownerRepository.save(owner);
-        return convertToDTO(saved);
+        
+        Owner persistedOwnerEntity = ownerRepository.save(newOwnerEntity);
+        return transformToDataTransferObject(persistedOwnerEntity);
     }
 
-    public OwnerDTO updateOwner(UUID id, OwnerDTO ownerDTO) {
-        if (ownerRepository.existsById(id)) {
-            Owner owner = convertToEntity(ownerDTO);
-            owner.setUserId(id);
-            Owner saved = ownerRepository.save(owner);
-            return convertToDTO(saved);
+    public OwnerDTO modifyOwner(UUID targetOwnerId, OwnerDTO updatedOwnerData) {
+        Objects.requireNonNull(targetOwnerId, "The Owner ID parameter must not be null.");
+        
+        // We check existence first; updating a non-existent entity could incorrectly create a new one.
+        if (ownerRepository.existsById(targetOwnerId)) {
+            Owner ownerEntityToUpdate = transformToDatabaseEntity(updatedOwnerData);
+            
+            if (ownerEntityToUpdate != null) {
+                // Ensure the entity updates the specific record rather than inserting a new one
+                ownerEntityToUpdate.setUserId(targetOwnerId);
+                Owner successfullyUpdatedEntity = ownerRepository.save(ownerEntityToUpdate);
+                return transformToDataTransferObject(successfullyUpdatedEntity);
+            }
         }
-        return null;
+        return null; // Signals to the controller that the entity was not found
     }
 
-    public void deleteOwner(UUID id) {
-        ownerRepository.deleteById(id);
+    public void removeOwner(UUID targetOwnerId) {
+        Objects.requireNonNull(targetOwnerId, "The Owner ID parameter must not be null.");
+        // Deleting directly by ID is faster than fetching the entity first
+        ownerRepository.deleteById(targetOwnerId);
     }
 
-    private OwnerDTO convertToDTO(Owner owner) {
-        OwnerDTO dto = new OwnerDTO();
-        BeanUtils.copyProperties(owner, dto);
-        return dto;
+    // Extracted helper method for separating mapping concerns. Transforms Entity to DTO.
+    private OwnerDTO transformToDataTransferObject(Owner sourceOwnerEntity) {
+        if (sourceOwnerEntity == null) {
+            return null;
+        }
+        
+        OwnerDTO resultantDto = new OwnerDTO();
+        BeanUtils.copyProperties(sourceOwnerEntity, resultantDto);
+        return resultantDto;
     }
 
-    private Owner convertToEntity(OwnerDTO dto) {
-        Owner owner = new Owner();
-        BeanUtils.copyProperties(dto, owner);
-        return owner;
+    // Extracted helper method for separating mapping concerns. Transforms DTO to Entity.
+    private Owner transformToDatabaseEntity(OwnerDTO sourceOwnerData) {
+        if (sourceOwnerData == null) {
+            return null;
+        }
+        
+        Owner resultantEntity = new Owner();
+        BeanUtils.copyProperties(sourceOwnerData, resultantEntity);
+        return resultantEntity;
     }
 }

@@ -1,12 +1,16 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.DTO.ServiceCenterDTO;
+import com.fixzone.fixzon_backend.DTO.ServicePackageDTO;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
+import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import com.fixzone.fixzon_backend.repository.UserRepository;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -15,33 +19,40 @@ public class ServiceCenterService {
 
     private final ServiceCenterRepository serviceCenterRepository;
     private final UserRepository userRepository;
+    private final ServicePackageRepository servicePackageRepository;
 
-    public ServiceCenterService(ServiceCenterRepository serviceCenterRepository, UserRepository userRepository) {
+    public ServiceCenterService(ServiceCenterRepository serviceCenterRepository, 
+                               UserRepository userRepository,
+                               ServicePackageRepository servicePackageRepository) {
         this.serviceCenterRepository = serviceCenterRepository;
         this.userRepository = userRepository;
+        this.servicePackageRepository = servicePackageRepository;
     }
 
     public List<ServiceCenterDTO> getAllServiceCenters() {
-        return serviceCenterRepository.findAll().stream()
-                .map(this::convertToDTO)
+        // Enforce boundary by locking db entities inside this service and exporting DTOs to the controller
+        return serviceCenterRepository.findByIsActive(true).stream()
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public ServiceCenterDTO getServiceCenterById(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         ServiceCenter center = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
-        return convertToDTO(center);
+        return transformToDataTransferObject(center);
     }
 
     public ServiceCenterDTO createServiceCenter(ServiceCenterDTO dto) {
-        ServiceCenter center = convertToEntity(dto);
+        ServiceCenter center = transformToDatabaseEntity(dto);
         if (center.getCenterId() == null) {
             center.setCenterId(UUID.randomUUID());
         }
-        return convertToDTO(serviceCenterRepository.save(center));
+        return transformToDataTransferObject(serviceCenterRepository.save(center));
     }
 
     public ServiceCenterDTO updateServiceCenter(UUID id, ServiceCenterDTO dto) {
+        Objects.requireNonNull(id, "ID must not be null");
         ServiceCenter existingCenter = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
 
@@ -54,38 +65,48 @@ public class ServiceCenterService {
         existingCenter.setUpdatedBy(dto.getUpdatedBy());
         existingCenter.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
 
-        return convertToDTO(serviceCenterRepository.save(existingCenter));
+        return transformToDataTransferObject(serviceCenterRepository.save(existingCenter));
     }
 
     public void deleteServiceCenter(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         serviceCenterRepository.deleteById(id);
     }
 
-    private ServiceCenterDTO convertToDTO(ServiceCenter center) {
-        return new ServiceCenterDTO(
-                center.getCenterId(),
-                center.getOwner() != null ? center.getOwner().getUserId() : null,
-                center.getName(),
-                center.getAddress(),
-                center.getContactPhone(),
-                center.getOpeningHours(),
-                center.getRating(),
-                center.getIsActive(),
-                center.getCreatedAt(),
-                center.getCreatedBy(),
-                center.getUpdatedAt(),
-                center.getUpdatedBy(),
-                center.getSupportedVehicleBrands());
+    // Extracted transformation logic ensures changing database schemas don't implicitly break external API contracts.
+    private ServiceCenterDTO transformToDataTransferObject(ServiceCenter center) {
+        if (center == null) return null;
+        
+        ServiceCenterDTO dto = new ServiceCenterDTO();
+        BeanUtils.copyProperties(center, dto);
+        
+        if (center.getOwner() != null) {
+            dto.setOwnerId(center.getOwner().getUserId());
+        }
+
+        // Populate active packages for this center
+        List<ServicePackageDTO> packages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId())
+                .stream()
+                .map(pkg -> {
+                    ServicePackageDTO pkgDto = new ServicePackageDTO();
+                    BeanUtils.copyProperties(Objects.requireNonNull(pkg), pkgDto);
+                    pkgDto.setCenterId(center.getCenterId()); // Manually set the UUID for the DTO
+                    return pkgDto;
+                })
+                .collect(Collectors.toList());
+        dto.setServicePackages(packages);
+
+        return dto;
     }
 
-    private ServiceCenter convertToEntity(ServiceCenterDTO dto) {
+    private ServiceCenter transformToDatabaseEntity(ServiceCenterDTO dto) {
         ServiceCenter center = new ServiceCenter();
         center.setCenterId(dto.getCenterId());
 
-        if (dto.getOwnerId() != null) {
+        if (dto != null && dto.getOwnerId() != null) {
             User owner = userRepository.findById(dto.getOwnerId())
                     .orElseThrow(() -> new RuntimeException("Owner not found with id: " + dto.getOwnerId()));
-            center.setOwner(owner);
+            center.setOwner(Objects.requireNonNull(owner));
         }
 
         center.setName(dto.getName());

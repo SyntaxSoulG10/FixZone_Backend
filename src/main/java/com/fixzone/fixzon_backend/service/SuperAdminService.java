@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -24,6 +25,7 @@ public class SuperAdminService {
     }
 
     public SuperAdminDTO getSuperAdminById(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         return superAdminRepository.findById(id)
                 .map(this::convertToDTO)
                 .orElse(null);
@@ -39,26 +41,32 @@ public class SuperAdminService {
     }
 
     public SuperAdminDTO updateSuperAdmin(UUID id, SuperAdminDTO superAdminDTO) {
+        Objects.requireNonNull(id, "ID must not be null");
         if (superAdminRepository.existsById(id)) {
             SuperAdmin superAdmin = convertToEntity(superAdminDTO);
-            superAdmin.setUserId(id);
-            SuperAdmin saved = superAdminRepository.save(superAdmin);
-            return convertToDTO(saved);
+            if (superAdmin != null) {
+                superAdmin.setUserId(id);
+                SuperAdmin saved = superAdminRepository.save(superAdmin);
+                return convertToDTO(saved);
+            }
         }
         return null;
     }
 
     public void deleteSuperAdmin(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         superAdminRepository.deleteById(id);
     }
 
     private SuperAdminDTO convertToDTO(SuperAdmin superAdmin) {
+        if (superAdmin == null) return null;
         SuperAdminDTO dto = new SuperAdminDTO();
         BeanUtils.copyProperties(superAdmin, dto);
         return dto;
     }
 
     private SuperAdmin convertToEntity(SuperAdminDTO dto) {
+        if (dto == null) return null;
         SuperAdmin superAdmin = new SuperAdmin();
         BeanUtils.copyProperties(dto, superAdmin);
         return superAdmin;

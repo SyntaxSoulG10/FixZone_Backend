@@ -1,6 +1,6 @@
 package com.fixzone.fixzon_backend.repository;
  
-import com.fixzone.fixzon_backend.entity.Notification;
+import com.fixzone.fixzon_backend.model.Notification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.UUID;

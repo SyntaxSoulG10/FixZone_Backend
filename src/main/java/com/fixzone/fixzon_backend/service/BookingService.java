@@ -5,6 +5,7 @@ import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -24,6 +25,7 @@ public class BookingService {
     }
 
     public BookingDTO getBookingById(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found with id: " + id));
         return convertToDTO(booking);
@@ -62,25 +64,29 @@ public class BookingService {
     }
 
     public BookingDTO updateBooking(UUID id, BookingDTO dto) {
+        Objects.requireNonNull(id, "ID must not be null");
         Booking existing = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found with id: " + id));
 
-        existing.setCenterId(dto.getCenterId());
-        existing.setTenantId(dto.getTenantId());
-        existing.setCustomerId(dto.getCustomerId());
-        existing.setVehicleId(dto.getVehicleId());
-        existing.setPackageId(dto.getPackageId());
-        existing.setPreferredDateTime(dto.getPreferredDateTime());
-        existing.setAssignedMechanicId(dto.getAssignedMechanicId());
-        existing.setStatus(dto.getStatus());
-        existing.setPriority(dto.getPriority());
-        existing.setEstimatedCost(dto.getEstimatedCost());
-        existing.setUpdatedBy(dto.getUpdatedBy());
+        if (dto != null) {
+            existing.setCenterId(dto.getCenterId());
+            existing.setTenantId(dto.getTenantId());
+            existing.setCustomerId(dto.getCustomerId());
+            existing.setVehicleId(dto.getVehicleId());
+            existing.setPackageId(dto.getPackageId());
+            existing.setPreferredDateTime(dto.getPreferredDateTime());
+            existing.setAssignedMechanicId(dto.getAssignedMechanicId());
+            existing.setStatus(dto.getStatus());
+            existing.setPriority(dto.getPriority());
+            existing.setEstimatedCost(dto.getEstimatedCost());
+            existing.setUpdatedBy(dto.getUpdatedBy());
+        }
 
         return convertToDTO(bookingRepository.save(existing));
     }
 
     public void deleteBooking(UUID id) {
+        Objects.requireNonNull(id, "ID must not be null");
         bookingRepository.deleteById(id);
     }
 

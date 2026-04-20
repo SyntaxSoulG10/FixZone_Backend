@@ -4,12 +4,20 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class AnalyticsDTO {
+    private UUID id;
+    private String metrics;
+    private LocalDate date;
+    private UUID serviceCenterId;
+    
+    // Fields for company analytics
     private BigDecimal totalRevenue;
     private String revenueChange;
     private long totalJobs;
@@ -23,6 +31,27 @@ public class AnalyticsDTO {
     private List<MonthlyGrowthDTO> customerGrowth;
     private List<ServiceBreakdownDTO> serviceBreakdown;
     private List<CenterPerformanceDTO> topCenters;
+
+    // Alternative constructor for AnalyticsService usage
+    public AnalyticsDTO(BigDecimal totalRevenue, String revenueChange, long totalJobs, String jobsChange,
+                        long pendingJobs, String pendingJobsChange, BigDecimal avgJobValue, 
+                        String avgJobValueChange, String updatedAt, List<MonthlyDataDTO> revenueOverview,
+                        List<MonthlyGrowthDTO> customerGrowth, List<ServiceBreakdownDTO> serviceBreakdown,
+                        List<CenterPerformanceDTO> topCenters) {
+        this.totalRevenue = totalRevenue;
+        this.revenueChange = revenueChange;
+        this.totalJobs = totalJobs;
+        this.jobsChange = jobsChange;
+        this.pendingJobs = pendingJobs;
+        this.pendingJobsChange = pendingJobsChange;
+        this.avgJobValue = avgJobValue;
+        this.avgJobValueChange = avgJobValueChange;
+        this.updatedAt = updatedAt;
+        this.revenueOverview = revenueOverview;
+        this.customerGrowth = customerGrowth;
+        this.serviceBreakdown = serviceBreakdown;
+        this.topCenters = topCenters;
+    }
 
     @Data
     @NoArgsConstructor
