@@ -30,8 +30,9 @@ public class ServiceCenterService {
     }
 
     public List<ServiceCenterDTO> getAllServiceCenters() {
+        // Enforce boundary by locking db entities inside this service and exporting DTOs to the controller
         return serviceCenterRepository.findByIsActive(true).stream()
-                .map(this::convertToDTO)
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
@@ -39,15 +40,15 @@ public class ServiceCenterService {
         Objects.requireNonNull(id, "ID must not be null");
         ServiceCenter center = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
-        return convertToDTO(center);
+        return transformToDataTransferObject(center);
     }
 
     public ServiceCenterDTO createServiceCenter(ServiceCenterDTO dto) {
-        ServiceCenter center = convertToEntity(dto);
+        ServiceCenter center = transformToDatabaseEntity(dto);
         if (center.getCenterId() == null) {
             center.setCenterId(UUID.randomUUID());
         }
-        return convertToDTO(serviceCenterRepository.save(center));
+        return transformToDataTransferObject(serviceCenterRepository.save(center));
     }
 
     public ServiceCenterDTO updateServiceCenter(UUID id, ServiceCenterDTO dto) {
@@ -64,7 +65,7 @@ public class ServiceCenterService {
         existingCenter.setUpdatedBy(dto.getUpdatedBy());
         existingCenter.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
 
-        return convertToDTO(serviceCenterRepository.save(existingCenter));
+        return transformToDataTransferObject(serviceCenterRepository.save(existingCenter));
     }
 
     public void deleteServiceCenter(UUID id) {
@@ -72,7 +73,8 @@ public class ServiceCenterService {
         serviceCenterRepository.deleteById(id);
     }
 
-    private ServiceCenterDTO convertToDTO(ServiceCenter center) {
+    // Extracted transformation logic ensures changing database schemas don't implicitly break external API contracts.
+    private ServiceCenterDTO transformToDataTransferObject(ServiceCenter center) {
         if (center == null) return null;
         
         ServiceCenterDTO dto = new ServiceCenterDTO();
@@ -97,7 +99,7 @@ public class ServiceCenterService {
         return dto;
     }
 
-    private ServiceCenter convertToEntity(ServiceCenterDTO dto) {
+    private ServiceCenter transformToDatabaseEntity(ServiceCenterDTO dto) {
         ServiceCenter center = new ServiceCenter();
         center.setCenterId(dto.getCenterId());
 

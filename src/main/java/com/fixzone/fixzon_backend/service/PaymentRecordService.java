@@ -19,8 +19,9 @@ public class PaymentRecordService {
     }
 
     public List<PaymentRecordDTO> getAllPayments() {
+        // Encapsulating database entities via transformations secures hidden columns from HTTP exposure
         return paymentRecordRepository.findAll().stream()
-                .map(this::convertToDTO)
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
@@ -28,39 +29,39 @@ public class PaymentRecordService {
         Objects.requireNonNull(id, "ID must not be null");
         PaymentRecord payment = paymentRecordRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Payment record not found with id: " + id));
-        return convertToDTO(payment);
+        return transformToDataTransferObject(payment);
     }
 
     public List<PaymentRecordDTO> getPaymentsByInvoice(UUID invoiceId) {
         return paymentRecordRepository.findByInvoiceId(invoiceId).stream()
-                .map(this::convertToDTO)
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public List<PaymentRecordDTO> getPaymentsByCenter(UUID centerId) {
         return paymentRecordRepository.findByCenterId(centerId).stream()
-                .map(this::convertToDTO)
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public List<PaymentRecordDTO> getPaymentsByStatus(String status) {
         return paymentRecordRepository.findByStatus(status).stream()
-                .map(this::convertToDTO)
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public List<PaymentRecordDTO> getPaymentsByMethod(String method) {
         return paymentRecordRepository.findByMethod(method).stream()
-                .map(this::convertToDTO)
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public PaymentRecordDTO createPayment(PaymentRecordDTO dto) {
-        PaymentRecord payment = convertToEntity(dto);
+        PaymentRecord payment = transformToDatabaseEntity(dto);
         if (payment.getPaymentId() == null) {
             payment.setPaymentId(UUID.randomUUID());
         }
-        return convertToDTO(paymentRecordRepository.save(payment));
+        return transformToDataTransferObject(paymentRecordRepository.save(payment));
     }
 
     public PaymentRecordDTO updatePayment(UUID id, PaymentRecordDTO dto) {
@@ -79,7 +80,7 @@ public class PaymentRecordService {
             existing.setUpdatedBy(dto.getUpdatedBy());
         }
 
-        return convertToDTO(Objects.requireNonNull(paymentRecordRepository.save(existing)));
+        return transformToDataTransferObject(Objects.requireNonNull(paymentRecordRepository.save(existing)));
     }
 
     public void deletePayment(UUID id) {
@@ -87,7 +88,8 @@ public class PaymentRecordService {
         paymentRecordRepository.deleteById(id);
     }
 
-    private PaymentRecordDTO convertToDTO(PaymentRecord payment) {
+    // Direct constructor mapping enforces strict type transfer mapping reliably
+    private PaymentRecordDTO transformToDataTransferObject(PaymentRecord payment) {
         return new PaymentRecordDTO(
                 payment.getPaymentId(),
                 payment.getInvoiceId(),
@@ -104,7 +106,7 @@ public class PaymentRecordService {
         );
     }
 
-    private PaymentRecord convertToEntity(PaymentRecordDTO dto) {
+    private PaymentRecord transformToDatabaseEntity(PaymentRecordDTO dto) {
         PaymentRecord payment = new PaymentRecord();
         payment.setPaymentId(dto.getPaymentId());
         payment.setInvoiceId(dto.getInvoiceId());

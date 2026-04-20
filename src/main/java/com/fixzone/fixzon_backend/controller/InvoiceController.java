@@ -12,7 +12,7 @@ import java.util.UUID;
 @CrossOrigin("*")
 public class InvoiceController {
 
-
+    // Utilize explicit constructor injection to resolve immutable service boundaries cleanly
     private final InvoiceService invoiceService;
 
     public InvoiceController(InvoiceService invoiceService) {
@@ -26,7 +26,8 @@ public class InvoiceController {
 
     @GetMapping("/{id}")
     public ResponseEntity<InvoiceDTO> getInvoiceById(@PathVariable UUID id) {
-        return ResponseEntity.ok(invoiceService.getInvoiceById(id));
+        InvoiceDTO invoice = invoiceService.getInvoiceById(id);
+        return invoice != null ? ResponseEntity.ok(invoice) : ResponseEntity.notFound().build();
     }
 
     @GetMapping("/booking/{bookingId}")
@@ -56,18 +57,21 @@ public class InvoiceController {
 
     @PostMapping
     public ResponseEntity<InvoiceDTO> createInvoice(@RequestBody InvoiceDTO dto) {
-        return ResponseEntity.ok(invoiceService.createInvoice(dto));
+        // Enforce 201 Created REST convention explicitly
+        return ResponseEntity.status(201).body(invoiceService.createInvoice(dto));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<InvoiceDTO> updateInvoice(@PathVariable UUID id,
             @RequestBody InvoiceDTO dto) {
-        return ResponseEntity.ok(invoiceService.updateInvoice(id, dto));
+        InvoiceDTO updatedInvoice = invoiceService.updateInvoice(id, dto);
+        return updatedInvoice != null ? ResponseEntity.ok(updatedInvoice) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteInvoice(@PathVariable UUID id) {
         invoiceService.deleteInvoice(id);
+        // Dispatch explicit 204 meaning resource handled correctly and removed.
         return ResponseEntity.noContent().build();
     }
 }

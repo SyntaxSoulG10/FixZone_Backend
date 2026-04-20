@@ -12,6 +12,7 @@ import java.util.UUID;
 @CrossOrigin("*")
 public class ServiceCenterController {
 
+    // Using constructor injection strictly enforces the presence of dependencies at instantiation
     private final ServiceCenterService serviceCenterService;
 
     public ServiceCenterController(ServiceCenterService serviceCenterService) {
@@ -25,23 +26,27 @@ public class ServiceCenterController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ServiceCenterDTO> getServiceCenterById(@PathVariable UUID id) {
-        return ResponseEntity.ok(serviceCenterService.getServiceCenterById(id));
+        ServiceCenterDTO center = serviceCenterService.getServiceCenterById(id);
+        return center != null ? ResponseEntity.ok(center) : ResponseEntity.notFound().build();
     }
 
     @PostMapping
     public ResponseEntity<ServiceCenterDTO> createServiceCenter(@RequestBody ServiceCenterDTO dto) {
-        return ResponseEntity.ok(serviceCenterService.createServiceCenter(dto));
+        // Semantic 201 Created explicitly shows that a new resource has been allocated
+        return ResponseEntity.status(201).body(serviceCenterService.createServiceCenter(dto));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ServiceCenterDTO> updateServiceCenter(@PathVariable UUID id,
             @RequestBody ServiceCenterDTO dto) {
-        return ResponseEntity.ok(serviceCenterService.updateServiceCenter(id, dto));
+        ServiceCenterDTO updatedCenter = serviceCenterService.updateServiceCenter(id, dto);
+        return updatedCenter != null ? ResponseEntity.ok(updatedCenter) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteServiceCenter(@PathVariable UUID id) {
         serviceCenterService.deleteServiceCenter(id);
+        // Explicit semantic 204 informs the frontend without wasting bandwidth
         return ResponseEntity.noContent().build();
     }
 }
