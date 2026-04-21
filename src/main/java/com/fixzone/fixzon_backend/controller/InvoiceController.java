@@ -24,6 +24,12 @@ public class InvoiceController {
         return ResponseEntity.ok(invoiceService.getAllInvoices());
     }
 
+    @GetMapping("/current")
+    public ResponseEntity<List<InvoiceDTO>> getCurrentOwnerInvoices() {
+        // Hardcoded for development
+        return ResponseEntity.ok(invoiceService.getInvoicesByCompanyCode("FIX001"));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<InvoiceDTO> getInvoiceById(@PathVariable UUID id) {
         InvoiceDTO invoice = invoiceService.getInvoiceById(id);
