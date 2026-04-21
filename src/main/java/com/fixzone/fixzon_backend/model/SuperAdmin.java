@@ -20,9 +20,9 @@ public class SuperAdmin extends User {
 
     public SuperAdmin(UUID userId, String fullName, String email, String phone, String passwordHash, String role,
             Boolean emailVerified, LocalDateTime lastLoginAt, LocalDateTime createdAt, String createdBy,
-            LocalDateTime updatedAt, String updatedBy, String adminCode) {
+            LocalDateTime updatedAt, String updatedBy, String profilePictureUrl, String adminCode) {
         super(userId, fullName, email, phone, passwordHash, role, emailVerified, lastLoginAt, createdAt, createdBy,
-                updatedAt, updatedBy, "Active");
+                updatedAt, updatedBy, "Active", profilePictureUrl);
         this.adminCode = adminCode;
     }
 

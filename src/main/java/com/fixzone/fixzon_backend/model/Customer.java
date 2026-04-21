@@ -31,9 +31,9 @@ public class Customer extends User {
 
     public Customer(UUID userId, String fullName, String email, String phone, String passwordHash, String role,
             Boolean emailVerified, LocalDateTime lastLoginAt, LocalDateTime createdAt, String createdBy,
-            LocalDateTime updatedAt, String updatedBy, String customerCode, String preferredContactMethod) {
+            LocalDateTime updatedAt, String updatedBy, String profilePictureUrl, String customerCode, String preferredContactMethod) {
         super(userId, fullName, email, phone, passwordHash, role, emailVerified, lastLoginAt, createdAt, createdBy,
-                updatedAt, updatedBy, "Active");
+                updatedAt, updatedBy, "Active", profilePictureUrl);
         this.customerCode = customerCode;
         this.preferredContactMethod = preferredContactMethod;
     }

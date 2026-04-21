@@ -2,7 +2,6 @@ package com.fixzone.fixzon_backend.controller;
 
 import com.fixzone.fixzon_backend.DTO.ManagerDTO;
 import com.fixzone.fixzon_backend.service.ManagerService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,23 +13,31 @@ import java.util.UUID;
 @CrossOrigin(origins = "*")
 public class ManagerController {
 
-    @Autowired
-    private ManagerService managerService;
+    // Enforcing immutability via constructor-based dependency injection
+    // This is superior to @Autowired fields because it makes the controller testable without Spring Context reflection
+    private final ManagerService managerService;
+
+    public ManagerController(ManagerService managerService) {
+        this.managerService = managerService;
+    }
 
     @GetMapping
-    public List<ManagerDTO> getAllManagers() {
-        return managerService.getAllManagers();
+    public ResponseEntity<List<ManagerDTO>> getAllManagers() {
+        return ResponseEntity.ok(managerService.getAllManagers());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ManagerDTO> getManagerById(@PathVariable UUID id) {
         ManagerDTO manager = managerService.getManagerById(id);
+        // Explicit explicit HTTP 404 Not Found returns gracefully if no data exists
         return manager != null ? ResponseEntity.ok(manager) : ResponseEntity.notFound().build();
     }
 
     @PostMapping
-    public ManagerDTO createManager(@RequestBody ManagerDTO managerDTO) {
-        return managerService.createManager(managerDTO);
+    public ResponseEntity<ManagerDTO> createManager(@RequestBody ManagerDTO managerDTO) {
+        ManagerDTO newManager = managerService.createManager(managerDTO);
+        // Use exact semantic 201 Created rather than implicit 200 OK
+        return ResponseEntity.status(201).body(newManager);
     }
 
     @PutMapping("/{id}")
@@ -42,6 +49,7 @@ public class ManagerController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteManager(@PathVariable UUID id) {
         managerService.deleteManager(id);
+        // HTTP 204 No Content confirms execution without forcing a redundant payload
         return ResponseEntity.noContent().build();
     }
 }
