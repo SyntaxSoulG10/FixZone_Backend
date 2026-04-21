@@ -11,6 +11,8 @@ import java.math.BigDecimal;
 //import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import com.fixzone.fixzon_backend.enums.BookingStatus;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -67,6 +69,7 @@ public class DataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) throws Exception {
         // If we already have 20 users (our target), skip initialization
+
         if (userRepository.count() >= 20) {
             System.out.println("Data already exists (20+ users), skipping initialization.");
             return;
@@ -155,6 +158,42 @@ public class DataInitializer implements CommandLineRunner {
         }
         servicePackageRepository.saveAll(packages);
 
+        // 7. Bookings
+        List<Booking> bookings = new ArrayList<>();
+
+        for (int i = 0; i < 5; i++) {
+
+            Booking b = new Booking();
+
+            // IDs (only required ones)
+            b.setTenantId(owners.get(i).getUserId());
+            b.setCenterId(centers.get(i).getCenterId());
+            b.setCustomerId(customers.get(i).getUserId());
+            b.setVehicleId(UUID.randomUUID()); // replace later with real vehicle
+            b.setPackageId(packages.get(i).getPackageId());
+
+            // Booking Schedule
+            b.setBookingDate(LocalDate.now().plusDays(i + 1));
+            b.setBookingTime(LocalTime.of(9, 0)); // 9:00 AM
+
+            // Status (ENUM)
+            b.setStatus(BookingStatus.CONFIRMED);
+
+            // Pricing
+            b.setEstimatedCost(packages.get(i).getBasePrice());
+
+            // Optional (good to include)
+            b.setSpecialRequest("General service");
+
+            // Audit (optional – can skip because @PrePersist handles it)
+            b.setCreatedBy("SYSTEM");
+            b.setUpdatedBy("SYSTEM");
+
+            bookings.add(b);
+        }
+
+        // Save all
+        bookingRepository.saveAll(bookings);
 
         // 7. & 8. Bookings & Invoices (Historical Data for Analytics)
         System.out.println("Seeding historical data for all branches...");
