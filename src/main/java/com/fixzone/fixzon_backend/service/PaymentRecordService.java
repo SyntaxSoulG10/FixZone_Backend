@@ -97,7 +97,6 @@ public class PaymentRecordService {
             existing.setUpdatedBy(dto.getUpdatedBy());
         }
 
-        @SuppressWarnings("null")
         PaymentRecord saved = paymentRecordRepository.save(existing);
         return transformToDataTransferObject(Objects.requireNonNull(saved));
     }

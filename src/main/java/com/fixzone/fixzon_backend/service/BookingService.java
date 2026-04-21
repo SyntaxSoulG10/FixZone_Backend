@@ -82,7 +82,6 @@ public class BookingService {
             existing.setUpdatedBy(dto.getUpdatedBy());
         }
 
-        @SuppressWarnings("null")
         Booking saved = bookingRepository.save(existing);
         return convertToDTO(saved);
     }

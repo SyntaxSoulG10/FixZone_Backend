@@ -58,7 +58,6 @@ public class ServicePackageService {
         return convertToDTO(saved);
     }
 
-    @SuppressWarnings("null")
     public ServicePackageDTO updatePackage(UUID id, ServicePackageDTO dto) {
         Objects.requireNonNull(id, "ID must not be null");
         Optional<ServicePackage> optionalPackage = repository.findById(id);
