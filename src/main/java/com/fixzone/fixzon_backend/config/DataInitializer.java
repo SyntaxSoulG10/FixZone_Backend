@@ -167,111 +167,84 @@ public class DataInitializer implements CommandLineRunner {
         servicePackageRepository.saveAll(packages);
 
         // 7. Bookings
-       List<Booking> bookings = new ArrayList<>();
-
-        for (int i = 0; i < 10; i++) {
-
-        ServiceCenter center = centers.get(i % centers.size());
-        Customer customer = customers.get(i % customers.size());
-
-        ServicePackage pkg = packages.stream()
-        .filter(p -> p.getServiceCenter().getCenterId().equals(center.getCenterId()))
-        .findFirst()
-        .orElse(null);
-
-        Booking b = new Booking();
-
-    
-        // CORE DATA
-   
-        b.setTenantId(center.getOwner().getUserId());
-        b.setCenterId(center.getCenterId());
-        b.setCustomerId(customer.getUserId());
-        b.setVehicleId(UUID.randomUUID());
-
-    if (pkg != null) {
-        b.setPackageId(pkg.getPackageId());
-        b.setEstimatedCost(pkg.getBasePrice());
-
-        // 🔥 match service logic (10% fee from service)
-        b.setBookingFee(pkg.getBasePrice()
-            .multiply(BigDecimal.valueOf(0.10)));
-    }
-
-    b.setBookingDate(LocalDate.now().plusDays(i + 1));
-    b.setBookingTime(LocalTime.of(9 + (i % 5), 0));
-
-    // STATUS FLOW (REALISTIC)
-   
-    switch (i) {
-
-        //  Just created
-        case 0, 1:
-            b.setStatus(BookingStatus.PENDING_PAYMENT);
-            break;
-
-        //  Paid → CONFIRMED
-        case 2, 3:
-            b.setStatus(BookingStatus.CONFIRMED);
-            b.setBookingFeePaid(true);
-            b.setStripePaymentId(UUID.randomUUID().toString());
-            break;
-
-        //  Completed
-        case 4, 5:
-            b.setStatus(BookingStatus.COMPLETED);
-            b.setBookingFeePaid(true);
-            b.setStripePaymentId(UUID.randomUUID().toString());
-            break;
-
-        // Cancelled
-        case 6, 7:
-            b.setStatus(BookingStatus.CANCELLED);
-            b.setIsCancelled(true);
-            b.setCancelledAt(LocalDateTime.now());
-
-            //  match service penalty logic (5%)
-            b.setCancellationPenalty(
-                b.getEstimatedCost().multiply(BigDecimal.valueOf(0.05))
-            );
-            break;
-
-        //  Rescheduled cases
-        default:
-            b.setStatus(BookingStatus.CONFIRMED);
-            b.setBookingFeePaid(true);
-            b.setStripePaymentId(UUID.randomUUID().toString());
-            b.setRescheduleCount(1);
-            break;
-    }
-
-    b.setSpecialRequest("Seeded booking");
-
-    bookings.add(b);
-}
-
-bookingRepository.saveAll(bookings);
-
-    
-        // 7. & 8. Bookings & Invoices (Historical Data for Analytics)
-        System.out.println("Seeding historical data for all branches...");
-        List<Booking> historicalBookings = new ArrayList<>();
+        List<Booking> bookings = new ArrayList<>();
         List<Invoice> invoices = new ArrayList<>();
         List<PaymentRecord> payments = new ArrayList<>();
 
-        // Months to seed: Jan (1), Feb (2), Mar (3), Apr (4)
-        int[] months = {1, 2, 3, 4};
+        // 1. Core Production Bookings (10)
+        for (int i = 0; i < 10; i++) {
+            ServiceCenter center = centers.get(i % centers.size());
+            Customer customer = customers.get(i % customers.size());
 
-        // Seed data for EVERY branch
+            ServicePackage pkg = packages.stream()
+                    .filter(p -> p.getServiceCenter().getCenterId().equals(center.getCenterId()))
+                    .findFirst()
+                    .orElse(null);
+
+            Booking b = new Booking();
+            b.setBookingId(UUID.randomUUID()); 
+
+            b.setTenantId(center.getOwner().getUserId());
+            b.setCenterId(center.getCenterId());
+            b.setCustomerId(customer.getUserId());
+            b.setVehicleId(UUID.randomUUID());
+
+            if (pkg != null) {
+                b.setPackageId(pkg.getPackageId());
+                b.setEstimatedCost(pkg.getBasePrice());
+                b.setBookingFee(pkg.getBasePrice().multiply(BigDecimal.valueOf(0.10)));
+            }
+
+            b.setBookingDate(LocalDate.now().plusDays(i + 1));
+            b.setBookingTime(LocalTime.of(9 + (i % 5), 0));
+            b.setSpecialRequest("Seeded booking");
+
+            switch (i) {
+                case 0, 1:
+                    b.setStatus(BookingStatus.PENDING_PAYMENT);
+                    break;
+                case 2, 3:
+                    b.setStatus(BookingStatus.CONFIRMED);
+                    b.setStripePaymentId("STRIPE-" + UUID.randomUUID());
+                    b.setBookingFeePaid(true);
+                    break;
+                case 4, 5:
+                    b.setStatus(BookingStatus.COMPLETED);
+                    b.setStripePaymentId("STRIPE-" + UUID.randomUUID());
+                    b.setBookingFeePaid(true);
+
+                    UUID invoiceId = UUID.randomUUID();
+                    invoices.add(new Invoice(invoiceId, ((Owner) center.getOwner()).getOwnerCode(), center.getCenterId(), b.getBookingId(), b.getCustomerId(), b.getEstimatedCost(), BigDecimal.ZERO, BigDecimal.ZERO, b.getEstimatedCost(), "PAID", LocalDateTime.now(), LocalDateTime.now().plusDays(1), LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+
+                    payments.add(new PaymentRecord(UUID.randomUUID(), invoiceId, center.getCenterId(), b.getEstimatedCost(), "CASH", "TXN-" + i, "COMPLETED", LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+                    break;
+                case 6, 7:
+                    b.setStatus(BookingStatus.CANCELLED);
+                    b.setIsCancelled(true);
+                    b.setCancelledAt(LocalDateTime.now());
+                    if (b.getEstimatedCost() != null) {
+                        b.setCancellationPenalty(b.getEstimatedCost().multiply(BigDecimal.valueOf(0.05)));
+                    }
+                    break;
+                default:
+                    b.setStatus(BookingStatus.CONFIRMED);
+                    b.setStripePaymentId("STRIPE-" + UUID.randomUUID());
+                    b.setBookingFeePaid(true);
+                    b.setRescheduleCount(1);
+                    break;
+            }
+            bookings.add(b);
+        }
+
+        // 2. Historical Data for Analytics (Updated for Stripe flow)
+        System.out.println("Seeding historical data for all branches...");
+        int[] months = {1, 2, 3, 4};
         for (int c = 0; c < centers.size(); c++) {
             ServiceCenter center = centers.get(c);
             Owner owner = (Owner) center.getOwner();
+            int baseCount = 5 + (c % 3); // Slightly reduced count for cleaner seeding
+            int[] bookingCounts = {baseCount, baseCount + 2, baseCount + 4, baseCount + 6};
 
-            // Vary booking counts by month and by branch to make analytics look real
-            int baseCount = 10 + (c % 5);
-            int[] bookingCounts = {baseCount, baseCount + 5, baseCount + 10, baseCount + 15};
-
-            // Find packages for this specific center
             List<ServicePackage> centerPackages = packages.stream()
                     .filter(p -> p.getServiceCenter().getCenterId().equals(center.getCenterId()))
                     .toList();
@@ -281,38 +254,31 @@ bookingRepository.saveAll(bookings);
             for (int m = 0; m < months.length; m++) {
                 for (int i = 0; i < bookingCounts[m]; i++) {
                     LocalDateTime date = LocalDateTime.of(2026, months[m], (i % 28) + 1, 9 + (i % 8), 0);
-
                     Booking b = new Booking();
-                    // b.setBookingId(UUID.randomUUID());  in model auto doing this
-                    // b.setCenterId(center.getCenterId());
-                    // b.setTenantId(owner.getUserId());
-                    //  b.setCustomerId(customers.get(i % 5).getUserId());
+                    b.setBookingId(UUID.randomUUID());
+                    b.setTenantId(owner.getUserId());
+                    b.setCenterId(center.getCenterId());
+                    b.setCustomerId(customers.get(i % customers.size()).getUserId());
                     b.setVehicleId(UUID.randomUUID());
                     b.setPackageId(centerPackages.get(i % centerPackages.size()).getPackageId());
-                    // b.setPreferredDateTime(date.plusDays(1));
-                    b.setStatus(i % 12 == 0 ? BookingStatus.CONFIRMED : BookingStatus.COMPLETED);
-                    // b.setPriority("NORMAL");
+                    b.setBookingDate(date.toLocalDate());
+                    b.setBookingTime(date.toLocalTime());
+                    b.setStatus(BookingStatus.COMPLETED);
                     b.setEstimatedCost(centerPackages.get(i % centerPackages.size()).getBasePrice());
+                    b.setBookingFee(b.getEstimatedCost().multiply(BigDecimal.valueOf(0.10)));
+                    b.setStripePaymentId("STRIPE-HIST-" + UUID.randomUUID());
+                    b.setBookingFeePaid(true);
                     b.setCreatedAt(date);
-                    historicalBookings.add(b);
-                    b.setBookingDate(date.toLocalDate()); //add by me
-                    b.setBookingTime(date.toLocalTime()); // add by me
+                    bookings.add(b);
 
-                    if (b.getStatus().equals(BookingStatus.CONFIRMED)) {
-                        UUID invId = UUID.randomUUID();
-                        BigDecimal total = b.getEstimatedCost();
-                        // Simpler calculation: no breakdown in invoice per previous discussion
-                        Invoice inv = new Invoice(invId, owner.getOwnerCode(), center.getCenterId(), b.getBookingId(), b.getCustomerId(), total, BigDecimal.ZERO, BigDecimal.ZERO, total, "PAID", date.plusHours(2), date.plusDays(1), date, "system", date, "system");
-                        invoices.add(inv);
-
-                        String method = i % 3 == 0 ? "CASH" : "CARD"; // Mix of CASH (Hand Collection) and CARD (Online)
-                        payments.add(new PaymentRecord(UUID.randomUUID(), invId, center.getCenterId(), total, method, "TXN-" + c + "-" + months[m] + "-" + i, "Completed", date.plusHours(2), date.plusHours(2), "system", date.plusHours(2), "system"));
-                    }
+                    UUID invId = UUID.randomUUID();
+                    invoices.add(new Invoice(invId, owner.getOwnerCode(), center.getCenterId(), b.getBookingId(), b.getCustomerId(), b.getEstimatedCost(), BigDecimal.ZERO, BigDecimal.ZERO, b.getEstimatedCost(), "PAID", date.plusHours(2), date.plusDays(1), date, "system", date, "system"));
+                    payments.add(new PaymentRecord(UUID.randomUUID(), invId, center.getCenterId(), b.getEstimatedCost(), "CARD", "TXN-HIST-" + c + "-" + m + "-" + i, "COMPLETED", date.plusHours(2), date.plusHours(2), "system", date.plusHours(2), "system"));
                 }
             }
         }
 
-        bookingRepository.saveAll(historicalBookings);
+        bookingRepository.saveAll(bookings);
         invoiceRepository.saveAll(invoices);
         paymentRecordRepository.saveAll(payments);
 
