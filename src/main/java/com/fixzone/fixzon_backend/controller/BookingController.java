@@ -64,6 +64,21 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.getBookingsByMechanic(mechanicId));
     }
 
+    @GetMapping("/availability")
+    public ResponseEntity<Boolean> checkSlotAvailability(
+            @RequestParam UUID centerId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime time
+    ) {
+        boolean taken = bookingService.isSlotTaken(centerId, date, time);
+        return ResponseEntity.ok(!taken);
+    }
+
+    @GetMapping("/active")
+    public ResponseEntity<List<BookingResponseDTO>> getActiveBookings() {
+        return ResponseEntity.ok(bookingService.getBookingsByStatus("CONFIRMED"));
+    }
+
 
     /**
      * Create a new booking.

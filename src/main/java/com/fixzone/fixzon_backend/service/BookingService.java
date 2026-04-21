@@ -100,6 +100,10 @@ public class BookingService {
         bookingRepository.deleteById(id);
     }
 
+    public boolean isSlotTaken(UUID centerId, LocalDate date, LocalTime time) {
+        return bookingRepository.existsActiveSlot(centerId, date, time, LocalDateTime.now());
+    }
+
     // Legacy conversion methods removed in favor of mapToResponseDTO and production flow
 
 
