@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import com.fixzone.fixzon_backend.model.ServiceCenter;
 
 @Service
 public class ManagerService {
@@ -17,9 +20,30 @@ public class ManagerService {
     // Dependency injection via constructor keeps strictly initialized references 
     // ensuring the repository cannot be null at runtime.
     private final ManagerRepository managerRepository;
+    private final ServiceCenterRepository serviceCenterRepository;
+    private final OwnerRepository ownerRepository;
 
-    public ManagerService(ManagerRepository managerRepository) {
+    public ManagerService(ManagerRepository managerRepository, 
+                         ServiceCenterRepository serviceCenterRepository,
+                         OwnerRepository ownerRepository) {
         this.managerRepository = managerRepository;
+        this.serviceCenterRepository = serviceCenterRepository;
+        this.ownerRepository = ownerRepository;
+    }
+
+    public List<ManagerDTO> getManagersByOwnerCode(String code) {
+        return ownerRepository.findByOwnerCode(code)
+                .map(owner -> {
+                    List<UUID> centerIds = serviceCenterRepository.findByOwner_UserId(owner.getUserId())
+                            .stream()
+                            .map(ServiceCenter::getCenterId)
+                            .collect(Collectors.toList());
+                    if (centerIds.isEmpty()) return List.<ManagerDTO>of();
+                    return managerRepository.findByManagedCenterIdIn(centerIds).stream()
+                            .map(this::transformToDataTransferObject)
+                            .collect(Collectors.toList());
+                })
+                .orElse(List.of());
     }
 
     public List<ManagerDTO> getAllManagers() {

@@ -26,6 +26,12 @@ public class ManagerController {
         return ResponseEntity.ok(managerService.getAllManagers());
     }
 
+    @GetMapping("/current")
+    public ResponseEntity<List<ManagerDTO>> getCurrentOwnerManagers() {
+        // Hardcoded for development
+        return ResponseEntity.ok(managerService.getManagersByOwnerCode("FIX001"));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ManagerDTO> getManagerById(@PathVariable UUID id) {
         ManagerDTO manager = managerService.getManagerById(id);

@@ -9,4 +9,7 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
     List<ServicePackage> findByServiceCenter_CenterId(UUID centerId);
     List<ServicePackage> findByServiceCenter_CenterIdAndIsActiveTrue(UUID centerId);
     List<ServicePackage> findByIsActiveTrue();
+
+    @org.springframework.data.jpa.repository.Query("SELECT sp FROM ServicePackage sp JOIN Owner o ON sp.serviceCenter.owner.userId = o.userId WHERE o.ownerCode = :ownerCode AND sp.isActive = true")
+    List<ServicePackage> findPackagesByOwnerCode(@org.springframework.data.repository.query.Param("ownerCode") String ownerCode);
 }

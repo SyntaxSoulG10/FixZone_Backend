@@ -38,6 +38,12 @@ public class ServicePackageService {
                 .collect(Collectors.toList());
     }
 
+    public List<ServicePackageDTO> getPackagesByOwnerCode(String code) {
+        return repository.findPackagesByOwnerCode(code).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
     public ServicePackageDTO getPackageById(UUID id) {
         Objects.requireNonNull(id, "ID must not be null");
         return repository.findById(id)

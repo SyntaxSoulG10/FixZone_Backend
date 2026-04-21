@@ -23,6 +23,12 @@ public class ServicePackageController {
         return ResponseEntity.ok(service.getAllPackages());
     }
 
+    @GetMapping("/current")
+    public ResponseEntity<List<ServicePackageDTO>> getCurrentOwnerPackages() {
+        // Hardcoded for development
+        return ResponseEntity.ok(service.getPackagesByOwnerCode("FIX001"));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ServicePackageDTO> getPackageById(@PathVariable UUID id) {
         ServicePackageDTO dto = service.getPackageById(id);
