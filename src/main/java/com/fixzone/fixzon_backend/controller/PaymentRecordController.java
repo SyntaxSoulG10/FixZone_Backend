@@ -12,7 +12,7 @@ import java.util.UUID;
 @CrossOrigin("*")
 public class PaymentRecordController {
 
-
+    // Construct injection over field injection guarantees dependencies are met securely
     private final PaymentRecordService paymentRecordService;
 
     public PaymentRecordController(PaymentRecordService paymentRecordService) {
@@ -24,9 +24,16 @@ public class PaymentRecordController {
         return ResponseEntity.ok(paymentRecordService.getAllPayments());
     }
 
+    @GetMapping("/current")
+    public ResponseEntity<List<PaymentRecordDTO>> getCurrentOwnerPayments() {
+        // Hardcoded for development
+        return ResponseEntity.ok(paymentRecordService.getPaymentsByCompanyCode("FIX001"));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PaymentRecordDTO> getPaymentById(@PathVariable UUID id) {
-        return ResponseEntity.ok(paymentRecordService.getPaymentById(id));
+        PaymentRecordDTO payment = paymentRecordService.getPaymentById(id);
+        return payment != null ? ResponseEntity.ok(payment) : ResponseEntity.notFound().build();
     }
 
     @GetMapping("/invoice/{invoiceId}")
@@ -51,18 +58,21 @@ public class PaymentRecordController {
 
     @PostMapping
     public ResponseEntity<PaymentRecordDTO> createPayment(@RequestBody PaymentRecordDTO dto) {
-        return ResponseEntity.ok(paymentRecordService.createPayment(dto));
+        // Enforce 201 Created explicitly signaling creation resolution
+        return ResponseEntity.status(201).body(paymentRecordService.createPayment(dto));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<PaymentRecordDTO> updatePayment(@PathVariable UUID id,
             @RequestBody PaymentRecordDTO dto) {
-        return ResponseEntity.ok(paymentRecordService.updatePayment(id, dto));
+        PaymentRecordDTO updatedPayment = paymentRecordService.updatePayment(id, dto);
+        return updatedPayment != null ? ResponseEntity.ok(updatedPayment) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePayment(@PathVariable UUID id) {
         paymentRecordService.deletePayment(id);
+        // Dispatch explicit 204 meaning the resource is securely omitted.
         return ResponseEntity.noContent().build();
     }
 }

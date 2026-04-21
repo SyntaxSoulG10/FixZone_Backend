@@ -19,8 +19,9 @@ public class InvoiceService {
     }
 
     public List<InvoiceDTO> getAllInvoices() {
+        // Encapsulating database entities via transformations secures hidden columns from HTTP exposure
         return invoiceRepository.findAll().stream()
-                .map(this::convertToDTO)
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
@@ -28,45 +29,45 @@ public class InvoiceService {
         Objects.requireNonNull(id, "ID must not be null");
         Invoice invoice = invoiceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
-        return convertToDTO(invoice);
+        return transformToDataTransferObject(invoice);
     }
 
     public InvoiceDTO getInvoiceByBooking(UUID bookingId) {
         Invoice invoice = invoiceRepository.findByBookingId(bookingId)
                 .orElseThrow(() -> new RuntimeException("Invoice not found for booking: " + bookingId));
-        return convertToDTO(invoice);
+        return transformToDataTransferObject(invoice);
     }
 
     public List<InvoiceDTO> getInvoicesByCenter(UUID centerId) {
         return invoiceRepository.findByCenterId(centerId).stream()
-                .map(this::convertToDTO)
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public List<InvoiceDTO> getInvoicesByCustomer(UUID customerId) {
         return invoiceRepository.findByIssuedToCustomerId(customerId).stream()
-                .map(this::convertToDTO)
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public List<InvoiceDTO> getInvoicesByStatus(String status) {
         return invoiceRepository.findByStatus(status).stream()
-                .map(this::convertToDTO)
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public List<InvoiceDTO> getInvoicesByCompanyCode(String companyCode) {
         return invoiceRepository.findByCompanyCode(companyCode).stream()
-                .map(this::convertToDTO)
+                .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public InvoiceDTO createInvoice(InvoiceDTO dto) {
-        Invoice invoice = convertToEntity(dto);
+        Invoice invoice = transformToDatabaseEntity(dto);
         if (invoice.getInvoiceId() == null) {
             invoice.setInvoiceId(UUID.randomUUID());
         }
-        return convertToDTO(Objects.requireNonNull(invoiceRepository.save(invoice)));
+        return transformToDataTransferObject(Objects.requireNonNull(invoiceRepository.save(invoice)));
     }
 
     public InvoiceDTO updateInvoice(UUID id, InvoiceDTO dto) {
@@ -91,7 +92,7 @@ public class InvoiceService {
 
         @SuppressWarnings("null")
         Invoice saved = invoiceRepository.save(existing);
-        return convertToDTO(saved);
+        return transformToDataTransferObject(Objects.requireNonNull(saved));
     }
 
     public void deleteInvoice(UUID id) {
@@ -99,7 +100,8 @@ public class InvoiceService {
         invoiceRepository.deleteById(id);
     }
 
-    private InvoiceDTO convertToDTO(Invoice invoice) {
+    // Direct constructor mapping enforces strict type transfer mapping reliably
+    private InvoiceDTO transformToDataTransferObject(Invoice invoice) {
         Objects.requireNonNull(invoice, "Invoice must not be null");
         return new InvoiceDTO(
                 invoice.getInvoiceId(),
@@ -121,7 +123,7 @@ public class InvoiceService {
         );
     }
 
-    private Invoice convertToEntity(InvoiceDTO dto) {
+    private Invoice transformToDatabaseEntity(InvoiceDTO dto) {
         Invoice invoice = new Invoice();
         invoice.setInvoiceId(dto.getInvoiceId());
         invoice.setCompanyCode(dto.getCompanyCode());
