@@ -11,6 +11,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import com.fixzone.fixzon_backend.enums.BookingStatus;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -67,12 +69,11 @@ public class DataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) throws Exception {
         // If we already have 20 users (our target), skip initialization
-/* 
+
         if (userRepository.count() >= 20) {
             System.out.println("Data already exists (20+ users), skipping initialization.");
             return;
         }
-*/
 
         System.out.println("--- CLEARING OLD DATA AND STARTING FRESH SRI LANKAN SEEDING ---");
         
@@ -149,20 +150,39 @@ public class DataInitializer implements CommandLineRunner {
 
         // 7. Bookings
         List<Booking> bookings = new ArrayList<>();
+
         for (int i = 0; i < 5; i++) {
+
             Booking b = new Booking();
-            b.setBookingId(UUID.randomUUID());
+
+            // IDs (only required ones)
+            b.setTenantId(owners.get(i).getUserId());
             b.setCenterId(centers.get(i).getCenterId());
-            b.setTenantId(owners.get(i).getUserId()); 
             b.setCustomerId(customers.get(i).getUserId());
-            b.setVehicleId(UUID.randomUUID());
+            b.setVehicleId(UUID.randomUUID()); // replace later with real vehicle
             b.setPackageId(packages.get(i).getPackageId());
-            b.setPreferredDateTime(LocalDateTime.now().plusDays(i + 1));
-            b.setStatus("PENDING");
-            b.setPriority("NORMAL");
+
+            // Booking Schedule
+            b.setBookingDate(LocalDate.now().plusDays(i + 1));
+            b.setBookingTime(LocalTime.of(9, 0)); // 9:00 AM
+
+            // Status (ENUM)
+            b.setStatus(BookingStatus.CONFIRMED);
+
+            // Pricing
             b.setEstimatedCost(packages.get(i).getBasePrice());
+
+            // Optional (good to include)
+            b.setSpecialRequest("General service");
+
+            // Audit (optional – can skip because @PrePersist handles it)
+            b.setCreatedBy("SYSTEM");
+            b.setUpdatedBy("SYSTEM");
+
             bookings.add(b);
         }
+
+        // Save all
         bookingRepository.saveAll(bookings);
 
         // 8. Invoices & Payments

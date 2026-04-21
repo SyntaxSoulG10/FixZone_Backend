@@ -17,13 +17,13 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     
     List<Booking> findByCustomerId(UUID customerId);
     
-    List<Booking> findByAssignedMechanicId(UUID assignedMechanicId);
-    
     List<Booking> findByStatus(BookingStatus status);
-    
-    List<Booking> findByTenantId(UUID tenantId);
 
-    // For user booking history/tabs
+    List<Booking> findByAssignedMechanicId(UUID mechanicId);
+
+
+    
+    // For user booking history/tabs (pending / completed / active)
     List<Booking> findByCustomerIdAndStatus(UUID customerId, BookingStatus status);
 
     // 🔥 MOST IMPORTANT: For soft lock + preventing double booking

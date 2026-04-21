@@ -120,8 +120,17 @@ public class Booking {
         if (bookingId == null) {
             bookingId = UUID.randomUUID();
         }
+        LocalDateTime now = LocalDateTime.now();
+
         if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+            createdAt = now;
+        }
+        updatedAt = now;
+        if (createdBy == null) {
+            createdBy = "SYSTEM"; //Later (when auth is ready), this changes
+        }
+        if (updatedBy == null) {
+            updatedBy = "SYSTEM"; //Later (when auth is ready), this changes
         }
         if (status == null) {
             status = BookingStatus.PENDING_PAYMENT;
@@ -140,5 +149,9 @@ public class Booking {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+
+        if (updatedBy == null) {
+            updatedBy = "SYSTEM"; //Later (when auth is ready), this changes
+        }
     }
 }

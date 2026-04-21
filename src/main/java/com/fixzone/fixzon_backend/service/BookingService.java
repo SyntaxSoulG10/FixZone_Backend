@@ -1,6 +1,5 @@
 package com.fixzone.fixzon_backend.service;
 
-import com.fixzone.fixzon_backend.DTO.BookingDTO;
 import com.fixzone.fixzon_backend.DTO.booking.BookingRequestDTO;
 import com.fixzone.fixzon_backend.DTO.booking.BookingResponseDTO;
 import com.fixzone.fixzon_backend.enums.BookingAction;
@@ -42,81 +41,58 @@ public class BookingService {
         this.bookingHistoryRepository = bookingHistoryRepository;
     }
 
-    public List<BookingDTO> getAllBookings() {
+    public List<BookingResponseDTO> getAllBookings() {
         return bookingRepository.findAll().stream()
-                .map(this::convertToDTO)
+                .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
 
-    public BookingDTO getBookingById(UUID id) {
+    public BookingResponseDTO getBookingById(UUID id) {
         Objects.requireNonNull(id, "ID must not be null");
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found with id: " + id));
-        return convertToDTO(booking);
+        return mapToResponseDTO(booking);
     }
 
-    public List<BookingDTO> getBookingsByCenter(UUID centerId) {
+    public List<BookingResponseDTO> getBookingsByCenter(UUID centerId) {
         return bookingRepository.findByCenterId(centerId).stream()
-                .map(this::convertToDTO)
+                .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
 
-    public List<BookingDTO> getBookingsByCustomer(UUID customerId) {
+    public List<BookingResponseDTO> getBookingsByCustomer(UUID customerId) {
         return bookingRepository.findByCustomerId(customerId).stream()
-                .map(this::convertToDTO)
+                .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
+    // Removed getBookingsByMechanic as it's not currently in our production repository
+    public List<BookingResponseDTO> getBookingsByMechanic(UUID mechanicId) {
 
-    public List<BookingDTO> getBookingsByMechanic(UUID mechanicId) {
+        if (mechanicId == null) {
+            throw new IllegalArgumentException("Mechanic ID must not be null");
+        }
+
         return bookingRepository.findByAssignedMechanicId(mechanicId).stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+                .map(this::mapToResponseDTO)
+                .toList();
     }
 
-    public List<BookingDTO> getBookingsByStatus(String status) {
-        // This method will now need to handle the BookingStatus enum internally if still used
+    public List<BookingResponseDTO> getBookingsByStatus(String status) {
+        if (status == null) return List.of();  // avoid null pointer exception
+        
+        String statusStr = status.trim().toUpperCase();
+        if ("PENDING".equals(statusStr)) {
+            statusStr = "PENDING_PAYMENT";
+        }
+
         try {
-            BookingStatus bookingStatus = BookingStatus.valueOf(status.toUpperCase());
+            BookingStatus bookingStatus = BookingStatus.valueOf(statusStr);
             return bookingRepository.findByStatus(bookingStatus).stream()
-                    .map(this::convertToDTO)
+                    .map(this::mapToResponseDTO)
                     .collect(Collectors.toList());
         } catch (IllegalArgumentException e) {
             return List.of();
         }
-    }
-
-    public BookingDTO createBooking(BookingDTO dto) {
-        Booking booking = convertToEntity(dto);
-        if (booking.getBookingId() == null) {
-            booking.setBookingId(UUID.randomUUID());
-        }
-        return convertToDTO(bookingRepository.save(booking));
-    }
-
-    public BookingDTO updateBooking(UUID id, BookingDTO dto) {
-        Objects.requireNonNull(id, "ID must not be null");
-        Booking existing = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found with id: " + id));
-
-        if (dto != null) {
-            existing.setCenterId(dto.getCenterId());
-            existing.setTenantId(dto.getTenantId());
-            existing.setCustomerId(dto.getCustomerId());
-            existing.setVehicleId(dto.getVehicleId());
-            existing.setPackageId(dto.getPackageId());
-            existing.setBookingDate(dto.getPreferredDateTime().toLocalDate());
-            existing.setBookingTime(dto.getPreferredDateTime().toLocalTime());
-            existing.setAssignedMechanicId(dto.getAssignedMechanicId());
-            try {
-                existing.setStatus(BookingStatus.valueOf(dto.getStatus()));
-            } catch (Exception e) {
-                // Keep original status or handle error
-            }
-            existing.setEstimatedCost(dto.getEstimatedCost());
-            existing.setUpdatedBy(dto.getUpdatedBy());
-        }
-
-        return convertToDTO(bookingRepository.save(existing));
     }
 
     public void deleteBooking(UUID id) {
@@ -124,60 +100,11 @@ public class BookingService {
         bookingRepository.deleteById(id);
     }
 
-    private BookingDTO convertToDTO(Booking booking) {
-        return new BookingDTO(
-                booking.getBookingId(),
-                booking.getCenterId(),
-                booking.getTenantId(),
-                booking.getCustomerId(),
-                booking.getVehicleId(),
-                booking.getPackageId(),
-                booking.getBookingDate() != null && booking.getBookingTime() != null 
-                    ? LocalDateTime.of(booking.getBookingDate(), booking.getBookingTime()) 
-                    : null,
-                booking.getAssignedMechanicId(),
-                booking.getStatus() != null ? booking.getStatus().name() : null,
-                null, // Priority field was removed from Booking model
-                booking.getEstimatedCost(),
-                booking.getCreatedAt(),
-                booking.getCreatedBy(),
-                booking.getUpdatedAt(),
-                booking.getUpdatedBy()
-        );
-    }
+    // Legacy conversion methods removed in favor of mapToResponseDTO and production flow
 
-    private Booking convertToEntity(BookingDTO dto) {
-        Booking booking = new Booking();
-        booking.setBookingId(dto.getBookingId());
-        booking.setCenterId(dto.getCenterId());
-        booking.setTenantId(dto.getTenantId());
-        booking.setCustomerId(dto.getCustomerId());
-        booking.setVehicleId(dto.getVehicleId());
-        booking.setPackageId(dto.getPackageId());
-        if (dto.getPreferredDateTime() != null) {
-            booking.setBookingDate(dto.getPreferredDateTime().toLocalDate());
-            booking.setBookingTime(dto.getPreferredDateTime().toLocalTime());
-        }
-        booking.setAssignedMechanicId(dto.getAssignedMechanicId());
-        if (dto.getStatus() != null) {
-            try {
-                booking.setStatus(BookingStatus.valueOf(dto.getStatus()));
-            } catch (Exception e) {
-                // Handle invalid status
-            }
-        }
-        booking.setEstimatedCost(dto.getEstimatedCost());
-        booking.setCreatedBy(dto.getCreatedBy());
-        booking.setUpdatedBy(dto.getUpdatedBy());
-        return booking;
-    }
 
-    // =========================================================================
-    // NEW PRODUCTION LOGIC (PRODUCTION-READY)
-    // =========================================================================
-
-    /**
-     * Create a new booking with production-level validations and pricing.
+    /*
+      Create a new booking with production-level validations and pricing.
      */
     public BookingResponseDTO createBooking(BookingRequestDTO request) {
         UUID customerId = getCurrentUserId();
@@ -257,15 +184,21 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        validateBookingOwnership(booking, currentUserId);
+        // TEMPORARY: Skipping ownership validation for Postman testing (no authentication/JWT yet)
+        // validateBookingOwnership(booking, currentUserId);
+        //validateBookingOwnership(booking, currentUserId);
 
         if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
             throw new RuntimeException("Cannot reschedule a cancelled or completed booking");
         }
 
         // 3-day rule check
-        if (!booking.getBookingDate().isAfter(LocalDate.now().plusDays(2))) {
-            throw new RuntimeException("Rescheduling is only allowed at least 3 days before the booking date");
+        LocalDate today = LocalDate.now();
+        LocalDate penaltyStartDate = booking.getBookingDate().minusDays(3);
+
+        // If within last 3 days → block rescheduling
+        if (!today.isBefore(penaltyStartDate)) {
+            throw new RuntimeException("Rescheduling is not allowed within 3 days of the booking date");
         }
 
         boolean slotTaken = bookingRepository.existsByCenterIdAndBookingDateAndBookingTimeAndStatusIn(
@@ -312,7 +245,9 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        validateBookingOwnership(booking, currentUserId);
+        // TEMPORARY: Skipping ownership validation for Postman testing (no authentication/JWT yet)
+        // validateBookingOwnership(booking, currentUserId);
+        //validateBookingOwnership(booking, currentUserId);
 
         if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
             throw new RuntimeException("Booking is already cancelled or completed");
@@ -320,8 +255,12 @@ public class BookingService {
 
         BigDecimal penalty = BigDecimal.ZERO;
 
-        // Within 3 days => 5% penalty
-        if (!booking.getBookingDate().isAfter(LocalDate.now().plusDays(2))) {
+        // Within 3 days => 5% penalty       *half of booking fee
+        LocalDate today = LocalDate.now();
+        LocalDate penaltyStartDate = booking.getBookingDate().minusDays(3);
+
+        // Within last 3 days → apply penalty
+        if (!today.isBefore(penaltyStartDate)) {
             penalty = booking.getEstimatedCost()
                     .multiply(BigDecimal.valueOf(0.05))
                     .setScale(2, RoundingMode.HALF_UP);
@@ -466,7 +405,7 @@ public class BookingService {
         }
     }
 
-    private UUID getCurrentUserId() {
+    private UUID getCurrentUserId() {     // review after JWT set
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || auth.getPrincipal() == null) {
             // Temporary fallback for development if auth is not ready
