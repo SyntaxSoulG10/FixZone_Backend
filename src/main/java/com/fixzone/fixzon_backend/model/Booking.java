@@ -63,10 +63,10 @@ public class Booking {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
-    // BOOKING FEE (STRIPE)
+    // BOOKING FEE (GATEWAY REFERENCE)
 
-    @Column(name = "stripe_payment_id")
-    private String stripePaymentId; // Stripe session/payment ID
+    @Column(name = "gateway_session_id")
+    private String gatewaySessionId; // External gateway session/payment ID
 
     @Column(name = "booking_fee_paid")
     private Boolean bookingFeePaid = false;

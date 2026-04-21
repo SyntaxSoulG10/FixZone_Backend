@@ -114,12 +114,12 @@ public class BookingService {
         ServicePackage servicePackage = servicePackageRepository.findById(request.getPackageId())
                 .orElseThrow(() -> new RuntimeException("Service package not found"));
 
-        // 2. Validate Slot Availability (Soft Lock check)
-        boolean slotTaken = bookingRepository.existsByCenterIdAndBookingDateAndBookingTimeAndStatusIn(
+        // 2. Validate Slot Availability (Smart Lock check)
+        boolean slotTaken = bookingRepository.existsActiveSlot(
                 request.getCenterId(),
                 request.getBookingDate(),
                 request.getBookingTime(),
-                List.of(BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED)
+                LocalDateTime.now()
         );
 
         if (slotTaken) {
@@ -153,6 +153,8 @@ public class BookingService {
         booking.setCancellationPenalty(BigDecimal.ZERO);
         booking.setStatus(BookingStatus.PENDING_PAYMENT);
         booking.setBookingFeePaid(false);
+        booking.setGatewaySessionId(null);
+        booking.setExpiresAt(LocalDateTime.now().plusMinutes(5));
         booking.setIsCancelled(false);
         booking.setRescheduleCount(0);
         booking.setCreatedBy(customerId.toString());
@@ -201,11 +203,11 @@ public class BookingService {
             throw new RuntimeException("Rescheduling is not allowed within 3 days of the booking date");
         }
 
-        boolean slotTaken = bookingRepository.existsByCenterIdAndBookingDateAndBookingTimeAndStatusIn(
+        boolean slotTaken = bookingRepository.existsActiveSlot(
                 booking.getCenterId(),
                 newDate,
                 newTime,
-                List.of(BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED)
+                LocalDateTime.now()
         );
 
         if (slotTaken) {
@@ -292,16 +294,16 @@ public class BookingService {
     /**
      * Mark booking payment as completed and CONFIRM the slot.
      */
-    public BookingResponseDTO completePayment(UUID bookingId, String stripePaymentId) {
+    public BookingResponseDTO completePayment(UUID bookingId, String gatewaySessionId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
         if (Boolean.TRUE.equals(booking.getBookingFeePaid())) {
-            throw new RuntimeException("Payment already completed for this booking");
+            throw new RuntimeException("Booking fee already paid");
         }
 
         booking.setBookingFeePaid(true);
-        booking.setStripePaymentId(stripePaymentId);
+        booking.setGatewaySessionId(gatewaySessionId);
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setUpdatedBy(getCurrentUserId().toString());
 
@@ -334,6 +336,7 @@ public class BookingService {
         }
 
         booking.setStatus(BookingStatus.COMPLETED);
+        // 🔥 Trigger invoice creation (Integrate with InvoiceService here)
         booking.setUpdatedBy(getCurrentUserId().toString());
 
         Booking updatedBooking = bookingRepository.save(booking);
@@ -370,11 +373,17 @@ public class BookingService {
         response.setBookingFee(booking.getBookingFee());
         response.setCancellationPenalty(booking.getCancellationPenalty());
         response.setBookingFeePaid(booking.getBookingFeePaid());
-        response.setStripePaymentId(booking.getStripePaymentId());
+        response.setGatewaySessionId(booking.getGatewaySessionId());
         response.setExpiresAt(booking.getExpiresAt());
         response.setSpecialRequest(booking.getSpecialRequest());
         response.setCreatedAt(booking.getCreatedAt());
         return response;
+    }
+
+    private boolean isExpired(Booking booking) {
+        return booking.getStatus() == BookingStatus.PENDING_PAYMENT &&
+               booking.getExpiresAt() != null &&
+               booking.getExpiresAt().isBefore(LocalDateTime.now());
     }
 
     private void saveBookingHistory(

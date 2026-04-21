@@ -32,7 +32,7 @@ public class BookingResponseDTO {
     private BigDecimal cancellationPenalty;
 
     // Payment fields (Stripe)
-    private String stripePaymentId;
+    private String gatewaySessionId;
     private Boolean bookingFeePaid;
 
     // Smart Locking

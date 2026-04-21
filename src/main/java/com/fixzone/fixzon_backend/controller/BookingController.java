@@ -101,9 +101,10 @@ public class BookingController {
     @PostMapping("/{id}/payment")
     public ResponseEntity<BookingResponseDTO> completePayment(
             @PathVariable UUID id,
-            @RequestParam String stripePaymentId
+            @RequestParam String gatewaySessionId
     ) {
-        return ResponseEntity.ok(bookingService.completePayment(id, stripePaymentId));
+        BookingResponseDTO response = bookingService.completePayment(id, gatewaySessionId);
+        return ResponseEntity.ok(response);
     }
 
     /**

@@ -34,8 +34,8 @@ public class Payment {
     @Column(name = "time_slot")
     private String timeSlot;
 
-    @Column(name = "stripe_session_id", nullable = true)
-    private String stripeSessionId;
+    @Column(name = "gateway_session_id", nullable = true)
+    private String gatewaySessionId;
 
     @Column(name = "amount", nullable = false)
     private Double amount;

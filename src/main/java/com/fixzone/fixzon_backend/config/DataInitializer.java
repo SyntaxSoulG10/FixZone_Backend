@@ -205,12 +205,12 @@ public class DataInitializer implements CommandLineRunner {
                     break;
                 case 2, 3:
                     b.setStatus(BookingStatus.CONFIRMED);
-                    b.setStripePaymentId("STRIPE-" + UUID.randomUUID());
+                    b.setGatewaySessionId("GW-" + UUID.randomUUID());
                     b.setBookingFeePaid(true);
                     break;
                 case 4, 5:
                     b.setStatus(BookingStatus.COMPLETED);
-                    b.setStripePaymentId("STRIPE-" + UUID.randomUUID());
+                    b.setGatewaySessionId("GW-" + UUID.randomUUID());
                     b.setBookingFeePaid(true);
 
                     UUID invoiceId = UUID.randomUUID();
@@ -228,7 +228,7 @@ public class DataInitializer implements CommandLineRunner {
                     break;
                 default:
                     b.setStatus(BookingStatus.CONFIRMED);
-                    b.setStripePaymentId("STRIPE-" + UUID.randomUUID());
+                    b.setGatewaySessionId("GW-" + UUID.randomUUID());
                     b.setBookingFeePaid(true);
                     b.setRescheduleCount(1);
                     break;
@@ -266,7 +266,7 @@ public class DataInitializer implements CommandLineRunner {
                     b.setStatus(BookingStatus.COMPLETED);
                     b.setEstimatedCost(centerPackages.get(i % centerPackages.size()).getBasePrice());
                     b.setBookingFee(b.getEstimatedCost().multiply(BigDecimal.valueOf(0.10)));
-                    b.setStripePaymentId("STRIPE-HIST-" + UUID.randomUUID());
+                    b.setGatewaySessionId("GW-HIST-" + UUID.randomUUID());
                     b.setBookingFeePaid(true);
                     b.setCreatedAt(date);
                     bookings.add(b);
