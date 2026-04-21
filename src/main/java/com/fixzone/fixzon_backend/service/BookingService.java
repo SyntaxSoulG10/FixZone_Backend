@@ -152,7 +152,7 @@ public class BookingService {
         booking.setBookingFee(bookingFee);
         booking.setCancellationPenalty(BigDecimal.ZERO);
         booking.setStatus(BookingStatus.PENDING_PAYMENT);
-        booking.setIsPaid(false);
+        booking.setBookingFeePaid(false);
         booking.setIsCancelled(false);
         booking.setRescheduleCount(0);
         booking.setCreatedBy(customerId.toString());
@@ -292,16 +292,16 @@ public class BookingService {
     /**
      * Mark booking payment as completed and CONFIRM the slot.
      */
-    public BookingResponseDTO completePayment(UUID bookingId, UUID paymentId) {
+    public BookingResponseDTO completePayment(UUID bookingId, String stripePaymentId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        if (Boolean.TRUE.equals(booking.getIsPaid())) {
+        if (Boolean.TRUE.equals(booking.getBookingFeePaid())) {
             throw new RuntimeException("Payment already completed for this booking");
         }
 
-        booking.setIsPaid(true);
-        booking.setPaymentId(paymentId);
+        booking.setBookingFeePaid(true);
+        booking.setStripePaymentId(stripePaymentId);
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setUpdatedBy(getCurrentUserId().toString());
 
@@ -369,7 +369,9 @@ public class BookingService {
         response.setEstimatedCost(booking.getEstimatedCost());
         response.setBookingFee(booking.getBookingFee());
         response.setCancellationPenalty(booking.getCancellationPenalty());
-        response.setIsPaid(booking.getIsPaid());
+        response.setBookingFeePaid(booking.getBookingFeePaid());
+        response.setStripePaymentId(booking.getStripePaymentId());
+        response.setExpiresAt(booking.getExpiresAt());
         response.setSpecialRequest(booking.getSpecialRequest());
         response.setCreatedAt(booking.getCreatedAt());
         return response;

@@ -1,6 +1,7 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.DTO.AnalyticsDTO;
+import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.model.Invoice;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
@@ -57,7 +58,7 @@ public class AnalyticsService {
                                 .collect(Collectors.toList());
 
                 long totalJobs = bookings.size();
-                long pendingJobs = bookings.stream().filter(b -> "PENDING".equalsIgnoreCase(b.getStatus())).count();
+                long pendingJobs = bookings.stream().filter(b -> (b.getStatus()==BookingStatus.CONFIRMED)).count();
 
                 BigDecimal avgJobValue = totalJobs > 0
                                 ? totalRevenue.divide(BigDecimal.valueOf(totalJobs), 2, RoundingMode.HALF_UP)
@@ -110,7 +111,7 @@ public class AnalyticsService {
 
                 // Comparison for Pending Jobs Change (Current vs 7 days ago snapshot)
                 long pendingOld = bookings.stream()
-                                .filter(b -> "PENDING".equalsIgnoreCase(b.getStatus()) && b.getCreatedAt() != null
+                                .filter(b ->(b.getStatus()==BookingStatus.CONFIRMED) && b.getCreatedAt() != null
                                                 && b.getCreatedAt().isBefore(now.minusDays(7)))
                                 .count();
                 String pendingJobsChange = calculatePercentageChange(BigDecimal.valueOf(pendingJobs),

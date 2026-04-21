@@ -17,16 +17,14 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Booking {
 
-    // =========================
-    // 🔑 PRIMARY KEY
-    // =========================
+    // PRIMARY KEY
+
     @Id
     @Column(name = "booking_id")
     private UUID bookingId;
 
-    // =========================
-    // 🏢 MULTI-TENANT FIELDS
-    // =========================
+    // CORE RELATION FIELDS
+
     @Column(name = "tenant_id", nullable = false)
     private UUID tenantId;
 
@@ -42,21 +40,19 @@ public class Booking {
     @Column(name = "package_id")
     private UUID packageId;
 
-    // =========================
-    // 📅 BOOKING SCHEDULE
-    // =========================
-    @Column(name = "booking_date")
+    // BOOKING SCHEDULE
+
+    @Column(name = "booking_date", nullable = false)
     private LocalDate bookingDate;
 
-    @Column(name = "booking_time")
+    @Column(name = "booking_time", nullable = false)
     private LocalTime bookingTime;
 
     @Column(name = "special_request", length = 1000)
     private String specialRequest;
 
-    // =========================
-    // 🔄 STATUS MANAGEMENT
-    // =========================
+    // STATUS MANAGEMENT
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)
     private BookingStatus status;
@@ -67,39 +63,42 @@ public class Booking {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
-    // =========================
-    // 💰 PRICING & PAYMENT
-    // =========================
-    @Column(name = "estimated_cost", precision = 10, scale = 2)
-    private BigDecimal estimatedCost;
+    // BOOKING FEE (STRIPE)
+
+    @Column(name = "stripe_payment_id")
+    private String stripePaymentId; // Stripe session/payment ID
+
+    @Column(name = "booking_fee_paid")
+    private Boolean bookingFeePaid = false;
 
     @Column(name = "booking_fee", precision = 10, scale = 2)
     private BigDecimal bookingFee;
 
+    // SERVICE COST
+
+    @Column(name = "estimated_cost", precision = 10, scale = 2)
+    private BigDecimal estimatedCost;
+
     @Column(name = "cancellation_penalty", precision = 10, scale = 2)
     private BigDecimal cancellationPenalty;
 
-    @Column(name = "is_paid")
-    private Boolean isPaid = false;
+    // RESCHEDULE
 
-    @Column(name = "payment_id")
-    private UUID paymentId;
-
-    // =========================
-    // 🔁 RESCHEDULE CONTROL
-    // =========================
     @Column(name = "reschedule_count")
     private Integer rescheduleCount = 0;
 
-    // =========================
-    // 🛠 OPERATIONS
-    // =========================
+    // SMART LOCKING
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
+    // OPERATIONS
+
     @Column(name = "assigned_mechanic_id")
     private UUID assignedMechanicId;
 
-    // =========================
-    // 📊 AUDIT FIELDS
-    // =========================
+    // AUDIT
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -112,37 +111,49 @@ public class Booking {
     @Column(name = "updated_by", length = 100)
     private String updatedBy;
 
-    // =========================
-    // ⚙️ AUTO METHODS
-    // =========================
+    // AUTO METHODS
+
     @PrePersist
     protected void onCreate() {
         if (bookingId == null) {
             bookingId = UUID.randomUUID();
         }
+
         LocalDateTime now = LocalDateTime.now();
 
         if (createdAt == null) {
             createdAt = now;
         }
+
         updatedAt = now;
+
         if (createdBy == null) {
-            createdBy = "SYSTEM"; //Later (when auth is ready), this changes
+            createdBy = "SYSTEM";
         }
+
         if (updatedBy == null) {
-            updatedBy = "SYSTEM"; //Later (when auth is ready), this changes
+            updatedBy = "SYSTEM";
         }
+
         if (status == null) {
             status = BookingStatus.PENDING_PAYMENT;
         }
-        if (isPaid == null) {
-            isPaid = false;
+
+        if (bookingFeePaid == null) {
+            bookingFeePaid = false;
         }
+
+        if (isCancelled == null) {
+            isCancelled = false;
+        }
+
         if (rescheduleCount == null) {
             rescheduleCount = 0;
         }
-        if (isCancelled == null) {
-            isCancelled = false;
+
+        // Smart lock expiry (5 minutes)
+        if (expiresAt == null) {
+            expiresAt = now.plusMinutes(5);
         }
     }
 
@@ -151,7 +162,7 @@ public class Booking {
         updatedAt = LocalDateTime.now();
 
         if (updatedBy == null) {
-            updatedBy = "SYSTEM"; //Later (when auth is ready), this changes
+            updatedBy = "SYSTEM";
         }
     }
 }

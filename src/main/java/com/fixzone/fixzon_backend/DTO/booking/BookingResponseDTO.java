@@ -14,7 +14,7 @@ public class BookingResponseDTO {
     // Booking ID
     private UUID bookingId;
 
-    // 🔹 Basic references (used by frontend if needed)
+    // 🔹 Basic references
     private UUID centerId;
     private UUID vehicleId;
     private UUID packageId;
@@ -23,20 +23,24 @@ public class BookingResponseDTO {
     private LocalDate bookingDate;
     private LocalTime bookingTime;
 
-    // Status (for UI: pending / active / completed)
+    // Status
     private BookingStatus status;
 
     // Pricing
-    private BigDecimal estimatedCost;        // full amount
-    private BigDecimal bookingFee;           // 10% paid online
-    private BigDecimal cancellationPenalty;  // if cancelled late
+    private BigDecimal estimatedCost;
+    private BigDecimal bookingFee;
+    private BigDecimal cancellationPenalty;
 
-    // Payment
-    private Boolean isPaid;
+    // Payment fields (Stripe)
+    private String stripePaymentId;
+    private Boolean bookingFeePaid;
+
+    // Smart Locking
+    private LocalDateTime expiresAt;
 
     // Optional user note
     private String specialRequest;
 
-    //  For UI display (like "Booked on")
+    // Audit
     private LocalDateTime createdAt;
 }
