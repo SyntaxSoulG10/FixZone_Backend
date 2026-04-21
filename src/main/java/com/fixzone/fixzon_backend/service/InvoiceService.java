@@ -67,7 +67,7 @@ public class InvoiceService {
         if (invoice.getInvoiceId() == null) {
             invoice.setInvoiceId(UUID.randomUUID());
         }
-        return transformToDataTransferObject(invoiceRepository.save(invoice));
+        return transformToDataTransferObject(Objects.requireNonNull(invoiceRepository.save(invoice)));
     }
 
     public InvoiceDTO updateInvoice(UUID id, InvoiceDTO dto) {
@@ -90,7 +90,9 @@ public class InvoiceService {
             existing.setUpdatedBy(dto.getUpdatedBy());
         }
 
-        return transformToDataTransferObject(Objects.requireNonNull(invoiceRepository.save(existing)));
+        @SuppressWarnings("null")
+        Invoice saved = invoiceRepository.save(existing);
+        return transformToDataTransferObject(Objects.requireNonNull(saved));
     }
 
     public void deleteInvoice(UUID id) {
@@ -100,6 +102,7 @@ public class InvoiceService {
 
     // Direct constructor mapping enforces strict type transfer mapping reliably
     private InvoiceDTO transformToDataTransferObject(Invoice invoice) {
+        Objects.requireNonNull(invoice, "Invoice must not be null");
         return new InvoiceDTO(
                 invoice.getInvoiceId(),
                 invoice.getCompanyCode(),

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 
@@ -49,7 +50,7 @@ public class ServicePackageService {
         BeanUtils.copyProperties(Objects.requireNonNull(dto), model, "packageId", "createdAt");
         
         if (dto.getCenterId() != null) {
-            model.setServiceCenter(centerRepository.findById(dto.getCenterId())
+            model.setServiceCenter(centerRepository.findById(Objects.requireNonNull(dto.getCenterId()))
                 .orElseThrow(() -> new RuntimeException("Service Center not found")));
         }
         
@@ -57,9 +58,12 @@ public class ServicePackageService {
         return convertToDTO(saved);
     }
 
+    @SuppressWarnings("null")
     public ServicePackageDTO updatePackage(UUID id, ServicePackageDTO dto) {
         Objects.requireNonNull(id, "ID must not be null");
-        return repository.findById(id).map(existing -> {
+        Optional<ServicePackage> optionalPackage = repository.findById(id);
+        if (optionalPackage.isPresent()) {
+            ServicePackage existing = optionalPackage.get();
             if (dto != null) {
                 BeanUtils.copyProperties(dto, existing, "packageId", "createdAt");
                 if (dto.getCenterId() != null) {
@@ -67,8 +71,10 @@ public class ServicePackageService {
                         .orElseThrow(() -> new RuntimeException("Service Center not found")));
                 }
             }
-            return convertToDTO(Objects.requireNonNull(repository.save(existing)));
-        }).orElse(null);
+            ServicePackage saved = repository.save(existing);
+            return convertToDTO(saved);
+        }
+        return null;
     }
 
     public void deletePackage(UUID id) {
@@ -77,7 +83,7 @@ public class ServicePackageService {
     }
 
     private ServicePackageDTO convertToDTO(ServicePackage model) {
-        if (model == null) return null;
+        Objects.requireNonNull(model, "ServicePackage model must not be null");
         ServicePackageDTO dto = new ServicePackageDTO();
         BeanUtils.copyProperties(model, dto);
         if (model.getServiceCenter() != null) {
