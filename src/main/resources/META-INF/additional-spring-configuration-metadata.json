@@ -1,0 +1,9 @@
+{
+  "properties": [
+    {
+      "name": "stripe.secret-key",
+      "type": "java.lang.String",
+      "description": "The secret key for the Stripe API."
+    }
+  ]
+}

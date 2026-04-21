@@ -82,7 +82,9 @@ public class BookingService {
             existing.setUpdatedBy(dto.getUpdatedBy());
         }
 
-        return convertToDTO(bookingRepository.save(existing));
+        @SuppressWarnings("null")
+        Booking saved = bookingRepository.save(existing);
+        return convertToDTO(saved);
     }
 
     public void deleteBooking(UUID id) {
@@ -91,6 +93,7 @@ public class BookingService {
     }
 
     private BookingDTO convertToDTO(Booking booking) {
+        Objects.requireNonNull(booking, "Booking must not be null");
         return new BookingDTO(
                 booking.getBookingId(),
                 booking.getCenterId(),

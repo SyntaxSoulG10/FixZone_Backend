@@ -110,7 +110,7 @@ public class ServiceCenterService {
         center.setCenterId(dto.getCenterId());
 
         if (dto != null && dto.getOwnerId() != null) {
-            User owner = userRepository.findById(dto.getOwnerId())
+            User owner = userRepository.findById(Objects.requireNonNull(dto.getOwnerId()))
                     .orElseThrow(() -> new RuntimeException("Owner not found with id: " + dto.getOwnerId()));
             center.setOwner(Objects.requireNonNull(owner));
         }

@@ -66,7 +66,7 @@ public class InvoiceService {
         if (invoice.getInvoiceId() == null) {
             invoice.setInvoiceId(UUID.randomUUID());
         }
-        return convertToDTO(invoiceRepository.save(invoice));
+        return convertToDTO(Objects.requireNonNull(invoiceRepository.save(invoice)));
     }
 
     public InvoiceDTO updateInvoice(UUID id, InvoiceDTO dto) {
@@ -89,7 +89,9 @@ public class InvoiceService {
             existing.setUpdatedBy(dto.getUpdatedBy());
         }
 
-        return convertToDTO(Objects.requireNonNull(invoiceRepository.save(existing)));
+        @SuppressWarnings("null")
+        Invoice saved = invoiceRepository.save(existing);
+        return convertToDTO(saved);
     }
 
     public void deleteInvoice(UUID id) {
@@ -98,6 +100,7 @@ public class InvoiceService {
     }
 
     private InvoiceDTO convertToDTO(Invoice invoice) {
+        Objects.requireNonNull(invoice, "Invoice must not be null");
         return new InvoiceDTO(
                 invoice.getInvoiceId(),
                 invoice.getCompanyCode(),

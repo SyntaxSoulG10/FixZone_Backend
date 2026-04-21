@@ -60,7 +60,7 @@ public class PaymentRecordService {
         if (payment.getPaymentId() == null) {
             payment.setPaymentId(UUID.randomUUID());
         }
-        return convertToDTO(paymentRecordRepository.save(payment));
+        return convertToDTO(Objects.requireNonNull(paymentRecordRepository.save(payment)));
     }
 
     public PaymentRecordDTO updatePayment(UUID id, PaymentRecordDTO dto) {
@@ -79,7 +79,9 @@ public class PaymentRecordService {
             existing.setUpdatedBy(dto.getUpdatedBy());
         }
 
-        return convertToDTO(Objects.requireNonNull(paymentRecordRepository.save(existing)));
+        @SuppressWarnings("null")
+        PaymentRecord saved = paymentRecordRepository.save(existing);
+        return convertToDTO(saved);
     }
 
     public void deletePayment(UUID id) {
@@ -88,6 +90,7 @@ public class PaymentRecordService {
     }
 
     private PaymentRecordDTO convertToDTO(PaymentRecord payment) {
+        Objects.requireNonNull(payment, "PaymentRecord must not be null");
         return new PaymentRecordDTO(
                 payment.getPaymentId(),
                 payment.getInvoiceId(),
