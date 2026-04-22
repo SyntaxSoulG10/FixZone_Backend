@@ -36,6 +36,8 @@ public class OwnerController {
         return ResponseEntity.ok(retrievedOwner);
     }
 
+
+
     @GetMapping
     public ResponseEntity<List<OwnerDTO>> fetchAllCompanyOwners() {
         // We wrap the list in a ResponseEntity to provide semantic HTTP status codes.

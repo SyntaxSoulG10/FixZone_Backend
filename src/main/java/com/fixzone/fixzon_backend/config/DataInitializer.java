@@ -70,10 +70,10 @@ public class DataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) throws Exception {
         // If we already have 20 users (our target), skip initialization
-        if (userRepository.count() >= 20) {
-            System.out.println("Data already exists (20+ users), skipping initialization.");
-            return;
-        }
+        // if (userRepository.count() >= 20) {
+        //     System.out.println("Data already exists (20+ users), skipping initialization.");
+        //     return;
+        // }
 
         System.out.println("--- CLEARING OLD DATA AND STARTING FRESH SRI LANKAN SEEDING ---");
 
@@ -116,7 +116,7 @@ public class DataInitializer implements CommandLineRunner {
             owners.add(new Owner(UUID.randomUUID(), ownerNames[i], "owner" + (i + 1) + "@fixzone.lk", "+9477100000" + i,
                     passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(),
                     "system", LocalDateTime.now(), "system",
-                    "https://i.pravatar.cc/150?u=" + ownerNames[i].replace(" ", "+"), "FIX00" + (i + 1), companies[i],
+                    "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200&h=200&auto=format&fit=crop", "FIX00" + (i + 1), companies[i],
                     "contact@" + ownerNames[i].toLowerCase().replace(" ", "") + ".lk", "+9411200000" + i));
         }
         ownerRepository.saveAll(owners);
@@ -126,10 +126,13 @@ public class DataInitializer implements CommandLineRunner {
         String[] customerNames = { "Lakmal Senaratne", "Indika Bandara", "Saman Kumara", "Upul Kumara",
                 "Ranjan Perera" };
         for (int i = 0; i < 5; i++) {
-            customers.add(new Customer(UUID.randomUUID(), customerNames[i], "customer" + (i + 1) + "@fixzone.lk",
+            Customer c = new Customer(UUID.randomUUID(), customerNames[i], "customer" + (i + 1) + "@fixzone.lk",
                     "+9477300000" + i, passwordEncoder.encode("pass123"), "CUSTOMER", true, LocalDateTime.now(),
                     LocalDateTime.now(), "system", LocalDateTime.now(), "system",
-                    "https://i.pravatar.cc/150?u=" + customerNames[i].replace(" ", "+"), "CUST-00" + (i + 1), "EMAIL"));
+                    "https://images.unsplash.com/photo-" + (new String[]{"1507003211169-0a1dd7228f2d", "1494790108377-be9c29b29330", "1500648767791-00dcc994a43e", "1599566150163-29194dcaad36", "1573497019940-1c28c88b4f3e"}[i]) + "?q=80&w=150&h=150&auto=format&fit=crop", "CUST-00" + (i + 1), "EMAIL");
+            c.setVisits(5 + (i * 3));
+            c.setTotalSpent(new BigDecimal(5000 + (i * 2500)));
+            customers.add(c);
         }
         customerRepository.saveAll(customers);
 
@@ -162,7 +165,7 @@ public class DataInitializer implements CommandLineRunner {
             String mgrEmail = "manager" + (i + 1) + "@fixzone.lk";
             managers.add(new Manager(UUID.randomUUID(), mgrName, mgrEmail, "+94772000" + i,
                     passwordEncoder.encode("pass123"), "MANAGER", true, LocalDateTime.now(), LocalDateTime.now(),
-                    "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150?u=mgr" + i, "MGR-00" + (i + 1),
+                    "system", LocalDateTime.now(), "system", "https://images.unsplash.com/photo-" + (new String[]{"1472099645785-5658abf4ff4e", "1519085360753-af0119f7cbe7", "1507003211169-0a1dd7228f2d", "1500648767791-00dcc994a43e", "1494790108377-be9c29b29330"}[i % 5]) + "?q=80&w=150&h=150&auto=format&fit=crop", "MGR-00" + (i + 1),
                     center.getCenterId()));
         }
         managerRepository.saveAll(managers);
