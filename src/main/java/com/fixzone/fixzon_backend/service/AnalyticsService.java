@@ -1,6 +1,7 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.DTO.AnalyticsDTO;
+import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.model.Invoice;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
@@ -37,6 +38,9 @@ public class AnalyticsService {
         @Autowired
         private com.fixzone.fixzon_backend.repository.CustomerRepository customerRepository;
 
+        @Autowired
+        private com.fixzone.fixzon_backend.repository.PaymentRecordRepository paymentRecordRepository;
+
         public AnalyticsDTO getCompanyAnalytics(String companyCode) {
                 // Fetch all data for this company (based on companyCode in invoices)
                 List<Invoice> invoices = invoiceRepository.findByCompanyCode(companyCode);
@@ -54,11 +58,26 @@ public class AnalyticsService {
                                 .collect(Collectors.toList());
 
                 long totalJobs = bookings.size();
-                long pendingJobs = bookings.stream().filter(b -> "PENDING".equalsIgnoreCase(b.getStatus())).count();
+                long pendingJobs = bookings.stream().filter(b -> (b.getStatus()==BookingStatus.CONFIRMED)).count();
 
                 BigDecimal avgJobValue = totalJobs > 0
                                 ? totalRevenue.divide(BigDecimal.valueOf(totalJobs), 2, RoundingMode.HALF_UP)
                                 : BigDecimal.ZERO;
+
+                // Split Revenue by Payment Method
+                List<com.fixzone.fixzon_backend.model.PaymentRecord> allPayments = centerIds.stream()
+                                .flatMap(centerId -> paymentRecordRepository.findByCenterId(centerId).stream())
+                                .collect(Collectors.toList());
+
+                BigDecimal onlineRevenue = allPayments.stream()
+                                .filter(p -> "CARD".equalsIgnoreCase(p.getMethod()) || "ONLINE".equalsIgnoreCase(p.getMethod()))
+                                .map(com.fixzone.fixzon_backend.model.PaymentRecord::getAmount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                BigDecimal handCollectionRevenue = allPayments.stream()
+                                .filter(p -> "CASH".equalsIgnoreCase(p.getMethod()))
+                                .map(com.fixzone.fixzon_backend.model.PaymentRecord::getAmount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                 // Time-based calculations for "Changes"
                 LocalDateTime now = LocalDateTime.now();
@@ -92,7 +111,7 @@ public class AnalyticsService {
 
                 // Comparison for Pending Jobs Change (Current vs 7 days ago snapshot)
                 long pendingOld = bookings.stream()
-                                .filter(b -> "PENDING".equalsIgnoreCase(b.getStatus()) && b.getCreatedAt() != null
+                                .filter(b ->(b.getStatus()==BookingStatus.CONFIRMED) && b.getCreatedAt() != null
                                                 && b.getCreatedAt().isBefore(now.minusDays(7)))
                                 .count();
                 String pendingJobsChange = calculatePercentageChange(BigDecimal.valueOf(pendingJobs),
@@ -201,7 +220,7 @@ public class AnalyticsService {
 
                 return new AnalyticsDTO(totalRevenue, revenueChange, totalJobs, jobsChange, pendingJobs,
                                 pendingJobsChange,
-                                avgJobValue, avgJobValueChange, updatedAt,
+                                avgJobValue, avgJobValueChange, updatedAt, onlineRevenue, handCollectionRevenue,
                                 revenueOverview, customerGrowth, serviceBreakdown, topCenters);
         }
 

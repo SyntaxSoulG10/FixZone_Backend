@@ -43,6 +43,12 @@ public class OwnerService {
                 .orElse(null);
     }
 
+    public OwnerDTO retrieveOwnerByCode(String ownerCode) {
+        return ownerRepository.findByOwnerCode(ownerCode)
+                .map(this::transformToDataTransferObject)
+                .orElse(null);
+    }
+
     public OwnerDTO registerOwner(OwnerDTO newOwnerRegistrationData) {
         // Transform the DTO back to a JPA Entity because repositories only understand Entities.
         Owner newOwnerEntity = transformToDatabaseEntity(newOwnerRegistrationData);

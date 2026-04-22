@@ -132,6 +132,7 @@ public class AdminService {
     // --- Mapping Helpers ---
 
     private ServiceCenterDTO convertToDTO(ServiceCenter sc) {
+        Objects.requireNonNull(sc, "ServiceCenter must not be null");
         ServiceCenterDTO dto = new ServiceCenterDTO();
         BeanUtils.copyProperties(sc, dto);
         if (sc.getOwner() != null) {
@@ -141,12 +142,14 @@ public class AdminService {
     }
 
     private UserDTO convertToDTO(User user) {
+        Objects.requireNonNull(user, "User must not be null");
         UserDTO dto = new UserDTO();
         BeanUtils.copyProperties(user, dto);
         return dto;
     }
 
     private NotificationDTO convertToDTO(Notification note) {
+        Objects.requireNonNull(note, "Notification must not be null");
         NotificationDTO dto = new NotificationDTO();
         BeanUtils.copyProperties(note, dto);
         if (note.getRecipient() != null) {

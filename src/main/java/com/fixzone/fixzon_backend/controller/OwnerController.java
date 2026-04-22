@@ -26,6 +26,16 @@ public class OwnerController {
         this.ownerService = ownerService;
     }
 
+    @GetMapping("/current")
+    public ResponseEntity<OwnerDTO> fetchCurrentOwner() {
+        // Hardcoded for development until authentication is finished
+        OwnerDTO retrievedOwner = ownerService.retrieveOwnerByCode("FIX001");
+        if (retrievedOwner == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        return ResponseEntity.ok(retrievedOwner);
+    }
+
     @GetMapping
     public ResponseEntity<List<OwnerDTO>> fetchAllCompanyOwners() {
         // We wrap the list in a ResponseEntity to provide semantic HTTP status codes.

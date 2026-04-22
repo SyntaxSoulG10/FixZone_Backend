@@ -24,6 +24,12 @@ public class ServiceCenterController {
         return ResponseEntity.ok(serviceCenterService.getAllServiceCenters());
     }
 
+    @GetMapping("/current")
+    public ResponseEntity<List<ServiceCenterDTO>> getCurrentOwnerCenters() {
+        // Hardcoded for development
+        return ResponseEntity.ok(serviceCenterService.getServiceCentersByOwnerCode("FIX001"));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ServiceCenterDTO> getServiceCenterById(@PathVariable UUID id) {
         ServiceCenterDTO center = serviceCenterService.getServiceCenterById(id);

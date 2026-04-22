@@ -19,4 +19,11 @@ public class AnalyticsController {
         AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics(companyCode);
         return ResponseEntity.ok(analyticsData);
     }
+
+    @GetMapping("/current")
+    public ResponseEntity<AnalyticsDTO> getCurrentOwnerAnalytics() {
+        // Hardcoded for development until authentication is finished
+        AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics("FIX001");
+        return ResponseEntity.ok(analyticsData);
+    }
 }

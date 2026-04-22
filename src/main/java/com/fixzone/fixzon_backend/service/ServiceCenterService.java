@@ -4,10 +4,12 @@ import com.fixzone.fixzon_backend.DTO.ServiceCenterDTO;
 import com.fixzone.fixzon_backend.DTO.ServicePackageDTO;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.model.User;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import com.fixzone.fixzon_backend.repository.UserRepository;
 import org.springframework.beans.BeanUtils;
+//import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Objects;
@@ -20,13 +22,16 @@ public class ServiceCenterService {
     private final ServiceCenterRepository serviceCenterRepository;
     private final UserRepository userRepository;
     private final ServicePackageRepository servicePackageRepository;
+    private final OwnerRepository ownerRepository;
 
     public ServiceCenterService(ServiceCenterRepository serviceCenterRepository, 
                                UserRepository userRepository,
-                               ServicePackageRepository servicePackageRepository) {
+                               ServicePackageRepository servicePackageRepository,
+                               OwnerRepository ownerRepository) {
         this.serviceCenterRepository = serviceCenterRepository;
         this.userRepository = userRepository;
         this.servicePackageRepository = servicePackageRepository;
+        this.ownerRepository = ownerRepository;
     }
 
     public List<ServiceCenterDTO> getAllServiceCenters() {
@@ -41,6 +46,14 @@ public class ServiceCenterService {
         ServiceCenter center = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
         return transformToDataTransferObject(center);
+    }
+
+    public List<ServiceCenterDTO> getServiceCentersByOwnerCode(String code) {
+        return ownerRepository.findByOwnerCode(code)
+                .map(owner -> serviceCenterRepository.findByOwner_UserId(owner.getUserId()).stream()
+                        .map(this::transformToDataTransferObject)
+                        .collect(Collectors.toList()))
+                .orElse(List.of());
     }
 
     public ServiceCenterDTO createServiceCenter(ServiceCenterDTO dto) {
@@ -104,7 +117,7 @@ public class ServiceCenterService {
         center.setCenterId(dto.getCenterId());
 
         if (dto != null && dto.getOwnerId() != null) {
-            User owner = userRepository.findById(dto.getOwnerId())
+            User owner = userRepository.findById(Objects.requireNonNull(dto.getOwnerId()))
                     .orElseThrow(() -> new RuntimeException("Owner not found with id: " + dto.getOwnerId()));
             center.setOwner(Objects.requireNonNull(owner));
         }

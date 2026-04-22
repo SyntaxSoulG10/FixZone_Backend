@@ -27,6 +27,8 @@ public class AnalyticsDTO {
     private BigDecimal avgJobValue;
     private String avgJobValueChange;
     private String updatedAt;
+    private BigDecimal onlineRevenue;
+    private BigDecimal handCollectionRevenue;
     private List<MonthlyDataDTO> revenueOverview;
     private List<MonthlyGrowthDTO> customerGrowth;
     private List<ServiceBreakdownDTO> serviceBreakdown;
@@ -35,7 +37,8 @@ public class AnalyticsDTO {
     // Alternative constructor for AnalyticsService usage
     public AnalyticsDTO(BigDecimal totalRevenue, String revenueChange, long totalJobs, String jobsChange,
                         long pendingJobs, String pendingJobsChange, BigDecimal avgJobValue, 
-                        String avgJobValueChange, String updatedAt, List<MonthlyDataDTO> revenueOverview,
+                        String avgJobValueChange, String updatedAt, BigDecimal onlineRevenue, 
+                        BigDecimal handCollectionRevenue, List<MonthlyDataDTO> revenueOverview,
                         List<MonthlyGrowthDTO> customerGrowth, List<ServiceBreakdownDTO> serviceBreakdown,
                         List<CenterPerformanceDTO> topCenters) {
         this.totalRevenue = totalRevenue;
@@ -47,6 +50,8 @@ public class AnalyticsDTO {
         this.avgJobValue = avgJobValue;
         this.avgJobValueChange = avgJobValueChange;
         this.updatedAt = updatedAt;
+        this.onlineRevenue = onlineRevenue;
+        this.handCollectionRevenue = handCollectionRevenue;
         this.revenueOverview = revenueOverview;
         this.customerGrowth = customerGrowth;
         this.serviceBreakdown = serviceBreakdown;

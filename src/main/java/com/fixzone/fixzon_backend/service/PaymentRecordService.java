@@ -3,7 +3,9 @@ package com.fixzone.fixzon_backend.service;
 import com.fixzone.fixzon_backend.DTO.PaymentRecordDTO;
 import com.fixzone.fixzon_backend.model.PaymentRecord;
 import com.fixzone.fixzon_backend.repository.PaymentRecordRepository;
+import com.fixzone.fixzon_backend.repository.InvoiceRepository;
 import org.springframework.stereotype.Service;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -13,9 +15,11 @@ import java.util.stream.Collectors;
 public class PaymentRecordService {
 
     private final PaymentRecordRepository paymentRecordRepository;
+    private final InvoiceRepository invoiceRepository;
 
-    public PaymentRecordService(PaymentRecordRepository paymentRecordRepository) {
+    public PaymentRecordService(PaymentRecordRepository paymentRecordRepository, InvoiceRepository invoiceRepository) {
         this.paymentRecordRepository = paymentRecordRepository;
+        this.invoiceRepository = invoiceRepository;
     }
 
     public List<PaymentRecordDTO> getAllPayments() {
@@ -23,6 +27,19 @@ public class PaymentRecordService {
         return paymentRecordRepository.findAll().stream()
                 .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
+    }
+
+    public List<PaymentRecordDTO> getPaymentsByCompanyCode(String companyCode) {
+        // Find all invoices for this company first
+        List<com.fixzone.fixzon_backend.model.Invoice> invoices = invoiceRepository.findByCompanyCode(companyCode);
+        List<PaymentRecordDTO> allPayments = new ArrayList<>();
+        
+        for (com.fixzone.fixzon_backend.model.Invoice inv : invoices) {
+            allPayments.addAll(paymentRecordRepository.findByInvoiceId(inv.getInvoiceId()).stream()
+                    .map(this::transformToDataTransferObject)
+                    .collect(Collectors.toList()));
+        }
+        return allPayments;
     }
 
     public PaymentRecordDTO getPaymentById(UUID id) {
@@ -61,7 +78,7 @@ public class PaymentRecordService {
         if (payment.getPaymentId() == null) {
             payment.setPaymentId(UUID.randomUUID());
         }
-        return transformToDataTransferObject(paymentRecordRepository.save(payment));
+        return transformToDataTransferObject(Objects.requireNonNull(paymentRecordRepository.save(payment)));
     }
 
     public PaymentRecordDTO updatePayment(UUID id, PaymentRecordDTO dto) {
@@ -80,7 +97,9 @@ public class PaymentRecordService {
             existing.setUpdatedBy(dto.getUpdatedBy());
         }
 
-        return transformToDataTransferObject(Objects.requireNonNull(paymentRecordRepository.save(existing)));
+        @SuppressWarnings("null")
+        PaymentRecord saved = paymentRecordRepository.save(existing);
+        return transformToDataTransferObject(Objects.requireNonNull(saved));
     }
 
     public void deletePayment(UUID id) {
@@ -90,6 +109,7 @@ public class PaymentRecordService {
 
     // Direct constructor mapping enforces strict type transfer mapping reliably
     private PaymentRecordDTO transformToDataTransferObject(PaymentRecord payment) {
+        Objects.requireNonNull(payment, "PaymentRecord must not be null");
         return new PaymentRecordDTO(
                 payment.getPaymentId(),
                 payment.getInvoiceId(),

@@ -24,6 +24,12 @@ public class PaymentRecordController {
         return ResponseEntity.ok(paymentRecordService.getAllPayments());
     }
 
+    @GetMapping("/current")
+    public ResponseEntity<List<PaymentRecordDTO>> getCurrentOwnerPayments() {
+        // Hardcoded for development
+        return ResponseEntity.ok(paymentRecordService.getPaymentsByCompanyCode("FIX001"));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PaymentRecordDTO> getPaymentById(@PathVariable UUID id) {
         PaymentRecordDTO payment = paymentRecordService.getPaymentById(id);
