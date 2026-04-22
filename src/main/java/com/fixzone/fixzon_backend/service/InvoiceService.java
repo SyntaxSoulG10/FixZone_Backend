@@ -90,7 +90,6 @@ public class InvoiceService {
             existing.setUpdatedBy(dto.getUpdatedBy());
         }
 
-        @SuppressWarnings("null")
         Invoice saved = invoiceRepository.save(existing);
         return transformToDataTransferObject(Objects.requireNonNull(saved));
     }

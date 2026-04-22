@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,6 +18,8 @@ import java.util.UUID;
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
     
     List<Booking> findByCenterId(UUID centerId);
+
+    List<Booking> findByCenterIdIn(Collection<UUID> centerIds);
     
     List<Booking> findByCustomerId(UUID customerId);
     

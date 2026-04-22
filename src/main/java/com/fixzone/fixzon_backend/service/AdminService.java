@@ -11,6 +11,7 @@ import com.fixzone.fixzon_backend.repository.UserRepository;
 import com.fixzone.fixzon_backend.repository.NotificationRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -36,12 +37,12 @@ public class AdminService {
     // --- Service Center Management ---
 
     public List<ServiceCenterDTO> getPendingServiceCenters() {
-        return serviceCenterRepository.findAll().stream()
-                .filter(sc -> "PENDING".equals(sc.getStatus()))
+        return serviceCenterRepository.findByStatus("PENDING").stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public ServiceCenterDTO approveServiceCenter(UUID id) {
         Objects.requireNonNull(id, "ID must not be null");
         ServiceCenter sc = serviceCenterRepository.findById(id)
@@ -56,6 +57,7 @@ public class AdminService {
         return convertToDTO(serviceCenterRepository.save(sc));
     }
 
+    @Transactional
     public ServiceCenterDTO rejectServiceCenter(UUID id, String reason) {
         Objects.requireNonNull(id, "ID must not be null");
         ServiceCenter sc = serviceCenterRepository.findById(id)
@@ -70,6 +72,7 @@ public class AdminService {
         return convertToDTO(serviceCenterRepository.save(sc));
     }
 
+    @Transactional
     public ServiceCenterDTO updateServiceCenterStatus(UUID id, String status) {
         Objects.requireNonNull(id, "ID must not be null");
         ServiceCenter sc = serviceCenterRepository.findById(id)
@@ -81,6 +84,7 @@ public class AdminService {
     // --- User Account Management & Platform Security ---
     // Methods for managing global user access, status transitions, and administrative oversight.
 
+    @Transactional
     public UserDTO updateUserStatus(UUID id, String status) {
         Objects.requireNonNull(id, "ID must not be null");
         User user = userRepository.findById(id)

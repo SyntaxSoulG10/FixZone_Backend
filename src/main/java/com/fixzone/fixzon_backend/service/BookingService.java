@@ -384,11 +384,13 @@ public class BookingService {
         return response;
     }
 
+/*
     private boolean isExpired(Booking booking) {
         return booking.getStatus() == BookingStatus.PENDING_PAYMENT &&
                booking.getExpiresAt() != null &&
                booking.getExpiresAt().isBefore(LocalDateTime.now());
     }
+*/
 
     private void saveBookingHistory(
             UUID bookingId,
@@ -414,11 +416,13 @@ public class BookingService {
         bookingHistoryRepository.save(history);
     }
 
+/*
     private void validateBookingOwnership(Booking booking, UUID currentUserId) {
         if (!booking.getCustomerId().equals(currentUserId)) {
             throw new RuntimeException("Access denied: You do not own this booking");
         }
     }
+*/
 
     private UUID getCurrentUserId() {     // review after JWT set
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -440,7 +444,7 @@ public class BookingService {
     }
 
     private UUID getCurrentTenantId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        // Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         // Placeholder: extract from JWT details/claims later
         return UUID.fromString("00000000-0000-0000-0000-000000000001");
     }

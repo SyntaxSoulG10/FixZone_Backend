@@ -8,5 +8,6 @@ import java.util.List;
 public interface ServiceCenterRepository extends JpaRepository<ServiceCenter, UUID> {
     List<ServiceCenter> findByIsActive(Boolean isActive);
     List<ServiceCenter> findByOwner_UserId(UUID userId);
+    List<ServiceCenter> findByStatus(String status);
 }
 
