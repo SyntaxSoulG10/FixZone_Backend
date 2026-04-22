@@ -14,6 +14,7 @@ public class ServiceCenterDTO {
     private UUID centerId;
     private UUID ownerId;
     private String name;
+    private String managerName;
     private String address;
     private String contactPhone;
     private String openingHours;

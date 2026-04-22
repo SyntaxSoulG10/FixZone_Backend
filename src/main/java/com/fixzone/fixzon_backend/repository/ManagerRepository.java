@@ -11,4 +11,5 @@ import java.util.List;
 public interface ManagerRepository extends JpaRepository<Manager, UUID> {
     Optional<Manager> findByManagerCode(String managerCode);
     List<Manager> findByManagedCenterIdIn(List<UUID> centerIds);
+    Optional<Manager> findByManagedCenterId(UUID managedCenterId);
 }

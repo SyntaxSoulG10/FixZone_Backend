@@ -113,7 +113,8 @@ public class DataInitializer implements CommandLineRunner {
         String[] companies = { "Ranasinghe Motors", "Perera Auto", "Fernando Repairs", "Sirisena Garage",
                 "Gunawardena Services" };
         for (int i = 0; i < 5; i++) {
-            owners.add(new Owner(UUID.randomUUID(), ownerNames[i], "owner" + (i + 1) + "@fixzone.lk", "+9477100000" + i,
+            UUID ownerId = (i == 0) ? UUID.fromString("00000000-0000-0000-0000-000000010011") : UUID.randomUUID();
+            owners.add(new Owner(ownerId, ownerNames[i], "owner" + (i + 1) + "@fixzone.lk", "+9477100000" + i,
                     passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(),
                     "system", LocalDateTime.now(), "system",
                     "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200&h=200&auto=format&fit=crop", "FIX00" + (i + 1), companies[i],
