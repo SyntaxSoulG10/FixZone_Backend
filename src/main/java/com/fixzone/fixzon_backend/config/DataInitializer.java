@@ -9,12 +9,12 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -39,22 +39,17 @@ public class DataInitializer implements CommandLineRunner {
     private final PaymentRepository paymentRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public DataInitializer(UserRepository userRepository,
-            OwnerRepository ownerRepository,
-            CustomerRepository customerRepository,
-            ManagerRepository managerRepository,
-            SuperAdminRepository superAdminRepository,
-            ServiceCenterRepository serviceCenterRepository,
-            ServicePackageRepository servicePackageRepository,
-            BookingRepository bookingRepository,
-            InvoiceRepository invoiceRepository,
-            PaymentRecordRepository paymentRecordRepository,
-            NotificationRepository notificationRepository,
-            SubscriptionRepository subscriptionRepository,
-            AnalyticsRepository analyticsRepository,
-            BookingHistoryRepository bookingHistoryRepository,
-            PaymentRepository paymentRepository,
-            PasswordEncoder passwordEncoder) {
+    @Value("${spring.jpa.hibernate.ddl-auto:update}")
+    private String ddlAuto;
+
+    public DataInitializer(UserRepository userRepository, OwnerRepository ownerRepository,
+            CustomerRepository customerRepository, ManagerRepository managerRepository,
+            SuperAdminRepository superAdminRepository, ServiceCenterRepository serviceCenterRepository,
+            ServicePackageRepository servicePackageRepository, BookingRepository bookingRepository,
+            InvoiceRepository invoiceRepository, PaymentRecordRepository paymentRecordRepository,
+            NotificationRepository notificationRepository, SubscriptionRepository subscriptionRepository,
+            AnalyticsRepository analyticsRepository, BookingHistoryRepository bookingHistoryRepository,
+            PaymentRepository paymentRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.ownerRepository = ownerRepository;
         this.customerRepository = customerRepository;
@@ -76,9 +71,9 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        // If we already have 20 users (our target), skip initialization
-        if (userRepository.count() >= 20) {
-            System.out.println("Data already exists (20+ users), skipping initialization.");
+        // Only run initialization if ddl-auto is set to 'create'
+        if (!"create".equalsIgnoreCase(ddlAuto)) {
+            System.out.println("ddl-auto is '" + ddlAuto + "', skipping fresh data initialization.");
             return;
         }
 
@@ -191,102 +186,101 @@ public class DataInitializer implements CommandLineRunner {
         }
         servicePackageRepository.saveAll(packages);
 
-        // 7. & 8. Bookings & Invoices (Historical Data for Analytics)
-        System.out.println("Seeding historical data for FIX001...");
+        // 7. & 8. Bookings & Invoices (10 per Branch, 3 Branches, Split Payments)
+        System.out.println("Seeding 10 historical bookings each for Colombo, Kandy, and Galle...");
         List<Booking> bookings = new ArrayList<>();
         List<Invoice> invoices = new ArrayList<>();
         List<PaymentRecord> paymentRecords = new ArrayList<>();
         List<BookingHistory> historicalHistories = new ArrayList<>();
 
-        Owner mainOwner = owners.get(0);
-        ServiceCenter mainCenter = centers.get(0);
+        LocalDate today = LocalDate.now();
+        LocalDate[] monthsToSeed = { today.minusMonths(2), today.minusMonths(1), today };
+        int txnCounter = 1000;
 
-        // Historical Data: Jan to Apr
-        int[] bookingCounts = { 15, 22, 28, 35 };
-        int[] months = { 1, 2, 3, 4 };
+        // Growth trends for 3 branches (Each sums to 10)
+        int[][] trends = {
+            {2, 3, 5}, // Branch 1: steady growth
+            {1, 3, 6}, // Branch 2: sharper growth
+            {1, 2, 7}  // Branch 3: late spike
+        };
 
-        for (int m = 0; m < months.length; m++) {
-            for (int k = 0; k < bookingCounts[m]; k++) {
-                LocalDateTime date = LocalDateTime.of(2026, months[m], (k % 28) + 1, 10, 0);
+        for (int c = 0; c < 3; c++) {
+            ServiceCenter center = centers.get(c);
+            Owner owner = (Owner) center.getOwner();
+            
+            List<ServicePackage> centerPackages = packages.stream()
+                    .filter(p -> p.getServiceCenter().getCenterId().equals(center.getCenterId()))
+                    .toList();
+            
+            if (centerPackages.isEmpty()) continue;
 
-                Booking b = new Booking();
-                b.setBookingId(UUID.randomUUID());
-                b.setCenterId(mainCenter.getCenterId());
-                b.setTenantId(mainOwner.getUserId());
-                b.setCustomerId(customers.get(k % 5).getUserId());
-                b.setVehicleId(UUID.randomUUID());
-                b.setPackageId(packages.get(k % 5).getPackageId());
-                b.setBookingDate(date.toLocalDate().plusDays(1));
-                b.setBookingTime(date.toLocalTime());
-                b.setStatus(k % 10 == 0 ? BookingStatus.PENDING_PAYMENT : BookingStatus.COMPLETED);
-                b.setEstimatedCost(packages.get(k % 5).getBasePrice());
-                b.setCreatedAt(date);
-                bookings.add(b);
+            for (int m = 0; m < 3; m++) {
+                int monthlyCount = trends[c][m];
+                LocalDate monthDate = monthsToSeed[m];
 
-                if (b.getStatus() == BookingStatus.COMPLETED) {
+                for (int i = 0; i < monthlyCount; i++) {
+                    Customer customer = customers.get(i % customers.size());
+                    int day = Math.min(28, (i * 4) + 1);
+                    LocalDateTime date = LocalDateTime.of(monthDate.getYear(), monthDate.getMonthValue(), day, 10, 0);
+
+                    if (date.isAfter(LocalDateTime.now())) continue;
+
+                    // 1. Create Completed Booking
+                    Booking b = new Booking();
+                    b.setBookingId(UUID.randomUUID());
+                    b.setCenterId(center.getCenterId());
+                    b.setTenantId(owner.getUserId());
+                    b.setCustomerId(customer.getUserId());
+                    b.setVehicleId(UUID.randomUUID());
+                    
+                    ServicePackage pkg = centerPackages.get((i + c) % centerPackages.size());
+                    b.setPackageId(pkg.getPackageId());
+                    b.setBookingDate(date.toLocalDate().plusDays(1));
+                    b.setBookingTime(date.toLocalTime());
+                    b.setStatus(BookingStatus.COMPLETED);
+                    
+                    BigDecimal estimatedCost = pkg.getBasePrice();
+                    BigDecimal bookingFee = estimatedCost.multiply(BigDecimal.valueOf(0.10)).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal cashBalance = estimatedCost.subtract(bookingFee);
+                    
+                    b.setEstimatedCost(estimatedCost);
+                    b.setBookingFee(bookingFee);
+                    b.setGatewaySessionId("GW-HIST-" + UUID.randomUUID());
+                    b.setBookingFeePaid(true);
+                    b.setCreatedAt(date.minusDays(5));
+                    bookings.add(b);
+
+                    // 2. Create Invoice
                     UUID invId = UUID.randomUUID();
-                    BigDecimal total = b.getEstimatedCost();
-                    BigDecimal tax = total.multiply(new BigDecimal("0.1")).setScale(2, RoundingMode.HALF_UP);
-                    BigDecimal subtot = total.subtract(tax);
-
-                    Invoice inv = new Invoice(invId, mainOwner.getOwnerCode(), mainCenter.getCenterId(),
-                            b.getBookingId(), b.getCustomerId(), subtot, tax, BigDecimal.ZERO, total, "PAID",
+                    Invoice inv = new Invoice(invId, owner.getOwnerCode(), center.getCenterId(), b.getBookingId(),
+                            b.getCustomerId(), estimatedCost.multiply(new BigDecimal("0.9")), 
+                            estimatedCost.multiply(new BigDecimal("0.1")), BigDecimal.ZERO, estimatedCost, "PAID",
                             date.plusHours(2), date.plusDays(1), date, "system", date, "system");
                     invoices.add(inv);
 
-                    paymentRecords.add(new PaymentRecord(UUID.randomUUID(), invId, mainCenter.getCenterId(), total, "CASH",
-                            "TXN-" + months[m] + "-" + k, "Completed", date.plusHours(2), date.plusHours(2), "system",
+                    // 3. Create Split Payments (Online CARD fee + CASH balance)
+                    // Online transaction at time of booking
+                    paymentRecords.add(new PaymentRecord(UUID.randomUUID(), invId, center.getCenterId(), bookingFee, "CARD",
+                            "ONLINE-FEE-" + (txnCounter++), "Completed", date.minusDays(5), date.minusDays(5), "system",
+                            date.minusDays(5), "system"));
+
+                    // Cash payment after work is done
+                    paymentRecords.add(new PaymentRecord(UUID.randomUUID(), invId, center.getCenterId(), cashBalance, "CASH",
+                            "CASH-FINAL-" + (txnCounter++), "Completed", date.plusHours(2), date.plusHours(2), "system",
                             date.plusHours(2), "system"));
-                    
-                    // Add history
+
+                    // 4. Add history
                     BookingHistory hist = new BookingHistory();
                     hist.setBookingId(b.getBookingId());
-                    hist.setTenantId(mainOwner.getUserId());
+                    hist.setTenantId(owner.getUserId());
                     hist.setAction(BookingAction.COMPLETED);
                     hist.setNewDate(b.getBookingDate());
                     hist.setNewTime(b.getBookingTime());
                     hist.setPenalty(BigDecimal.ZERO);
-                    hist.setNote("Service completed and paid via CASH.");
+                    hist.setNote("Service completed. Paid 10% booking fee via CARD online and 90% balance via CASH.");
                     historicalHistories.add(hist);
                 }
             }
-        }
-
-        // Additional status diversity for current month
-        for (int i = 0; i < 10; i++) {
-            ServiceCenter center = centers.get(i % centers.size());
-            Customer customer = customers.get(i % customers.size());
-            Booking b = new Booking();
-            b.setBookingId(UUID.randomUUID());
-            b.setCenterId(center.getCenterId());
-            b.setTenantId(((Owner)center.getOwner()).getUserId());
-            b.setCustomerId(customer.getUserId());
-            b.setVehicleId(UUID.randomUUID());
-            b.setPackageId(packages.get(i % packages.size()).getPackageId());
-            b.setBookingDate(LocalDate.now().plusDays(i + 1));
-            b.setBookingTime(LocalTime.of(9 + (i % 5), 0));
-            b.setEstimatedCost(packages.get(i % packages.size()).getBasePrice());
-            b.setCreatedAt(LocalDateTime.now().minusDays(1));
-
-            switch (i % 4) {
-                case 0:
-                    b.setStatus(BookingStatus.PENDING_PAYMENT);
-                    break;
-                case 1:
-                    b.setStatus(BookingStatus.CONFIRMED);
-                    b.setBookingFeePaid(true);
-                    break;
-                case 2:
-                    b.setStatus(BookingStatus.CANCELLED);
-                    b.setIsCancelled(true);
-                    b.setCancelledAt(LocalDateTime.now());
-                    break;
-                case 3:
-                    b.setStatus(BookingStatus.COMPLETED);
-                    b.setBookingFeePaid(true);
-                    break;
-            }
-            bookings.add(b);
         }
 
         bookingRepository.saveAll(bookings);
