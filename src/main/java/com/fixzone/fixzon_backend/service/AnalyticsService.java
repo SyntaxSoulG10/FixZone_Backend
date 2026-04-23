@@ -1,6 +1,7 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.DTO.AnalyticsDTO;
+import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.model.Invoice;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
@@ -9,7 +10,6 @@ import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.InvoiceRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -22,23 +22,26 @@ import java.util.stream.Collectors;
 @Service
 public class AnalyticsService {
 
-        @Autowired
-        private InvoiceRepository invoiceRepository;
+        private final InvoiceRepository invoiceRepository;
+        private final BookingRepository bookingRepository;
+        private final ServiceCenterRepository serviceCenterRepository;
+        private final ServicePackageRepository servicePackageRepository;
+        private final com.fixzone.fixzon_backend.repository.CustomerRepository customerRepository;
+        private final com.fixzone.fixzon_backend.repository.PaymentRecordRepository paymentRecordRepository;
 
-        @Autowired
-        private BookingRepository bookingRepository;
-
-        @Autowired
-        private ServiceCenterRepository serviceCenterRepository;
-
-        @Autowired
-        private ServicePackageRepository servicePackageRepository;
-
-        @Autowired
-        private com.fixzone.fixzon_backend.repository.CustomerRepository customerRepository;
-
-        @Autowired
-        private com.fixzone.fixzon_backend.repository.PaymentRecordRepository paymentRecordRepository;
+        public AnalyticsService(InvoiceRepository invoiceRepository,
+                                BookingRepository bookingRepository,
+                                ServiceCenterRepository serviceCenterRepository,
+                                ServicePackageRepository servicePackageRepository,
+                                com.fixzone.fixzon_backend.repository.CustomerRepository customerRepository,
+                                com.fixzone.fixzon_backend.repository.PaymentRecordRepository paymentRecordRepository) {
+                this.invoiceRepository = invoiceRepository;
+                this.bookingRepository = bookingRepository;
+                this.serviceCenterRepository = serviceCenterRepository;
+                this.servicePackageRepository = servicePackageRepository;
+                this.customerRepository = customerRepository;
+                this.paymentRecordRepository = paymentRecordRepository;
+        }
 
         public AnalyticsDTO getCompanyAnalytics(String companyCode) {
                 // Fetch all data for this company (based on companyCode in invoices)
@@ -52,12 +55,10 @@ public class AnalyticsService {
 
                 // Fetch bookings (associated with these centers)
                 Set<UUID> centerIds = invoices.stream().map(Invoice::getCenterId).collect(Collectors.toSet());
-                List<Booking> bookings = bookingRepository.findAll().stream()
-                                .filter(b -> centerIds.contains(b.getCenterId()))
-                                .collect(Collectors.toList());
+                List<Booking> bookings = bookingRepository.findByCenterIdIn(centerIds);
 
                 long totalJobs = bookings.size();
-                long pendingJobs = bookings.stream().filter(b -> "PENDING".equalsIgnoreCase(b.getStatus())).count();
+                long pendingJobs = bookings.stream().filter(b -> (b.getStatus()==BookingStatus.CONFIRMED)).count();
 
                 BigDecimal avgJobValue = totalJobs > 0
                                 ? totalRevenue.divide(BigDecimal.valueOf(totalJobs), 2, RoundingMode.HALF_UP)
@@ -110,7 +111,7 @@ public class AnalyticsService {
 
                 // Comparison for Pending Jobs Change (Current vs 7 days ago snapshot)
                 long pendingOld = bookings.stream()
-                                .filter(b -> "PENDING".equalsIgnoreCase(b.getStatus()) && b.getCreatedAt() != null
+                                .filter(b ->(b.getStatus()==BookingStatus.CONFIRMED) && b.getCreatedAt() != null
                                                 && b.getCreatedAt().isBefore(now.minusDays(7)))
                                 .count();
                 String pendingJobsChange = calculatePercentageChange(BigDecimal.valueOf(pendingJobs),
@@ -191,11 +192,7 @@ public class AnalyticsService {
                                         int active = entry.getValue().stream().map(Booking::getCustomerId)
                                                         .collect(Collectors.toSet()).size();
 
-                                        long newCust = customerRepository.findAll().stream()
-                                                        .filter(c -> c.getCreatedAt() != null
-                                                                        && c.getCreatedAt().isAfter(start)
-                                                                        && c.getCreatedAt().isBefore(end))
-                                                        .count();
+                                        long newCust = customerRepository.countByCreatedAtBetween(start, end);
 
                                         return new AnalyticsDTO.MonthlyGrowthDTO(monthName, (int) newCust, active);
                                 })

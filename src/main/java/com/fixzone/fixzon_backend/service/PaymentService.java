@@ -83,13 +83,13 @@ public class PaymentService {
                 .build();
 
         Session session = Session.create(params);
-        payment.setStripeSessionId(session.getId());
+        payment.setGatewaySessionId(session.getId());
         paymentRepository.save(payment);
         return session.getUrl();
     }
 
     public boolean handleSuccess(String sessionId) {
-        Optional<Payment> optionalPayment = paymentRepository.findByStripeSessionId(sessionId);
+        Optional<Payment> optionalPayment = paymentRepository.findByGatewaySessionId(sessionId);
         if (optionalPayment.isPresent()) {
             Payment payment = optionalPayment.get();
             try {
@@ -123,7 +123,7 @@ public class PaymentService {
                     long refundAmountInCents = (long) (refundAmount * 100);
 
                     // Retrieve session to get PaymentIntent id for refund
-                    Session stripeSession = Session.retrieve(payment.getStripeSessionId());
+                    Session stripeSession = Session.retrieve(payment.getGatewaySessionId());
                     String paymentIntentId = stripeSession.getPaymentIntent();
 
                     if (paymentIntentId != null) {
@@ -182,7 +182,7 @@ public class PaymentService {
             Payment newPayment = new Payment();
             newPayment.setBookingId(bookingId);
             newPayment.setAmount(extraAmount);
-            newPayment.setStripeSessionId(session.getId());
+            newPayment.setGatewaySessionId(session.getId());
             newPayment.setStatus(PaymentStatus.PENDING);
             paymentRepository.save(newPayment);
 
