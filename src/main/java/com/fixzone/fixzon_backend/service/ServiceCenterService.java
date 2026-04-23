@@ -3,6 +3,7 @@ package com.fixzone.fixzon_backend.service;
 import com.fixzone.fixzon_backend.DTO.ServiceCenterDTO;
 import com.fixzone.fixzon_backend.DTO.ServicePackageDTO;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
+import com.fixzone.fixzon_backend.model.Manager;
 import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
@@ -122,8 +123,10 @@ public class ServiceCenterService {
         dto.setRevenue(revenue != null ? revenue : java.math.BigDecimal.ZERO);
         
         // Populate manager name
-        managerRepository.findByManagedCenterId(center.getCenterId())
-                .ifPresent(manager -> dto.setManagerName(manager.getFullName()));
+        List<Manager> centerManagers = managerRepository.findByManagedCenterId(center.getCenterId());
+        if (!centerManagers.isEmpty()) {
+            dto.setManagerName(centerManagers.get(0).getFullName());
+        }
 
         // Mocking mechanics and capacity as they aren't fully modeled yet, but ensuring non-zero as requested
         dto.setMechanicsCount(5 + (center.getName().length() % 5)); 
