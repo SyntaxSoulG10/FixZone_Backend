@@ -2,6 +2,9 @@ package com.fixzone.fixzon_backend.config;
 
 import com.fixzone.fixzon_backend.model.*;
 import com.fixzone.fixzon_backend.repository.*;
+import com.fixzone.fixzon_backend.enums.BookingStatus;
+import com.fixzone.fixzon_backend.enums.BookingAction;
+import com.fixzone.fixzon_backend.enums.PaymentStatus;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -12,7 +15,6 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import com.fixzone.fixzon_backend.enums.BookingStatus;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -38,21 +40,21 @@ public class DataInitializer implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(UserRepository userRepository,
-                           OwnerRepository ownerRepository,
-                           CustomerRepository customerRepository,
-                           ManagerRepository managerRepository,
-                           SuperAdminRepository superAdminRepository,
-                           ServiceCenterRepository serviceCenterRepository,
-                           ServicePackageRepository servicePackageRepository,
-                           BookingRepository bookingRepository,
-                           InvoiceRepository invoiceRepository,
-                           PaymentRecordRepository paymentRecordRepository,
-                           NotificationRepository notificationRepository,
-                           SubscriptionRepository subscriptionRepository,
-                           AnalyticsRepository analyticsRepository,
-                           BookingHistoryRepository bookingHistoryRepository,
-                           PaymentRepository paymentRepository,
-                           PasswordEncoder passwordEncoder) {
+            OwnerRepository ownerRepository,
+            CustomerRepository customerRepository,
+            ManagerRepository managerRepository,
+            SuperAdminRepository superAdminRepository,
+            ServiceCenterRepository serviceCenterRepository,
+            ServicePackageRepository servicePackageRepository,
+            BookingRepository bookingRepository,
+            InvoiceRepository invoiceRepository,
+            PaymentRecordRepository paymentRecordRepository,
+            NotificationRepository notificationRepository,
+            SubscriptionRepository subscriptionRepository,
+            AnalyticsRepository analyticsRepository,
+            BookingHistoryRepository bookingHistoryRepository,
+            PaymentRepository paymentRepository,
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.ownerRepository = ownerRepository;
         this.customerRepository = customerRepository;
@@ -143,241 +145,153 @@ public class DataInitializer implements CommandLineRunner {
         }
         customerRepository.saveAll(customers);
 
-        // 4. Service Centers (3 per owner = 15)
+        // 4. Service Centers (5 owners x 3 branches = 15 centers)
         List<ServiceCenter> centers = new ArrayList<>();
         String[][] branchLocations = {
-                {"Colombo", "Kandy", "Galle"},
-                {"Negombo", "Jaffna", "Matara"},
-                {"Kurunegala", "Anuradhapura", "Ratnapura"},
-                {"Kalutara", "Gampaha", "Trincomalee"},
-                {"Badulla", "Nuwara Eliya", "Batticaloa"}
+                { "Bambalapitiya", "Kollupitiya", "Wellawatte" },
+                { "Kandy Town", "Peradeniya", "Katugastota" },
+                { "Galle Fort", "Karapitiya", "Hikkaduwa" },
+                { "Matara Central", "Weligama", "Mirissa" },
+                { "Negombo Coastal", "Kochchikade", "Ja-Ela" }
         };
+
         for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 3; j++) {
-                String branchName = owners.get(i).getCompanyName() + "-" + branchLocations[i][j];
-                String phone = "+9411400" + i + j;
+                String branchName = owners.get(i).getCompanyName() + " - " + branchLocations[i][j];
                 centers.add(new ServiceCenter(UUID.randomUUID(), owners.get(i), branchName, branchLocations[i][j],
-                        phone, "08:00 - 18:00", new BigDecimal("4." + (5 + i)), true, LocalDateTime.now(), "system",
+                        "+9411400" + i + j, "08:00 - 18:00", new BigDecimal("4." + (5 + i)), true, LocalDateTime.now(), "system",
                         LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan", "Suzuki" }, "APPROVED", null,
                         null, null, null, null));
             }
         }
         serviceCenterRepository.saveAll(centers);
 
-        // 5. Managers (15 - one per branch)
+        // 5. Managers
         List<Manager> managers = new ArrayList<>();
         for (int i = 0; i < centers.size(); i++) {
             ServiceCenter center = centers.get(i);
-            String mgrName = "Manager " + (i + 1);
-            String mgrEmail = "manager" + (i + 1) + "@fixzone.lk";
-            managers.add(new Manager(UUID.randomUUID(), mgrName, mgrEmail, "+94772000" + i,
+            managers.add(new Manager(UUID.randomUUID(), "Manager " + (i + 1), "manager" + (i + 1) + "@fixzone.lk", "+94772000" + i,
                     passwordEncoder.encode("pass123"), "MANAGER", true, LocalDateTime.now(), LocalDateTime.now(),
-                    "system", LocalDateTime.now(), "system", "https://images.unsplash.com/photo-" + (new String[]{"1472099645785-5658abf4ff4e", "1519085360753-af0119f7cbe7", "1507003211169-0a1dd7228f2d", "1500648767791-00dcc994a43e", "1494790108377-be9c29b29330"}[i % 5]) + "?q=80&w=150&h=150&auto=format&fit=crop", "MGR-00" + (i + 1),
+                    "system", LocalDateTime.now(), "system", "https://images.unsplash.cc/photo-" + (new String[]{"1472099645785-5658abf4ff4e", "1519085360753-af0119f7cbe7", "1507003211169-0a1dd7228f2d", "1500648767791-00dcc994a43e", "1494790108377-be9c29b29330"}[i % 5]) + "?q=80&w=150&h=150&auto=format&fit=crop", "MGR-00" + (i + 1),
                     center.getCenterId()));
         }
         managerRepository.saveAll(managers);
 
-        // 6. Service Packages (2 per branch = 30 total)
+        // 6. Service Packages
         List<ServicePackage> packages = new ArrayList<>();
-        String[] pkgNames = { "Full Service", "Brake Check", "Hybrid Diagnostics", "Interior Detailing",
-                "Nano Coating" };
+        String[] pkgNames = { "Full Service", "Brake Check", "Hybrid Diagnostics", "Interior Detailing", "Nano Coating" };
         BigDecimal[] prices = { new BigDecimal("18000.00"), new BigDecimal("4500.00"), new BigDecimal("12000.00"),
                 new BigDecimal("7500.00"), new BigDecimal("45000.00") };
         for (ServiceCenter center : centers) {
             for (int i = 0; i < pkgNames.length; i++) {
-                packages.add(
-                        new ServicePackage(UUID.randomUUID(), center, pkgNames[i] + " (" + center.getAddress() + ")",
+                packages.add(new ServicePackage(UUID.randomUUID(), center, pkgNames[i] + " (" + center.getAddress() + ")",
                                 "Package", "Premium " + pkgNames[i] + " in " + center.getAddress(), prices[i],
                                 60 + (i * 30), true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
             }
         }
         servicePackageRepository.saveAll(packages);
 
-        // 7. Bookings
+        // 7. & 8. Bookings & Invoices (Historical Data for Analytics)
+        System.out.println("Seeding historical data for FIX001...");
         List<Booking> bookings = new ArrayList<>();
         List<Invoice> invoices = new ArrayList<>();
-        List<PaymentRecord> payments = new ArrayList<>();
-
+        List<PaymentRecord> paymentRecords = new ArrayList<>();
         List<BookingHistory> historicalHistories = new ArrayList<>();
 
-        // 1. Core Production Bookings (10)
-        for (int i = 0; i < 10; i++) {
-            ServiceCenter center = centers.get(i % centers.size());
-            Customer customer = customers.get(i % customers.size());
+        Owner mainOwner = owners.get(0);
+        ServiceCenter mainCenter = centers.get(0);
 
-            ServicePackage pkg = packages.stream()
-                    .filter(p -> p.getServiceCenter().getCenterId().equals(center.getCenterId()))
-                    .findFirst()
-                    .orElse(null);
+        // Historical Data: Jan to Apr
+        int[] bookingCounts = { 15, 22, 28, 35 };
+        int[] months = { 1, 2, 3, 4 };
 
-            Booking b = new Booking();
-            b.setBookingId(UUID.randomUUID()); 
+        for (int m = 0; m < months.length; m++) {
+            for (int k = 0; k < bookingCounts[m]; k++) {
+                LocalDateTime date = LocalDateTime.of(2026, months[m], (k % 28) + 1, 10, 0);
 
-            b.setTenantId(center.getOwner().getUserId());
-            b.setCenterId(center.getCenterId());
-            b.setCustomerId(customer.getUserId());
-            b.setVehicleId(UUID.randomUUID());
+                Booking b = new Booking();
+                b.setBookingId(UUID.randomUUID());
+                b.setCenterId(mainCenter.getCenterId());
+                b.setTenantId(mainOwner.getUserId());
+                b.setCustomerId(customers.get(k % 5).getUserId());
+                b.setVehicleId(UUID.randomUUID());
+                b.setPackageId(packages.get(k % 5).getPackageId());
+                b.setBookingDate(date.toLocalDate().plusDays(1));
+                b.setBookingTime(date.toLocalTime());
+                b.setStatus(k % 10 == 0 ? BookingStatus.PENDING_PAYMENT : BookingStatus.COMPLETED);
+                b.setEstimatedCost(packages.get(k % 5).getBasePrice());
+                b.setCreatedAt(date);
+                bookings.add(b);
 
-            if (pkg != null) {
-                b.setPackageId(pkg.getPackageId());
-                b.setEstimatedCost(pkg.getBasePrice());
-                b.setBookingFee(pkg.getBasePrice().multiply(BigDecimal.valueOf(0.10)));
-            }
-
-            b.setBookingDate(LocalDate.now().plusDays(i + 1));
-            b.setBookingTime(LocalTime.of(9 + (i % 5), 0));
-            b.setSpecialRequest("Seeded booking");
-
-            switch (i) {
-                case 0, 1:
-                    b.setStatus(BookingStatus.PENDING_PAYMENT);
-                    b.setExpiresAt(LocalDateTime.now().plusMinutes(5));
-                    break;
-                case 2, 3:
-                    b.setStatus(BookingStatus.CONFIRMED);
-                    b.setGatewaySessionId("GW-" + UUID.randomUUID());
-                    b.setBookingFeePaid(true);
-                    break;
-                case 4, 5:
-                    b.setStatus(BookingStatus.COMPLETED);
-                    b.setGatewaySessionId("GW-" + UUID.randomUUID());
-                    b.setBookingFeePaid(true);
-
-                    UUID invoiceId = UUID.randomUUID();
-                    invoices.add(new Invoice(invoiceId, ((Owner) center.getOwner()).getOwnerCode(), center.getCenterId(), b.getBookingId(), b.getCustomerId(), b.getEstimatedCost(), BigDecimal.ZERO, BigDecimal.ZERO, b.getEstimatedCost(), "PAID", LocalDateTime.now(), LocalDateTime.now().plusDays(1), LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-
-                    payments.add(new PaymentRecord(UUID.randomUUID(), invoiceId, center.getCenterId(), b.getEstimatedCost(), "CASH", "TXN-" + i, "COMPLETED", LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-                    break;
-                case 6, 7:
-                    b.setStatus(BookingStatus.CANCELLED);
-                    b.setIsCancelled(true);
-                    b.setCancelledAt(LocalDateTime.now());
-                    if (b.getEstimatedCost() != null) {
-                        b.setCancellationPenalty(b.getEstimatedCost().multiply(BigDecimal.valueOf(0.05)));
-                    }
-                    break;
-                default:
-                    b.setStatus(BookingStatus.CONFIRMED);
-                    b.setGatewaySessionId("GW-" + UUID.randomUUID());
-                    b.setBookingFeePaid(true);
-                    b.setRescheduleCount(1);
-                    break;
-            }
-            bookings.add(b);
-
-            // Add history record for each core booking
-            BookingHistory targetHistory = new BookingHistory();
-            targetHistory.setBookingId(b.getBookingId());
-            targetHistory.setTenantId(b.getTenantId());
-            targetHistory.setAction(com.fixzone.fixzon_backend.enums.BookingAction.CREATED);
-            targetHistory.setNewDate(b.getBookingDate());
-            targetHistory.setNewTime(b.getBookingTime());
-            targetHistory.setPenalty(BigDecimal.ZERO);
-            targetHistory.setNote("Seeded production booking");
-            historicalHistories.add(targetHistory);
-        }
-
-        // 2. Historical Data for Analytics (Dynamic Trends & Split Payments)
-        System.out.println("Seeding historical data with dynamic trends and split (CARD/CASH) payments...");
-        
-        // Calculate last 3 months dynamically based on the current date
-        LocalDate today = LocalDate.now();
-        LocalDate[] monthsToSeed = {
-            today.minusMonths(2),
-            today.minusMonths(1),
-            today
-        };
-
-        int txnCounter = 500;
-        
-        // Seed for the first few centers available (up to 3)
-        int centersToSeedCount = Math.min(centers.size(), 3);
-        
-        for (int c = 0; c < centersToSeedCount; c++) {
-            ServiceCenter center = centers.get(c);
-            Owner owner = (Owner) center.getOwner();
-            
-            // Dynamic base volume based on center index (higher index = lower volume)
-            int baseVolume = Math.max(1, 3 - c); 
-
-            List<ServicePackage> centerPackages = packages.stream()
-                    .filter(p -> p.getServiceCenter().getCenterId().equals(center.getCenterId()))
-                    .toList();
-            
-            if (centerPackages.isEmpty()) continue;
-
-            for (int m = 0; m < monthsToSeed.length; m++) {
-                LocalDate monthDate = monthsToSeed[m];
-                // Dynamic growth trend: volume increases each month
-                int monthlyCount = baseVolume + (m * 2);
-                
-                for (int i = 0; i < monthlyCount; i++) {
-                    Customer customer = customers.get(i % customers.size());
-                    
-                    // Distribute days across the month (max 28 to be safe with Feb)
-                    int day = Math.min(28, (i * 4) + 1); 
-                    LocalDateTime date = LocalDateTime.of(monthDate.getYear(), monthDate.getMonthValue(), day, 9 + (i % 8), 0);
-                    
-                    // Don't seed future dates
-                    if (date.isAfter(LocalDateTime.now())) continue;
-
-                    // 1. Create Completed Booking
-                    Booking b = new Booking();
-                    b.setBookingId(UUID.randomUUID());
-                    b.setTenantId(owner.getUserId());
-                    b.setCenterId(center.getCenterId());
-                    b.setCustomerId(customer.getUserId());
-                    b.setVehicleId(UUID.randomUUID());
-                    b.setPackageId(centerPackages.get(i % centerPackages.size()).getPackageId());
-                    b.setBookingDate(date.toLocalDate());
-                    b.setBookingTime(date.toLocalTime());
-                    b.setStatus(BookingStatus.COMPLETED);
-                    
-                    BigDecimal estimatedCost = centerPackages.get(i % centerPackages.size()).getBasePrice();
-                    BigDecimal bookingFee = estimatedCost.multiply(BigDecimal.valueOf(0.10)).setScale(2, RoundingMode.HALF_UP);
-                    BigDecimal balanceAmount = estimatedCost.subtract(bookingFee);
-                    
-                    b.setEstimatedCost(estimatedCost);
-                    b.setBookingFee(bookingFee);
-                    b.setGatewaySessionId("GW-HIST-" + UUID.randomUUID());
-                    b.setBookingFeePaid(true);
-                    b.setCreatedAt(date.minusDays(3));
-                    bookings.add(b);
-
-                    // 2. Create Invoice
+                if (b.getStatus() == BookingStatus.COMPLETED) {
                     UUID invId = UUID.randomUUID();
-                    invoices.add(new Invoice(invId, owner.getOwnerCode(), center.getCenterId(), b.getBookingId(), 
-                            b.getCustomerId(), estimatedCost, BigDecimal.ZERO, BigDecimal.ZERO, estimatedCost, "PAID", 
-                            date.plusHours(1), date.plusDays(1), date, "system", date, "system"));
+                    BigDecimal total = b.getEstimatedCost();
+                    BigDecimal tax = total.multiply(new BigDecimal("0.1")).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal subtot = total.subtract(tax);
 
-                    // 3. Create Split Payment Records
-                    // A. Online Booking Fee (CARD)
-                    payments.add(new PaymentRecord(UUID.randomUUID(), invId, center.getCenterId(), bookingFee, "CARD", 
-                            "ONLINE-FEE-" + (txnCounter++), "COMPLETED", date.minusDays(3), 
-                            date.minusDays(3), "system", date.minusDays(3), "system"));
+                    Invoice inv = new Invoice(invId, mainOwner.getOwnerCode(), mainCenter.getCenterId(),
+                            b.getBookingId(), b.getCustomerId(), subtot, tax, BigDecimal.ZERO, total, "PAID",
+                            date.plusHours(2), date.plusDays(1), date, "system", date, "system");
+                    invoices.add(inv);
+
+                    paymentRecords.add(new PaymentRecord(UUID.randomUUID(), invId, mainCenter.getCenterId(), total, "CASH",
+                            "TXN-" + months[m] + "-" + k, "Completed", date.plusHours(2), date.plusHours(2), "system",
+                            date.plusHours(2), "system"));
                     
-                    // B. Final Payment after work (CASH)
-                    payments.add(new PaymentRecord(UUID.randomUUID(), invId, center.getCenterId(), balanceAmount, "CASH", 
-                            "CASH-FINAL-" + (txnCounter++), "COMPLETED", date.plusHours(1), 
-                            date.plusHours(1), "system", date.plusHours(1), "system"));
-
-                    // 4. Prepare History Entry
+                    // Add history
                     BookingHistory hist = new BookingHistory();
                     hist.setBookingId(b.getBookingId());
-                    hist.setTenantId(owner.getUserId());
-                    hist.setAction(com.fixzone.fixzon_backend.enums.BookingAction.COMPLETED);
+                    hist.setTenantId(mainOwner.getUserId());
+                    hist.setAction(BookingAction.COMPLETED);
                     hist.setNewDate(b.getBookingDate());
                     hist.setNewTime(b.getBookingTime());
                     hist.setPenalty(BigDecimal.ZERO);
-                    hist.setNote("Service completed. Paid booking fee online and balance via cash.");
+                    hist.setNote("Service completed and paid via CASH.");
                     historicalHistories.add(hist);
                 }
             }
         }
 
+        // Additional status diversity for current month
+        for (int i = 0; i < 10; i++) {
+            ServiceCenter center = centers.get(i % centers.size());
+            Customer customer = customers.get(i % customers.size());
+            Booking b = new Booking();
+            b.setBookingId(UUID.randomUUID());
+            b.setCenterId(center.getCenterId());
+            b.setTenantId(((Owner)center.getOwner()).getUserId());
+            b.setCustomerId(customer.getUserId());
+            b.setVehicleId(UUID.randomUUID());
+            b.setPackageId(packages.get(i % packages.size()).getPackageId());
+            b.setBookingDate(LocalDate.now().plusDays(i + 1));
+            b.setBookingTime(LocalTime.of(9 + (i % 5), 0));
+            b.setEstimatedCost(packages.get(i % packages.size()).getBasePrice());
+            b.setCreatedAt(LocalDateTime.now().minusDays(1));
+
+            switch (i % 4) {
+                case 0:
+                    b.setStatus(BookingStatus.PENDING_PAYMENT);
+                    break;
+                case 1:
+                    b.setStatus(BookingStatus.CONFIRMED);
+                    b.setBookingFeePaid(true);
+                    break;
+                case 2:
+                    b.setStatus(BookingStatus.CANCELLED);
+                    b.setIsCancelled(true);
+                    b.setCancelledAt(LocalDateTime.now());
+                    break;
+                case 3:
+                    b.setStatus(BookingStatus.COMPLETED);
+                    b.setBookingFeePaid(true);
+                    break;
+            }
+            bookings.add(b);
+        }
+
         bookingRepository.saveAll(bookings);
         invoiceRepository.saveAll(invoices);
-        paymentRecordRepository.saveAll(payments);
+        paymentRecordRepository.saveAll(paymentRecords);
         bookingHistoryRepository.saveAll(historicalHistories);
 
         // 9. Notifications
@@ -416,17 +330,14 @@ public class DataInitializer implements CommandLineRunner {
         }
         analyticsRepository.saveAll(analyticsRecords);
 
-        // --- NEW PENDING REGISTRATION REQUESTS FOR TASK 1 ---
-        System.out.println("Adding PENDING registration requests for testing...");
-
-        // Create a Pending Owner
+        // --- PENDING REGISTRATION REQUESTS ---
+        System.out.println("Adding PENDING registration requests...");
         Owner pendingOwner = new Owner(UUID.randomUUID(), "Kusal Mendis", "kusal@test.com", "+94775000000",
                 passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system",
                 LocalDateTime.now(), "system", "https://i.pravatar.cc/150?u=Kusal+Mendis", "FIXPEND01", "Mendis Auto",
                 "contact@mendis.lk", "+94112555555");
         ownerRepository.save(pendingOwner);
 
-        // Create a Pending Service Center with Documents
         ServiceCenter pendingCenter = new ServiceCenter();
         pendingCenter.setCenterId(UUID.randomUUID());
         pendingCenter.setOwner(pendingOwner);
@@ -440,34 +351,20 @@ public class DataInitializer implements CommandLineRunner {
         pendingCenter.setSupportedVehicleBrands(new String[] { "Toyota", "Honda" });
         serviceCenterRepository.save(pendingCenter);
 
-        // Create another Pending Service Center
-        ServiceCenter pendingCenter2 = new ServiceCenter();
-        pendingCenter2.setCenterId(UUID.randomUUID());
-        pendingCenter2.setOwner(pendingOwner); // Same owner for simplicity
-        pendingCenter2.setName("Galle Speed Works");
-        pendingCenter2.setAddress("Marine Drive, Galle");
-        pendingCenter2.setContactPhone("+94912222222");
-        pendingCenter2.setStatus("PENDING");
-        pendingCenter2.setIsActive(false);
-        pendingCenter2.setBusinessRegUrl("https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf");
-        pendingCenter2.setNicUrl("https://ui-avatars.com/api/?name=NIC-Sample&background=random");
-        pendingCenter2.setSupportedVehicleBrands(new String[] { "Mitsubishi", "Suzuki" });
-        serviceCenterRepository.save(pendingCenter2);
-
-        // 12. Payments (5)
-        System.out.println("Seeding payments...");
+        // 12. Payments
+        System.out.println("Seeding general payments...");
         List<Payment> paymentList = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             Payment p = new Payment();
             p.setBookingId((long) (i + 1));
             p.setAmount(5000.0 + (i * 1000));
-            p.setStatus(com.fixzone.fixzon_backend.enums.PaymentStatus.PAID);
+            p.setStatus(PaymentStatus.PAID);
             p.setDate("2026-04-" + (10 + i));
             p.setTimeSlot("10:00 AM");
             paymentList.add(p);
         }
         paymentRepository.saveAll(paymentList);
 
-        System.out.println("--- SRI LANKAN DATA SEEDING COMPLETE WITH PENDING REQUESTS ---");
+        System.out.println("--- SRI LANKAN DATA SEEDING COMPLETE ---");
     }
 }
