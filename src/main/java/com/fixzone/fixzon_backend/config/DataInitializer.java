@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-//import java.math.RoundingMode;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -198,6 +198,8 @@ public class DataInitializer implements CommandLineRunner {
         List<Invoice> invoices = new ArrayList<>();
         List<PaymentRecord> payments = new ArrayList<>();
 
+        List<BookingHistory> historicalHistories = new ArrayList<>();
+
         // 1. Core Production Bookings (10)
         for (int i = 0; i < 10; i++) {
             ServiceCenter center = centers.get(i % centers.size());
@@ -272,46 +274,111 @@ public class DataInitializer implements CommandLineRunner {
             targetHistory.setNewTime(b.getBookingTime());
             targetHistory.setPenalty(BigDecimal.ZERO);
             targetHistory.setNote("Seeded production booking");
-            bookingHistoryRepository.save(targetHistory);
+            historicalHistories.add(targetHistory);
         }
 
-        // 2. Historical Data for Analytics (Exactly 10 records as requested)
-        System.out.println("Seeding 10 historical bookings for analytics...");
-        for (int i = 0; i < 10; i++) {
-            ServiceCenter center = centers.get(i % centers.size());
+        // 2. Historical Data for Analytics (Dynamic Trends & Split Payments)
+        System.out.println("Seeding historical data with dynamic trends and split (CARD/CASH) payments...");
+        
+        // Calculate last 3 months dynamically based on the current date
+        LocalDate today = LocalDate.now();
+        LocalDate[] monthsToSeed = {
+            today.minusMonths(2),
+            today.minusMonths(1),
+            today
+        };
+
+        int txnCounter = 500;
+        
+        // Seed for the first few centers available (up to 3)
+        int centersToSeedCount = Math.min(centers.size(), 3);
+        
+        for (int c = 0; c < centersToSeedCount; c++) {
+            ServiceCenter center = centers.get(c);
             Owner owner = (Owner) center.getOwner();
-            LocalDateTime date = LocalDateTime.now().minusMonths(1).minusDays(i);
             
+            // Dynamic base volume based on center index (higher index = lower volume)
+            int baseVolume = Math.max(1, 3 - c); 
+
             List<ServicePackage> centerPackages = packages.stream()
                     .filter(p -> p.getServiceCenter().getCenterId().equals(center.getCenterId()))
                     .toList();
+            
             if (centerPackages.isEmpty()) continue;
 
-            Booking b = new Booking();
-            b.setBookingId(UUID.randomUUID());
-            b.setTenantId(owner.getUserId());
-            b.setCenterId(center.getCenterId());
-            b.setCustomerId(customers.get(i % customers.size()).getUserId());
-            b.setVehicleId(UUID.randomUUID());
-            b.setPackageId(centerPackages.get(0).getPackageId());
-            b.setBookingDate(date.toLocalDate());
-            b.setBookingTime(date.toLocalTime());
-            b.setStatus(BookingStatus.COMPLETED);
-            b.setEstimatedCost(centerPackages.get(0).getBasePrice());
-            b.setBookingFee(b.getEstimatedCost().multiply(BigDecimal.valueOf(0.10)));
-            b.setGatewaySessionId("GW-HIST-" + UUID.randomUUID());
-            b.setBookingFeePaid(true);
-            b.setCreatedAt(date);
-            bookings.add(b);
+            for (int m = 0; m < monthsToSeed.length; m++) {
+                LocalDate monthDate = monthsToSeed[m];
+                // Dynamic growth trend: volume increases each month
+                int monthlyCount = baseVolume + (m * 2);
+                
+                for (int i = 0; i < monthlyCount; i++) {
+                    Customer customer = customers.get(i % customers.size());
+                    
+                    // Distribute days across the month (max 28 to be safe with Feb)
+                    int day = Math.min(28, (i * 4) + 1); 
+                    LocalDateTime date = LocalDateTime.of(monthDate.getYear(), monthDate.getMonthValue(), day, 9 + (i % 8), 0);
+                    
+                    // Don't seed future dates
+                    if (date.isAfter(LocalDateTime.now())) continue;
 
-            UUID invId = UUID.randomUUID();
-            invoices.add(new Invoice(invId, owner.getOwnerCode(), center.getCenterId(), b.getBookingId(), b.getCustomerId(), b.getEstimatedCost(), BigDecimal.ZERO, BigDecimal.ZERO, b.getEstimatedCost(), "PAID", date.plusHours(2), date.plusDays(1), date, "system", date, "system"));
-            payments.add(new PaymentRecord(UUID.randomUUID(), invId, center.getCenterId(), b.getEstimatedCost(), "CARD", "TXN-HIST-" + i, "COMPLETED", date.plusHours(2), date.plusHours(2), "system", date.plusHours(2), "system"));
+                    // 1. Create Completed Booking
+                    Booking b = new Booking();
+                    b.setBookingId(UUID.randomUUID());
+                    b.setTenantId(owner.getUserId());
+                    b.setCenterId(center.getCenterId());
+                    b.setCustomerId(customer.getUserId());
+                    b.setVehicleId(UUID.randomUUID());
+                    b.setPackageId(centerPackages.get(i % centerPackages.size()).getPackageId());
+                    b.setBookingDate(date.toLocalDate());
+                    b.setBookingTime(date.toLocalTime());
+                    b.setStatus(BookingStatus.COMPLETED);
+                    
+                    BigDecimal estimatedCost = centerPackages.get(i % centerPackages.size()).getBasePrice();
+                    BigDecimal bookingFee = estimatedCost.multiply(BigDecimal.valueOf(0.10)).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal balanceAmount = estimatedCost.subtract(bookingFee);
+                    
+                    b.setEstimatedCost(estimatedCost);
+                    b.setBookingFee(bookingFee);
+                    b.setGatewaySessionId("GW-HIST-" + UUID.randomUUID());
+                    b.setBookingFeePaid(true);
+                    b.setCreatedAt(date.minusDays(3));
+                    bookings.add(b);
+
+                    // 2. Create Invoice
+                    UUID invId = UUID.randomUUID();
+                    invoices.add(new Invoice(invId, owner.getOwnerCode(), center.getCenterId(), b.getBookingId(), 
+                            b.getCustomerId(), estimatedCost, BigDecimal.ZERO, BigDecimal.ZERO, estimatedCost, "PAID", 
+                            date.plusHours(1), date.plusDays(1), date, "system", date, "system"));
+
+                    // 3. Create Split Payment Records
+                    // A. Online Booking Fee (CARD)
+                    payments.add(new PaymentRecord(UUID.randomUUID(), invId, center.getCenterId(), bookingFee, "CARD", 
+                            "ONLINE-FEE-" + (txnCounter++), "COMPLETED", date.minusDays(3), 
+                            date.minusDays(3), "system", date.minusDays(3), "system"));
+                    
+                    // B. Final Payment after work (CASH)
+                    payments.add(new PaymentRecord(UUID.randomUUID(), invId, center.getCenterId(), balanceAmount, "CASH", 
+                            "CASH-FINAL-" + (txnCounter++), "COMPLETED", date.plusHours(1), 
+                            date.plusHours(1), "system", date.plusHours(1), "system"));
+
+                    // 4. Prepare History Entry
+                    BookingHistory hist = new BookingHistory();
+                    hist.setBookingId(b.getBookingId());
+                    hist.setTenantId(owner.getUserId());
+                    hist.setAction(com.fixzone.fixzon_backend.enums.BookingAction.COMPLETED);
+                    hist.setNewDate(b.getBookingDate());
+                    hist.setNewTime(b.getBookingTime());
+                    hist.setPenalty(BigDecimal.ZERO);
+                    hist.setNote("Service completed. Paid booking fee online and balance via cash.");
+                    historicalHistories.add(hist);
+                }
+            }
         }
 
         bookingRepository.saveAll(bookings);
         invoiceRepository.saveAll(invoices);
         paymentRecordRepository.saveAll(payments);
+        bookingHistoryRepository.saveAll(historicalHistories);
 
         // 9. Notifications
         List<Notification> notifications = new ArrayList<>();

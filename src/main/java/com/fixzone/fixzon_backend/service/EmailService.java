@@ -51,9 +51,9 @@ public class EmailService {
 
             helper.setText(content, true);
             mailSender.send(message);
-            System.out.println("✅ Email SENT successfully to: " + toEmail);
+            System.out.println("Email SENT successfully to: " + toEmail);
         } catch (Exception e) {
-            System.err.println("❌ ERROR: Email failed to send!");
+            System.err.println("ERROR: Email failed to send!");
             e.printStackTrace(); // This will print the exact reason (e.g. Auth failure) to your console
         }
     }
