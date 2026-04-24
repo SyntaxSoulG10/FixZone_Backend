@@ -54,7 +54,10 @@ public class AnalyticsService {
                                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                 // Fetch bookings (associated with these centers)
-                Set<UUID> centerIds = invoices.stream().map(Invoice::getCenterId).collect(Collectors.toSet());
+                Set<UUID> centerIds = invoices.stream()
+                                .map(Invoice::getCenterId)
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toSet());
                 List<Booking> bookings = bookingRepository.findByCenterIdIn(centerIds);
 
                 long totalJobs = bookings.size();
@@ -146,7 +149,7 @@ public class AnalyticsService {
                 // Top Centers
                 List<AnalyticsDTO.CenterPerformanceDTO> topCenters = centerIds.stream()
                                 .map(centerId -> {
-                                        ServiceCenter center = serviceCenterRepository.findById(centerId).orElse(null);
+                                        ServiceCenter center = serviceCenterRepository.findById(Objects.requireNonNull(centerId)).orElse(null);
                                         if (center == null)
                                                 return null;
 
@@ -200,11 +203,12 @@ public class AnalyticsService {
 
                 // Service Breakdown
                 List<AnalyticsDTO.ServiceBreakdownDTO> serviceBreakdown = bookings.stream()
-                                .filter(b -> b.getPackageId() != null)
-                                .collect(Collectors.groupingBy(Booking::getPackageId, Collectors.counting()))
+                                .map(Booking::getPackageId)
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.groupingBy(id -> id, Collectors.counting()))
                                 .entrySet().stream()
                                 .map(entry -> {
-                                        String packageName = servicePackageRepository.findById(entry.getKey())
+                                        String packageName = servicePackageRepository.findById(Objects.requireNonNull(entry.getKey()))
                                                         .map(ServicePackage::getName).orElse("General Service");
                                         return new AnalyticsDTO.ServiceBreakdownDTO(packageName,
                                                         entry.getValue().intValue());

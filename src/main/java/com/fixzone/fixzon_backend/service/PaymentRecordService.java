@@ -23,7 +23,8 @@ public class PaymentRecordService {
     }
 
     public List<PaymentRecordDTO> getAllPayments() {
-        // Encapsulating database entities via transformations secures hidden columns from HTTP exposure
+        // Encapsulating database entities via transformations secures hidden columns
+        // from HTTP exposure
         return paymentRecordRepository.findAll().stream()
                 .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
@@ -33,7 +34,7 @@ public class PaymentRecordService {
         // Find all invoices for this company first
         List<com.fixzone.fixzon_backend.model.Invoice> invoices = invoiceRepository.findByCompanyCode(companyCode);
         List<PaymentRecordDTO> allPayments = new ArrayList<>();
-        
+
         for (com.fixzone.fixzon_backend.model.Invoice inv : invoices) {
             allPayments.addAll(paymentRecordRepository.findByInvoiceId(inv.getInvoiceId()).stream()
                     .map(this::transformToDataTransferObject)
@@ -78,7 +79,7 @@ public class PaymentRecordService {
         if (payment.getPaymentId() == null) {
             payment.setPaymentId(UUID.randomUUID());
         }
-        return transformToDataTransferObject(Objects.requireNonNull(paymentRecordRepository.save(payment)));
+        return transformToDataTransferObject(paymentRecordRepository.save(payment));
     }
 
     public PaymentRecordDTO updatePayment(UUID id, PaymentRecordDTO dto) {
@@ -97,6 +98,7 @@ public class PaymentRecordService {
             existing.setUpdatedBy(dto.getUpdatedBy());
         }
 
+        @SuppressWarnings("null")
         PaymentRecord saved = paymentRecordRepository.save(existing);
         return transformToDataTransferObject(Objects.requireNonNull(saved));
     }
@@ -121,8 +123,7 @@ public class PaymentRecordService {
                 payment.getCreatedAt(),
                 payment.getCreatedBy(),
                 payment.getUpdatedAt(),
-                payment.getUpdatedBy()
-        );
+                payment.getUpdatedBy());
     }
 
     private PaymentRecord transformToDatabaseEntity(PaymentRecordDTO dto) {

@@ -1,12 +1,17 @@
 package com.fixzone.fixzon_backend.controller;
 
+import com.fixzone.fixzon_backend.DTO.InitPaymentRequest;
+import com.fixzone.fixzon_backend.DTO.InitPaymentResponse;
 import com.fixzone.fixzon_backend.DTO.RefundRequest;
 import com.fixzone.fixzon_backend.DTO.RescheduleRequest;
 import com.fixzone.fixzon_backend.model.Payment;
 import com.fixzone.fixzon_backend.service.PaymentService;
+import com.stripe.exception.StripeException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/payments")
@@ -20,28 +25,24 @@ public class PaymentController {
     }
 
     @PostMapping("/init")
-    public ResponseEntity<?> initPayment(@RequestBody com.fixzone.fixzon_backend.DTO.InitPaymentRequest initRequest) {
+    public ResponseEntity<?> initPayment(@RequestBody InitPaymentRequest request) {
         try {
-            com.fixzone.fixzon_backend.DTO.InitPaymentResponse response = paymentService.initPayment(initRequest);
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            com.fixzone.fixzon_backend.model.Payment payment = paymentService.initPayment(request, request.getBookingId());
+            return ResponseEntity.ok(java.util.Map.of("paymentId", payment.getId()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error initializing payment: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
-    @PostMapping(value = "/stripe", produces = org.springframework.http.MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> createStripeSession(@RequestBody com.fixzone.fixzon_backend.DTO.StripePaymentRequest stripeRequest) {
+    @PostMapping("/stripe")
+    public ResponseEntity<String> createSession(@RequestBody java.util.Map<String, Long> payload) {
+        Long paymentId = payload.get("paymentId");
+        System.out.println(">>> HIT STRIPE SESSION FOR PAYMENT ID: " + paymentId);
         try {
-            String sessionUrl = paymentService.createStripeSession(stripeRequest.getPaymentId());
+            String sessionUrl = paymentService.createStripeSession(paymentId);
             return ResponseEntity.ok(sessionUrl);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error creating Stripe session: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
 
@@ -49,37 +50,42 @@ public class PaymentController {
     public ResponseEntity<String> paymentSuccess(@RequestParam("session_id") String sessionId) {
         boolean success = paymentService.handleSuccess(sessionId);
         if (success) {
-            return ResponseEntity.ok("Payment successful and status updated to PAID.");
+            return ResponseEntity.ok("Payment successful and booking confirmed!");
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Payment verification failed.");
         }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Payment could not be verified.");
     }
 
-    @GetMapping("/{bookingId}")
-    public ResponseEntity<?> getPaymentStatus(@PathVariable Long bookingId) {
+    @GetMapping("/status/{bookingId}")
+    public ResponseEntity<Payment> getPaymentStatus(@PathVariable Long bookingId) {
         Payment payment = paymentService.getPaymentStatus(bookingId);
         if (payment != null) {
             return ResponseEntity.ok(payment);
+        } else {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Payment not found for bookingId: " + bookingId);
     }
 
     @PostMapping("/refund")
     public ResponseEntity<String> refundPayment(@RequestBody RefundRequest refundRequest) {
-        boolean success = paymentService.refundPayment(refundRequest.getBookingId());
-        if (success) {
-            return ResponseEntity.ok("Refund processed successfully.");
+        // Find the payment record by bookingId to get the gateway session ID
+        Payment payment = paymentService.getPaymentStatus(refundRequest.getBookingId());
+        if (payment != null && payment.getGatewaySessionId() != null) {
+            boolean success = paymentService.refundPayment(payment.getGatewaySessionId(), refundRequest.getPenaltyPercentage());
+            if (success) {
+                return ResponseEntity.ok("Refund processed successfully.");
+            }
         }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to process refund.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Refund failed.");
     }
 
-    @PostMapping(value = "/reschedule", produces = org.springframework.http.MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> reschedulePayment(@RequestBody RescheduleRequest rescheduleRequest) {
+    @PostMapping("/reschedule")
+    public ResponseEntity<String> reschedule(@RequestBody RescheduleRequest rescheduleRequest) {
         try {
             String newSessionUrl = paymentService.reschedulePayment(rescheduleRequest.getBookingId());
             return ResponseEntity.ok(newSessionUrl);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error creating reschedule session: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
 }

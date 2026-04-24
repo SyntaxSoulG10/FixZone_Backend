@@ -1,12 +1,14 @@
 package com.fixzone.fixzon_backend.DTO;
 
 import lombok.Data;
-import java.util.UUID;
 
 @Data
 public class InitPaymentRequest {
-    private UUID servicePackageId;
-    private UUID vehicleId;
+    private String servicePackageId;
+    private String vehicleId;
     private String date;
     private String timeSlot;
+    private String centerId;
+    private String specialRequest;
+    private String bookingId; // Added to link to real bookings
 }

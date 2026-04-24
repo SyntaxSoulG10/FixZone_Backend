@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 
@@ -60,9 +59,9 @@ public class ServicePackageService {
 
     public ServicePackageDTO updatePackage(UUID id, ServicePackageDTO dto) {
         Objects.requireNonNull(id, "ID must not be null");
-        Optional<ServicePackage> optionalPackage = repository.findById(id);
-        if (optionalPackage.isPresent()) {
-            ServicePackage existing = optionalPackage.get();
+        ServicePackage existing = repository.findById(id).orElse(null);
+        
+        if (existing != null) {
             if (dto != null) {
                 BeanUtils.copyProperties(dto, existing, "packageId", "createdAt");
                 if (dto.getCenterId() != null) {
@@ -70,8 +69,7 @@ public class ServicePackageService {
                         .orElseThrow(() -> new RuntimeException("Service Center not found")));
                 }
             }
-            ServicePackage saved = repository.save(existing);
-            return convertToDTO(saved);
+            return convertToDTO(Objects.requireNonNull(repository.save(existing)));
         }
         return null;
     }

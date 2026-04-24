@@ -18,6 +18,8 @@ public class BookingResponseDTO {
     private UUID centerId;
     private UUID vehicleId;
     private UUID packageId;
+    private UUID customerId;
+    private UUID tenantId;
 
     // Booking schedule
     private LocalDate bookingDate;
@@ -43,4 +45,8 @@ public class BookingResponseDTO {
 
     // Audit
     private LocalDateTime createdAt;
+
+    // UI Helpers
+    private String serviceCenterName;
+    private String packageName;
 }

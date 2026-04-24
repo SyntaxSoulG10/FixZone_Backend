@@ -19,7 +19,8 @@ public class InvoiceService {
     }
 
     public List<InvoiceDTO> getAllInvoices() {
-        // Encapsulating database entities via transformations secures hidden columns from HTTP exposure
+        // Encapsulating database entities via transformations secures hidden columns
+        // from HTTP exposure
         return invoiceRepository.findAll().stream()
                 .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
@@ -27,15 +28,15 @@ public class InvoiceService {
 
     public InvoiceDTO getInvoiceById(UUID id) {
         Objects.requireNonNull(id, "ID must not be null");
-        Invoice invoice = invoiceRepository.findById(id)
+        return invoiceRepository.findById(id)
+                .map(this::transformToDataTransferObject)
                 .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
-        return transformToDataTransferObject(invoice);
     }
 
     public InvoiceDTO getInvoiceByBooking(UUID bookingId) {
-        Invoice invoice = invoiceRepository.findByBookingId(bookingId)
+        return invoiceRepository.findByBookingId(bookingId)
+                .map(this::transformToDataTransferObject)
                 .orElseThrow(() -> new RuntimeException("Invoice not found for booking: " + bookingId));
-        return transformToDataTransferObject(invoice);
     }
 
     public List<InvoiceDTO> getInvoicesByCenter(UUID centerId) {
@@ -67,14 +68,14 @@ public class InvoiceService {
         if (invoice.getInvoiceId() == null) {
             invoice.setInvoiceId(UUID.randomUUID());
         }
-        return transformToDataTransferObject(Objects.requireNonNull(invoiceRepository.save(invoice)));
+        return transformToDataTransferObject(invoiceRepository.save(invoice));
     }
 
     public InvoiceDTO updateInvoice(UUID id, InvoiceDTO dto) {
         Objects.requireNonNull(id, "ID must not be null");
         Invoice existing = invoiceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
-        
+
         if (dto != null) {
             existing.setCompanyCode(dto.getCompanyCode());
             existing.setCenterId(dto.getCenterId());
@@ -90,6 +91,7 @@ public class InvoiceService {
             existing.setUpdatedBy(dto.getUpdatedBy());
         }
 
+        @SuppressWarnings("null")
         Invoice saved = invoiceRepository.save(existing);
         return transformToDataTransferObject(Objects.requireNonNull(saved));
     }
@@ -118,8 +120,7 @@ public class InvoiceService {
                 invoice.getCreatedAt(),
                 invoice.getCreatedBy(),
                 invoice.getUpdatedAt(),
-                invoice.getUpdatedBy()
-        );
+                invoice.getUpdatedBy());
     }
 
     private Invoice transformToDatabaseEntity(InvoiceDTO dto) {
