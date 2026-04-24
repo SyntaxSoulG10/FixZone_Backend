@@ -28,58 +28,80 @@ public class OwnerController {
 
     @GetMapping("/current")
     public ResponseEntity<OwnerDTO> fetchCurrentOwner() {
-        // Hardcoded for development until authentication is finished
-        OwnerDTO retrievedOwner = ownerService.retrieveOwnerByCode("FIX001");
-        if (retrievedOwner == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        try {
+            // Hardcoded for development until authentication is finished
+            OwnerDTO retrievedOwner = ownerService.retrieveOwnerByCode("FIX001");
+            if (retrievedOwner == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            return ResponseEntity.ok(retrievedOwner);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch current owner: " + e.getMessage());
         }
-        return ResponseEntity.ok(retrievedOwner);
     }
-
-
 
     @GetMapping
     public ResponseEntity<List<OwnerDTO>> fetchAllCompanyOwners() {
-        // We wrap the list in a ResponseEntity to provide semantic HTTP status codes.
-        List<OwnerDTO> ownerList = ownerService.retrieveAllOwners();
-        return ResponseEntity.ok(ownerList);
+        try {
+            // We wrap the list in a ResponseEntity to provide semantic HTTP status codes.
+            List<OwnerDTO> ownerList = ownerService.retrieveAllOwners();
+            return ResponseEntity.ok(ownerList);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch owners: " + e.getMessage());
+        }
     }
 
     @GetMapping("/{ownerId}")
     public ResponseEntity<OwnerDTO> fetchOwnerDetails(@PathVariable UUID ownerId) {
-        OwnerDTO retrievedOwner = ownerService.retrieveOwnerById(ownerId);
-        
-        // Return a 404 Not Found if the requested owner doesn't exist, preventing blank responses.
-        if (retrievedOwner == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        try {
+            OwnerDTO retrievedOwner = ownerService.retrieveOwnerById(ownerId);
+            
+            // Return a 404 Not Found if the requested owner doesn't exist, preventing blank responses.
+            if (retrievedOwner == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            
+            return ResponseEntity.ok(retrievedOwner);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch owner details: " + e.getMessage());
         }
-        
-        return ResponseEntity.ok(retrievedOwner);
     }
 
     @PostMapping
-    public ResponseEntity<OwnerDTO> registerNewOwner(@RequestBody OwnerDTO newOwnerData) {
-        // Registration is a disruptive action, so we return 201 Created to signify successful creation.
-        OwnerDTO createdOwner = ownerService.registerOwner(newOwnerData);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdOwner);
+    public ResponseEntity<OwnerDTO> registerNewOwner(@jakarta.validation.Valid @RequestBody OwnerDTO newOwnerData) {
+        try {
+            // Registration is a disruptive action, so we return 201 Created to signify successful creation.
+            OwnerDTO createdOwner = ownerService.registerOwner(newOwnerData);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdOwner);
+        } catch (Exception e) {
+            throw new RuntimeException("Registration failed: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{ownerId}")
-    public ResponseEntity<OwnerDTO> modifyOwnerDetails(@PathVariable UUID ownerId, @RequestBody OwnerDTO updatedOwnerData) {
-        OwnerDTO modifiedOwner = ownerService.modifyOwner(ownerId, updatedOwnerData);
-        
-        // Similar to the fetch method, we must handle the case where the target ID is invalid.
-        if (modifiedOwner == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    public ResponseEntity<OwnerDTO> modifyOwnerDetails(@PathVariable UUID ownerId, @jakarta.validation.Valid @RequestBody OwnerDTO updatedOwnerData) {
+        try {
+            OwnerDTO modifiedOwner = ownerService.modifyOwner(ownerId, updatedOwnerData);
+            
+            // Similar to the fetch method, we must handle the case where the target ID is invalid.
+            if (modifiedOwner == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            
+            return ResponseEntity.ok(modifiedOwner);
+        } catch (Exception e) {
+            throw new RuntimeException("Update failed: " + e.getMessage());
         }
-        
-        return ResponseEntity.ok(modifiedOwner);
     }
 
     @DeleteMapping("/{ownerId}")
     public ResponseEntity<Void> removeOwnerRecord(@PathVariable UUID ownerId) {
-        ownerService.removeOwner(ownerId);
-        // We return 204 No Content because the deletion leaves no entity to return in the response body.
-        return ResponseEntity.noContent().build();
+        try {
+            ownerService.removeOwner(ownerId);
+            // We return 204 No Content because the deletion leaves no entity to return in the response body.
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            throw new RuntimeException("Deletion failed: " + e.getMessage());
+        }
     }
 }

@@ -23,6 +23,10 @@ public class UserController {
 
     @GetMapping
     public ResponseEntity<List<UserDTO>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
+        try {
+            return ResponseEntity.ok(userService.getAllUsers());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch users: " + e.getMessage());
+        }
     }
 }

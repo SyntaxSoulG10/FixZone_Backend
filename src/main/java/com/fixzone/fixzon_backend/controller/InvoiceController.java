@@ -62,22 +62,32 @@ public class InvoiceController {
     }
 
     @PostMapping
-    public ResponseEntity<InvoiceDTO> createInvoice(@RequestBody InvoiceDTO dto) {
-        // Enforce 201 Created REST convention explicitly
-        return ResponseEntity.status(201).body(invoiceService.createInvoice(dto));
+    public ResponseEntity<InvoiceDTO> createInvoice(@jakarta.validation.Valid @RequestBody InvoiceDTO dto) {
+        try {
+            return ResponseEntity.status(201).body(invoiceService.createInvoice(dto));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create invoice: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<InvoiceDTO> updateInvoice(@PathVariable UUID id,
-            @RequestBody InvoiceDTO dto) {
-        InvoiceDTO updatedInvoice = invoiceService.updateInvoice(id, dto);
-        return updatedInvoice != null ? ResponseEntity.ok(updatedInvoice) : ResponseEntity.notFound().build();
+            @jakarta.validation.Valid @RequestBody InvoiceDTO dto) {
+        try {
+            InvoiceDTO updatedInvoice = invoiceService.updateInvoice(id, dto);
+            return updatedInvoice != null ? ResponseEntity.ok(updatedInvoice) : ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update invoice: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteInvoice(@PathVariable UUID id) {
-        invoiceService.deleteInvoice(id);
-        // Dispatch explicit 204 meaning resource handled correctly and removed.
-        return ResponseEntity.noContent().build();
+        try {
+            invoiceService.deleteInvoice(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete invoice: " + e.getMessage());
+        }
     }
 }

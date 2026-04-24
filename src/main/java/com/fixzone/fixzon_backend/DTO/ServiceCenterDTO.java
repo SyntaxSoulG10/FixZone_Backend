@@ -1,5 +1,6 @@
 package com.fixzone.fixzon_backend.DTO;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,10 +14,18 @@ import java.util.UUID;
 public class ServiceCenterDTO {
     private UUID centerId;
     private UUID ownerId;
+
+    @NotBlank(message = "Service center name is required")
     private String name;
+
     private String managerName;
+
+    @NotBlank(message = "Address is required")
     private String address;
+
+    @NotBlank(message = "Contact phone is required")
     private String contactPhone;
+
     private String openingHours;
     private BigDecimal rating;
     private Boolean isActive;

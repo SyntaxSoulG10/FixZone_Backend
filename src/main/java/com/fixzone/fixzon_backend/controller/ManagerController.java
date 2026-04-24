@@ -40,22 +40,32 @@ public class ManagerController {
     }
 
     @PostMapping
-    public ResponseEntity<ManagerDTO> createManager(@RequestBody ManagerDTO managerDTO) {
-        ManagerDTO newManager = managerService.createManager(managerDTO);
-        // Use exact semantic 201 Created rather than implicit 200 OK
-        return ResponseEntity.status(201).body(newManager);
+    public ResponseEntity<ManagerDTO> createManager(@jakarta.validation.Valid @RequestBody ManagerDTO managerDTO) {
+        try {
+            ManagerDTO newManager = managerService.createManager(managerDTO);
+            return ResponseEntity.status(201).body(newManager);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create manager: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ManagerDTO> updateManager(@PathVariable UUID id, @RequestBody ManagerDTO managerDTO) {
-        ManagerDTO updatedManager = managerService.updateManager(id, managerDTO);
-        return updatedManager != null ? ResponseEntity.ok(updatedManager) : ResponseEntity.notFound().build();
+    public ResponseEntity<ManagerDTO> updateManager(@PathVariable UUID id, @jakarta.validation.Valid @RequestBody ManagerDTO managerDTO) {
+        try {
+            ManagerDTO updatedManager = managerService.updateManager(id, managerDTO);
+            return updatedManager != null ? ResponseEntity.ok(updatedManager) : ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update manager: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteManager(@PathVariable UUID id) {
-        managerService.deleteManager(id);
-        // HTTP 204 No Content confirms execution without forcing a redundant payload
-        return ResponseEntity.noContent().build();
+        try {
+            managerService.deleteManager(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete manager: " + e.getMessage());
+        }
     }
 }

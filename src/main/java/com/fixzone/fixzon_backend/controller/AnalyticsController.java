@@ -21,8 +21,12 @@ public class AnalyticsController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false, defaultValue = "monthly") String period) {
-        AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics(companyCode, centerId, startDate, endDate, period);
-        return ResponseEntity.ok(analyticsData);
+        try {
+            AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics(companyCode, centerId, startDate, endDate, period);
+            return ResponseEntity.ok(analyticsData);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch analytics: " + e.getMessage());
+        }
     }
 
     @GetMapping("/current")
@@ -31,8 +35,12 @@ public class AnalyticsController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false, defaultValue = "monthly") String period) {
-        // Hardcoded for development until authentication is finished
-        AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics("FIX001", centerId, startDate, endDate, period);
-        return ResponseEntity.ok(analyticsData);
+        try {
+            // Hardcoded for development until authentication is finished
+            AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics("FIX001", centerId, startDate, endDate, period);
+            return ResponseEntity.ok(analyticsData);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch current analytics: " + e.getMessage());
+        }
     }
 }

@@ -41,19 +41,31 @@ public class ServicePackageController {
     }
 
     @PostMapping
-    public ResponseEntity<ServicePackageDTO> createPackage(@RequestBody ServicePackageDTO dto) {
-        return ResponseEntity.ok(service.createPackage(dto));
+    public ResponseEntity<ServicePackageDTO> createPackage(@jakarta.validation.Valid @RequestBody ServicePackageDTO dto) {
+        try {
+            return ResponseEntity.status(201).body(service.createPackage(dto));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create service package: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ServicePackageDTO> updatePackage(@PathVariable UUID id, @RequestBody ServicePackageDTO dto) {
-        ServicePackageDTO updated = service.updatePackage(id, dto);
-        return updated != null ? ResponseEntity.ok(updated) : ResponseEntity.notFound().build();
+    public ResponseEntity<ServicePackageDTO> updatePackage(@PathVariable UUID id, @jakarta.validation.Valid @RequestBody ServicePackageDTO dto) {
+        try {
+            ServicePackageDTO updated = service.updatePackage(id, dto);
+            return updated != null ? ResponseEntity.ok(updated) : ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update service package: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePackage(@PathVariable UUID id) {
-        service.deletePackage(id);
-        return ResponseEntity.noContent().build();
+        try {
+            service.deletePackage(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete service package: " + e.getMessage());
+        }
     }
 }

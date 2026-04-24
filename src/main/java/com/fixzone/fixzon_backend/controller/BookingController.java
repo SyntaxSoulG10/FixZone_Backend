@@ -29,12 +29,20 @@ public class BookingController {
 
     @GetMapping
     public ResponseEntity<List<BookingResponseDTO>> getAllBookings() {
-        return ResponseEntity.ok(bookingService.getAllBookings());
+        try {
+            return ResponseEntity.ok(bookingService.getAllBookings());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch bookings: " + e.getMessage());
+        }
     }
     
     @GetMapping("/{id}")
     public ResponseEntity<BookingResponseDTO> getBookingById(@PathVariable UUID id) {
-        return ResponseEntity.ok(bookingService.getBookingById(id));
+        try {
+            return ResponseEntity.ok(bookingService.getBookingById(id));
+        } catch (Exception e) {
+            throw new RuntimeException("Booking not found: " + e.getMessage());
+        }
     }
     
     @GetMapping("/center/{centerId}")
@@ -54,8 +62,12 @@ public class BookingController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBooking(@PathVariable UUID id) {
-        bookingService.deleteBooking(id);
-        return ResponseEntity.noContent().build();
+        try {
+            bookingService.deleteBooking(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete booking: " + e.getMessage());
+        }
     }
 
     @GetMapping("/mechanic/{mechanicId}")
@@ -93,8 +105,12 @@ public class BookingController {
      * Create a new booking.
      */
     @PostMapping
-    public ResponseEntity<BookingResponseDTO> createBooking(@RequestBody BookingRequestDTO request) {
-        return ResponseEntity.ok(bookingService.createBooking(request));
+    public ResponseEntity<BookingResponseDTO> createBooking(@jakarta.validation.Valid @RequestBody BookingRequestDTO request) {
+        try {
+            return ResponseEntity.status(201).body(bookingService.createBooking(request));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create booking: " + e.getMessage());
+        }
     }
 
     /**

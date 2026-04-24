@@ -57,22 +57,32 @@ public class PaymentRecordController {
     }
 
     @PostMapping
-    public ResponseEntity<PaymentRecordDTO> createPayment(@RequestBody PaymentRecordDTO dto) {
-        // Enforce 201 Created explicitly signaling creation resolution
-        return ResponseEntity.status(201).body(paymentRecordService.createPayment(dto));
+    public ResponseEntity<PaymentRecordDTO> createPayment(@jakarta.validation.Valid @RequestBody PaymentRecordDTO dto) {
+        try {
+            return ResponseEntity.status(201).body(paymentRecordService.createPayment(dto));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create payment record: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<PaymentRecordDTO> updatePayment(@PathVariable UUID id,
-            @RequestBody PaymentRecordDTO dto) {
-        PaymentRecordDTO updatedPayment = paymentRecordService.updatePayment(id, dto);
-        return updatedPayment != null ? ResponseEntity.ok(updatedPayment) : ResponseEntity.notFound().build();
+            @jakarta.validation.Valid @RequestBody PaymentRecordDTO dto) {
+        try {
+            PaymentRecordDTO updatedPayment = paymentRecordService.updatePayment(id, dto);
+            return updatedPayment != null ? ResponseEntity.ok(updatedPayment) : ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update payment record: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePayment(@PathVariable UUID id) {
-        paymentRecordService.deletePayment(id);
-        // Dispatch explicit 204 meaning the resource is securely omitted.
-        return ResponseEntity.noContent().build();
+        try {
+            paymentRecordService.deletePayment(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete payment record: " + e.getMessage());
+        }
     }
 }

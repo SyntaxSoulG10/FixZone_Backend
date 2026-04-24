@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,13 +21,21 @@ public class CustomerController {
     private CustomerService customerService;
 
     @GetMapping
-    public List<CustomerDTO> getAllCustomers() {
-        return customerService.getAllCustomers();
+    public ResponseEntity<List<CustomerDTO>> getAllCustomers() {
+        try {
+            return ResponseEntity.ok(customerService.getAllCustomers());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch customers: " + e.getMessage());
+        }
     }
 
     @GetMapping("/current")
-    public List<CustomerDTO> getCurrentOwnerCustomers() {
-        // Hardcoded for development
-        return customerService.getCustomersByOwnerCode("FIX001");
+    public ResponseEntity<List<CustomerDTO>> getCurrentOwnerCustomers() {
+        try {
+            // Hardcoded for development
+            return ResponseEntity.ok(customerService.getCustomersByOwnerCode("FIX001"));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch current customers: " + e.getMessage());
+        }
     }
 }
