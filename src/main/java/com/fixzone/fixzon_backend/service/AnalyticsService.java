@@ -29,36 +29,72 @@ public class AnalyticsService {
         private final com.fixzone.fixzon_backend.repository.CustomerRepository customerRepository;
         private final com.fixzone.fixzon_backend.repository.PaymentRecordRepository paymentRecordRepository;
 
+        private final com.fixzone.fixzon_backend.repository.OwnerRepository ownerRepository;
+
         public AnalyticsService(InvoiceRepository invoiceRepository,
                                 BookingRepository bookingRepository,
                                 ServiceCenterRepository serviceCenterRepository,
                                 ServicePackageRepository servicePackageRepository,
                                 com.fixzone.fixzon_backend.repository.CustomerRepository customerRepository,
-                                com.fixzone.fixzon_backend.repository.PaymentRecordRepository paymentRecordRepository) {
+                                com.fixzone.fixzon_backend.repository.PaymentRecordRepository paymentRecordRepository,
+                                com.fixzone.fixzon_backend.repository.OwnerRepository ownerRepository) {
                 this.invoiceRepository = invoiceRepository;
                 this.bookingRepository = bookingRepository;
                 this.serviceCenterRepository = serviceCenterRepository;
                 this.servicePackageRepository = servicePackageRepository;
                 this.customerRepository = customerRepository;
                 this.paymentRecordRepository = paymentRecordRepository;
+                this.ownerRepository = ownerRepository;
         }
 
-        public AnalyticsDTO getCompanyAnalytics(String companyCode) {
+        public AnalyticsDTO getCompanyAnalytics(String companyCode, String centerIdStr, String startDateStr, String endDateStr, String period) {
+                // Parse filters
+                UUID filterCenterId = (centerIdStr != null && !centerIdStr.equals("all") && !centerIdStr.isEmpty())
+                                ? UUID.fromString(centerIdStr)
+                                : null;
+                LocalDateTime startFilter = (startDateStr != null && !startDateStr.isEmpty())
+                                ? java.time.LocalDate.parse(startDateStr).atStartOfDay()
+                                : null;
+                LocalDateTime endFilter = (endDateStr != null && !endDateStr.isEmpty())
+                                ? java.time.LocalDate.parse(endDateStr).atTime(23, 59, 59)
+                                : null;
+
                 // Fetch all data for this company (based on companyCode in invoices)
-                List<Invoice> invoices = invoiceRepository.findByCompanyCode(companyCode);
+                List<Invoice> allInvoices = invoiceRepository.findByCompanyCode(companyCode);
+
+                // Fetch all centers belonging to this owner to ensure we show even those with 0 revenue
+                Set<UUID> centerIds;
+                if (filterCenterId != null) {
+                    centerIds = Set.of(filterCenterId);
+                } else {
+                    centerIds = ownerRepository.findByOwnerCode(companyCode)
+                            .map(owner -> serviceCenterRepository.findByOwner_UserId(owner.getUserId()))
+                            .map(list -> list.stream().map(com.fixzone.fixzon_backend.model.ServiceCenter::getCenterId).collect(Collectors.toSet()))
+                            .orElseGet(() -> allInvoices.stream().map(Invoice::getCenterId).collect(Collectors.toSet()));
+                }
+
+                // Apply Filters to Invoices
+                List<Invoice> invoices = allInvoices.stream()
+                                .filter(i -> filterCenterId == null || i.getCenterId().equals(filterCenterId))
+                                .filter(i -> startFilter == null || i.getIssuedAt().isAfter(startFilter) || i.getIssuedAt().isEqual(startFilter))
+                                .filter(i -> endFilter == null || i.getIssuedAt().isBefore(endFilter) || i.getIssuedAt().isEqual(endFilter))
+                                .collect(Collectors.toList());
 
                 // Stats Calculation
                 BigDecimal totalRevenue = invoices.stream()
                                 .filter(i -> "PAID".equalsIgnoreCase(i.getStatus()))
                                 .map(Invoice::getTotal)
                                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-                // Fetch bookings (associated with these centers)
-                Set<UUID> centerIds = invoices.stream().map(Invoice::getCenterId).collect(Collectors.toSet());
-                List<Booking> bookings = bookingRepository.findByCenterIdIn(centerIds);
+                List<Booking> allBookings = bookingRepository.findByCenterIdIn(centerIds);
+                
+                // Apply Filters to Bookings
+                List<Booking> bookings = allBookings.stream()
+                                .filter(b -> startFilter == null || b.getCreatedAt().isAfter(startFilter) || b.getCreatedAt().isEqual(startFilter))
+                                .filter(b -> endFilter == null || b.getCreatedAt().isBefore(endFilter) || b.getCreatedAt().isEqual(endFilter))
+                                .collect(Collectors.toList());
 
                 long totalJobs = bookings.size();
-                long pendingJobs = bookings.stream().filter(b -> (b.getStatus()==BookingStatus.CONFIRMED)).count();
+                long pendingJobs = bookings.stream().filter(b -> (b.getStatus() == BookingStatus.CONFIRMED)).count();
 
                 BigDecimal avgJobValue = totalJobs > 0
                                 ? totalRevenue.divide(BigDecimal.valueOf(totalJobs), 2, RoundingMode.HALF_UP)
@@ -67,6 +103,8 @@ public class AnalyticsService {
                 // Split Revenue by Payment Method
                 List<com.fixzone.fixzon_backend.model.PaymentRecord> allPayments = centerIds.stream()
                                 .flatMap(centerId -> paymentRecordRepository.findByCenterId(centerId).stream())
+                                .filter(p -> startFilter == null || p.getCreatedAt().isAfter(startFilter) || p.getCreatedAt().isEqual(startFilter))
+                                .filter(p -> endFilter == null || p.getCreatedAt().isBefore(endFilter) || p.getCreatedAt().isEqual(endFilter))
                                 .collect(Collectors.toList());
 
                 BigDecimal onlineRevenue = allPayments.stream()
@@ -111,7 +149,7 @@ public class AnalyticsService {
 
                 // Comparison for Pending Jobs Change (Current vs 7 days ago snapshot)
                 long pendingOld = bookings.stream()
-                                .filter(b ->(b.getStatus()==BookingStatus.CONFIRMED) && b.getCreatedAt() != null
+                                .filter(b -> (b.getStatus() == BookingStatus.CONFIRMED) && b.getCreatedAt() != null
                                                 && b.getCreatedAt().isBefore(now.minusDays(7)))
                                 .count();
                 String pendingJobsChange = calculatePercentageChange(BigDecimal.valueOf(pendingJobs),
@@ -126,20 +164,63 @@ public class AnalyticsService {
                                 RoundingMode.HALF_UP) : BigDecimal.ZERO;
                 String avgJobValueChange = calculatePercentageChange(currentAvg, lastAvg);
 
-                // Revenue Overview (Last 6 Months, sorted)
+                // Revenue Overview (Daily, Monthly, Yearly grouping)
                 List<AnalyticsDTO.MonthlyDataDTO> revenueOverview = invoices.stream()
                                 .filter(i -> "PAID".equalsIgnoreCase(i.getStatus()))
                                 .collect(Collectors.groupingBy(
-                                                i -> i.getIssuedAt().getYear() * 100 + i.getIssuedAt().getMonthValue(),
+                                                i -> {
+                                                    if ("daily".equalsIgnoreCase(period)) {
+                                                        return i.getIssuedAt().getYear() * 10000 + i.getIssuedAt().getMonthValue() * 100 + i.getIssuedAt().getDayOfMonth();
+                                                    } else if ("yearly".equalsIgnoreCase(period)) {
+                                                        return i.getIssuedAt().getYear();
+                                                    } else {
+                                                        return i.getIssuedAt().getYear() * 100 + i.getIssuedAt().getMonthValue();
+                                                    }
+                                                },
                                                 TreeMap::new,
-                                                Collectors.reducing(BigDecimal.ZERO, Invoice::getTotal,
-                                                                BigDecimal::add)))
+                                                Collectors.toList()))
                                 .entrySet().stream()
                                 .map(entry -> {
-                                        int yearMonth = entry.getKey();
-                                        String monthName = java.time.Month.of(yearMonth % 100)
-                                                        .getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
-                                        return new AnalyticsDTO.MonthlyDataDTO(monthName, entry.getValue());
+                                        int key = entry.getKey();
+                                        String name;
+                                        LocalDateTime start;
+                                        LocalDateTime end;
+
+                                        if ("daily".equalsIgnoreCase(period)) {
+                                            int year = key / 10000;
+                                            int month = (key % 10000) / 100;
+                                            int day = key % 100;
+                                            start = LocalDateTime.of(year, month, day, 0, 0);
+                                            end = start.plusDays(1);
+                                            name = day + " " + java.time.Month.of(month).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                                        } else if ("yearly".equalsIgnoreCase(period)) {
+                                            start = LocalDateTime.of(key, 1, 1, 0, 0);
+                                            end = start.plusYears(1);
+                                            name = String.valueOf(key);
+                                        } else {
+                                            int year = key / 100;
+                                            int month = key % 100;
+                                            start = LocalDateTime.of(year, month, 1, 0, 0);
+                                            end = start.plusMonths(1);
+                                            name = java.time.Month.of(month).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                                        }
+                                        
+                                        List<Invoice> groupedInvoices = entry.getValue();
+                                        BigDecimal total = groupedInvoices.stream().map(Invoice::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+                                        
+                                        BigDecimal online = allPayments.stream()
+                                                        .filter(p -> p.getCreatedAt().isAfter(start) && p.getCreatedAt().isBefore(end))
+                                                        .filter(p -> "CARD".equalsIgnoreCase(p.getMethod()) || "ONLINE".equalsIgnoreCase(p.getMethod()))
+                                                        .map(com.fixzone.fixzon_backend.model.PaymentRecord::getAmount)
+                                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                                        
+                                        BigDecimal cash = allPayments.stream()
+                                                        .filter(p -> p.getCreatedAt().isAfter(start) && p.getCreatedAt().isBefore(end))
+                                                        .filter(p -> "CASH".equalsIgnoreCase(p.getMethod()))
+                                                        .map(com.fixzone.fixzon_backend.model.PaymentRecord::getAmount)
+                                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                                        return new AnalyticsDTO.MonthlyDataDTO(name, total, online, cash);
                                 })
                                 .collect(Collectors.toList());
 
@@ -168,7 +249,6 @@ public class AnalyticsService {
                                 })
                                 .filter(Objects::nonNull)
                                 .sorted((c1, c2) -> c2.getRevenue().compareTo(c1.getRevenue()))
-                                .limit(5)
                                 .collect(Collectors.toList());
 
                 // Customer Growth - Real implementation

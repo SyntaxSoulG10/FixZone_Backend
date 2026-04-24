@@ -15,15 +15,24 @@ public class AnalyticsController {
     private AnalyticsService analyticsService;
 
     @GetMapping("/company/{companyCode}")
-    public ResponseEntity<AnalyticsDTO> getCompanyAnalytics(@PathVariable String companyCode) {
-        AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics(companyCode);
+    public ResponseEntity<AnalyticsDTO> getCompanyAnalytics(
+            @PathVariable String companyCode,
+            @RequestParam(required = false) String centerId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false, defaultValue = "monthly") String period) {
+        AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics(companyCode, centerId, startDate, endDate, period);
         return ResponseEntity.ok(analyticsData);
     }
 
     @GetMapping("/current")
-    public ResponseEntity<AnalyticsDTO> getCurrentOwnerAnalytics() {
+    public ResponseEntity<AnalyticsDTO> getCurrentOwnerAnalytics(
+            @RequestParam(required = false) String centerId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false, defaultValue = "monthly") String period) {
         // Hardcoded for development until authentication is finished
-        AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics("FIX001");
+        AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics("FIX001", centerId, startDate, endDate, period);
         return ResponseEntity.ok(analyticsData);
     }
 }
