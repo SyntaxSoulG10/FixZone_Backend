@@ -16,14 +16,18 @@ public class ServiceCenterDTO {
     private UUID ownerId;
 
     @NotBlank(message = "Service center name is required")
+    @jakarta.validation.constraints.Size(min = 3, max = 100, message = "Name must be 3-100 characters")
     private String name;
 
+    @NotBlank(message = "Manager name is required")
     private String managerName;
 
     @NotBlank(message = "Address is required")
+    @jakarta.validation.constraints.Size(min = 5, message = "Address is too short")
     private String address;
 
     @NotBlank(message = "Contact phone is required")
+    @jakarta.validation.constraints.Pattern(regexp = "^[0-9+]{10,15}$", message = "Phone must be 10-15 digits")
     private String contactPhone;
 
     private String openingHours;

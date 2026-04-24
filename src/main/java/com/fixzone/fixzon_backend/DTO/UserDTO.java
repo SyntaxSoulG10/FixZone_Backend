@@ -11,12 +11,14 @@ public class UserDTO {
     private UUID userId;
 
     @NotBlank(message = "Full name is required")
+    @jakarta.validation.constraints.Size(min = 3, max = 100, message = "Full name must be between 3 and 100 characters")
     private String fullName;
 
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
 
+    @jakarta.validation.constraints.Pattern(regexp = "^[0-9+]{10,15}$", message = "Phone must be 10-15 digits")
     private String phone;
     private String role;
     private Boolean emailVerified;

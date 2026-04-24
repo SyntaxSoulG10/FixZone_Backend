@@ -17,14 +17,22 @@ public class ServicePackageDTO {
     private UUID centerId;
 
     @NotBlank(message = "Service name is required")
+    @jakarta.validation.constraints.Size(min = 3, max = 100, message = "Service name must be 3-100 characters")
     private String name;
 
     private String type;
+    
+    @NotBlank(message = "Description is required")
+    @jakarta.validation.constraints.Size(min = 10, message = "Description must be at least 10 characters")
     private String description;
 
     @NotNull(message = "Price is required")
+    @jakarta.validation.constraints.DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than 0")
     private BigDecimal basePrice;
 
+    @NotNull(message = "Duration is required")
+    @jakarta.validation.constraints.Min(value = 5, message = "Minimum duration is 5 minutes")
+    @jakarta.validation.constraints.Max(value = 1440, message = "Maximum duration is 24 hours")
     private Integer estimatedDurationMins;
     private Boolean isActive;
     private LocalDateTime createdAt;
