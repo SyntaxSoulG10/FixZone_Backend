@@ -96,4 +96,14 @@ public class AnalyticsDTO {
         private int jobs;
         private BigDecimal revenue;
     }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GrowthStats {
+        private String revenueChange;
+        private String jobsChange;
+        private String pendingChange;
+        private String averageValueChange;
+    }
 }

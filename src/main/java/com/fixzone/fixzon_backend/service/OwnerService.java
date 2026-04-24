@@ -12,32 +12,36 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-// The @Service annotation registers this class as a Spring component.
-// We use a service layer to contain all the business logic, isolating the database and the controller layers.
+/**
+ * Service class for managing Company Owner profiles.
+ * It handles the lifecycle of owner data, including registration, updates, and retrieval.
+ */
 @Service
 public class OwnerService {
 
     private final OwnerRepository ownerRepository;
 
-    // Constructor injection is preferred over field injection (@Autowired on the field).
-    // This allows the dependencies to be mocking-friendly for testing.
+    /**
+     * Constructor injection is the recommended way to handle dependencies in Spring.
+     * It makes the class easier to test and ensures all required fields are provided.
+     */
     @Autowired
     public OwnerService(OwnerRepository ownerRepository) {
         this.ownerRepository = ownerRepository;
     }
 
+    /**
+     * Retrieves all owners registered in the system.
+     * We map entities to DTOs to maintain a clean separation between DB and API layers.
+     */
     public List<OwnerDTO> retrieveAllOwners() {
-        // We retrieve all entities and map them to DTOs so that sensitive entity properties
-        // do not accidentally leak out to the frontend application.
         return ownerRepository.findAll().stream()
                 .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public OwnerDTO retrieveOwnerById(UUID targetOwnerId) {
-        // Enforce non-null constraints before interacting with the database
         Objects.requireNonNull(targetOwnerId, "The Owner ID parameter must not be null.");
-        
         return ownerRepository.findById(targetOwnerId)
                 .map(this::transformToDataTransferObject)
                 .orElse(null);
@@ -49,72 +53,67 @@ public class OwnerService {
                 .orElse(null);
     }
 
+    /**
+     * Registers a new owner. We generate a unique UUID if one isn't provided.
+     */
     public OwnerDTO registerOwner(OwnerDTO newOwnerRegistrationData) {
-        // Transform the DTO back to a JPA Entity because repositories only understand Entities.
         Owner newOwnerEntity = transformToDatabaseEntity(newOwnerRegistrationData);
-        
-        // Ensure a unique identifier exists before saving to the database.
         if (newOwnerEntity != null && newOwnerEntity.getUserId() == null) {
             newOwnerEntity.setUserId(UUID.randomUUID());
         }
-        
         Owner persistedOwnerEntity = ownerRepository.save(newOwnerEntity);
         return transformToDataTransferObject(persistedOwnerEntity);
     }
 
+    /**
+     * Updates an existing owner's details.
+     * We explicitly map fields to ensure inherited user properties (like profile picture) are preserved.
+     */
     public OwnerDTO modifyOwner(UUID targetOwnerId, OwnerDTO updatedOwnerData) {
         Objects.requireNonNull(targetOwnerId, "The Owner ID parameter must not be null.");
         
         try {
             return ownerRepository.findById(targetOwnerId).map(existingOwner -> {
-                System.out.println("Updating owner: " + targetOwnerId);
-                // Update Owner specific fields
+                // Update Owner-specific business fields
                 if (updatedOwnerData.getOwnerCode() != null) existingOwner.setOwnerCode(updatedOwnerData.getOwnerCode());
                 if (updatedOwnerData.getCompanyName() != null) existingOwner.setCompanyName(updatedOwnerData.getCompanyName());
                 if (updatedOwnerData.getCompanyEmail() != null) existingOwner.setCompanyEmail(updatedOwnerData.getCompanyEmail());
                 if (updatedOwnerData.getCompanyNumber() != null) existingOwner.setCompanyNumber(updatedOwnerData.getCompanyNumber());
-                if (updatedOwnerData.getBannerImageUrl() != null) {
-                    System.out.println("Updating banner image. Length: " + updatedOwnerData.getBannerImageUrl().length());
-                    existingOwner.setBannerImageUrl(updatedOwnerData.getBannerImageUrl());
-                }
+                if (updatedOwnerData.getBannerImageUrl() != null) existingOwner.setBannerImageUrl(updatedOwnerData.getBannerImageUrl());
                 
-                // Update inherited User fields
+                // Update inherited User profile fields
                 if (updatedOwnerData.getFullName() != null) existingOwner.setFullName(updatedOwnerData.getFullName());
                 if (updatedOwnerData.getEmail() != null) existingOwner.setEmail(updatedOwnerData.getEmail());
                 if (updatedOwnerData.getPhone() != null) existingOwner.setPhone(updatedOwnerData.getPhone());
-                if (updatedOwnerData.getProfilePictureUrl() != null) {
-                    System.out.println("Updating profile picture. Length: " + updatedOwnerData.getProfilePictureUrl().length());
-                    existingOwner.setProfilePictureUrl(updatedOwnerData.getProfilePictureUrl());
-                }
+                if (updatedOwnerData.getProfilePictureUrl() != null) existingOwner.setProfilePictureUrl(updatedOwnerData.getProfilePictureUrl());
                 if (updatedOwnerData.getStatus() != null) existingOwner.setStatus(updatedOwnerData.getStatus());
                 
                 Owner successfullyUpdatedEntity = ownerRepository.save(existingOwner);
-                System.out.println("Owner saved successfully!");
                 return transformToDataTransferObject(successfullyUpdatedEntity);
             }).orElse(null);
         } catch (Exception e) {
+            // Logging errors is critical for debugging 500 status codes in production.
             System.err.println("CRITICAL ERROR during owner modification: " + e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }
 
     public void removeOwner(UUID targetOwnerId) {
         Objects.requireNonNull(targetOwnerId, "The Owner ID parameter must not be null.");
-        // Deleting directly by ID is faster than fetching the entity first
         ownerRepository.deleteById(targetOwnerId);
     }
 
-    // Extracted helper method for separating mapping concerns. Transforms Entity to DTO.
+    /**
+     * Transforms a Database Entity to a Data Transfer Object (DTO).
+     * This protects internal database structures from being exposed directly to the frontend.
+     */
     private OwnerDTO transformToDataTransferObject(Owner sourceOwnerEntity) {
-        if (sourceOwnerEntity == null) {
-            return null;
-        }
+        if (sourceOwnerEntity == null) return null;
         
         OwnerDTO resultantDto = new OwnerDTO();
         BeanUtils.copyProperties(sourceOwnerEntity, resultantDto);
         
-        // Explicitly map inherited User fields to ensure they are captured correctly in the DTO
+        // Explicitly map inherited User fields to ensure consistency in the frontend
         resultantDto.setUserId(sourceOwnerEntity.getUserId());
         resultantDto.setFullName(sourceOwnerEntity.getFullName());
         resultantDto.setEmail(sourceOwnerEntity.getEmail());
@@ -128,12 +127,8 @@ public class OwnerService {
         return resultantDto;
     }
 
-    // Extracted helper method for separating mapping concerns. Transforms DTO to Entity.
     private Owner transformToDatabaseEntity(OwnerDTO sourceOwnerData) {
-        if (sourceOwnerData == null) {
-            return null;
-        }
-        
+        if (sourceOwnerData == null) return null;
         Owner resultantEntity = new Owner();
         BeanUtils.copyProperties(sourceOwnerData, resultantEntity);
         return resultantEntity;
