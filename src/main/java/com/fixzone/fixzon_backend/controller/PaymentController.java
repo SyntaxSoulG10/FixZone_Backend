@@ -1,17 +1,14 @@
 package com.fixzone.fixzon_backend.controller;
 
 import com.fixzone.fixzon_backend.DTO.InitPaymentRequest;
-import com.fixzone.fixzon_backend.DTO.InitPaymentResponse;
 import com.fixzone.fixzon_backend.DTO.RefundRequest;
 import com.fixzone.fixzon_backend.DTO.RescheduleRequest;
 import com.fixzone.fixzon_backend.model.Payment;
 import com.fixzone.fixzon_backend.service.PaymentService;
-import com.stripe.exception.StripeException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/payments")

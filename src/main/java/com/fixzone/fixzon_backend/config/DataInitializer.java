@@ -3,7 +3,6 @@ package com.fixzone.fixzon_backend.config;
 import com.fixzone.fixzon_backend.model.*;
 import com.fixzone.fixzon_backend.repository.*;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

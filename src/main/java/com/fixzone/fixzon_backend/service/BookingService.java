@@ -91,14 +91,14 @@ public class BookingService {
             throw new RuntimeException("Cannot reschedule a cancelled or completed booking");
         }
 
-        // 📅 Rule: Must be at least 3 days before the original booking date
+        // Rule: Must be at least 3 days before the original booking date
         long daysBetween = ChronoUnit.DAYS.between(LocalDate.now(), booking.getBookingDate());
         if (daysBetween < 3) {
             System.err.println(">>> RESCHEDULE DENIED: Only " + daysBetween + " days left.");
             throw new RuntimeException("Cannot reschedule within 3 days of booking date");
         }
 
-        // ⏱ Check if the new slot is available
+        // Check if the new slot is available
         if (isSlotTaken(booking.getCenterId(), newDate, newTime)) {
             System.err.println(">>> RESCHEDULE DENIED: Slot already taken at " + newTime);
             throw new RuntimeException("The selected slot is no longer available");
@@ -121,10 +121,10 @@ public class BookingService {
             throw new RuntimeException("Booking is already cancelled");
         }
 
-        // 📅 Check how many days left
+        // Check how many days left
         long daysBetween = ChronoUnit.DAYS.between(LocalDate.now(), booking.getBookingDate());
         
-        // 💸 Apply 5% penalty if within 3 days
+        // Apply 5% penalty if within 3 days
         double penaltyPercent = 0.0;
         if (daysBetween < 3) {
             BigDecimal fee = booking.getBookingFee() != null ? booking.getBookingFee() : BigDecimal.ZERO;
@@ -137,7 +137,7 @@ public class BookingService {
             System.out.println(">>> NO PENALTY APPLIED (More than 3 days)");
         }
 
-        // 💳 Trigger Stripe Refund
+        // Trigger Stripe Refund
         if (booking.getGatewaySessionId() != null && booking.getBookingFeePaid()) {
             System.out.println(">>> TRIGGERING STRIPE REFUND FOR SESSION: " + booking.getGatewaySessionId());
             boolean refundSuccess = paymentService.refundPayment(booking.getGatewaySessionId(), penaltyPercent);
@@ -230,7 +230,6 @@ public class BookingService {
         return mapToResponseDTO(Objects.requireNonNull(bookingRepository.save(booking)));
     }
 
-    @SuppressWarnings("null")
     private BookingResponseDTO mapToResponseDTO(@org.springframework.lang.NonNull Booking booking) {
         Objects.requireNonNull(booking, "Booking must not be null");
         BookingResponseDTO dto = new BookingResponseDTO();

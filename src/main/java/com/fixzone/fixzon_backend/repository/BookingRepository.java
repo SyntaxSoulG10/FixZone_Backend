@@ -31,7 +31,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     // For user booking history/tabs (pending / completed / active)
     List<Booking> findByCustomerIdAndStatus(UUID customerId, BookingStatus status);
 
-    // 🔥 NEW: Smart slot locking (with expiry)
+    // NEW: Smart slot locking (with expiry)
     @Query("""
     SELECT COUNT(b) > 0 FROM Booking b
     WHERE b.centerId = :centerId
@@ -53,7 +53,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             @Param("now") LocalDateTime now
     );
 
-    // 🔥 OPTIONAL: Expired bookings finder
+    // OPTIONAL: Expired bookings finder
     @Query("""
     SELECT b FROM Booking b
     WHERE b.status = 'PENDING_PAYMENT'

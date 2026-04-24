@@ -14,7 +14,7 @@ public class BookingResponseDTO {
     // Booking ID
     private UUID bookingId;
 
-    // 🔹 Basic references
+    // Basic references
     private UUID centerId;
     private UUID vehicleId;
     private UUID packageId;
