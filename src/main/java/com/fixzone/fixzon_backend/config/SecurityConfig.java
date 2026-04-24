@@ -31,15 +31,11 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/service-packages/**").permitAll()
-                .requestMatchers("/api/service-centers/**").permitAll()
-                .requestMatchers("/api/analytics/**").permitAll()
-                .requestMatchers("/api/payment-records/**").permitAll()
-                .requestMatchers("/api/customers/**").permitAll()
-                .requestMatchers("/api/admin/**").permitAll()
-                .requestMatchers("/api/owners/**").permitAll()
-                .requestMatchers("/api/managers/**").permitAll()
-                .anyRequest().permitAll()
+                .requestMatchers("/api/customers/**").hasAuthority("ROLE_CUSTOMER")
+                .requestMatchers("/api/admin/**").hasAuthority("ROLE_SUPER_ADMIN")
+                .requestMatchers("/api/owners/**").hasAuthority("ROLE_COMPANY_OWNER")
+                .requestMatchers("/api/managers/**").hasAuthority("ROLE_SERVICE_MANAGER")
+                .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         
