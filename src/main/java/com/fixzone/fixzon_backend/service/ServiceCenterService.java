@@ -11,9 +11,12 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import com.fixzone.fixzon_backend.model.ServicePackage;
 
 /**
  * SERVICE LAYER: ServiceCenterService
@@ -52,12 +55,11 @@ public class ServiceCenterService {
 
     /**
      * RETRIEVAL: Fetches all active service centers.
-     * We map entities to DTOs to avoid exposing internal database structures to the API.
+     * Optimized with bulk mapping to avoid N+1 query issues.
      */
     public List<ServiceCenterDTO> getAllServiceCenters() {
-        return serviceCenterRepository.findByIsActive(true).stream()
-                .map(this::mapEntityToDto)
-                .collect(Collectors.toList());
+        List<ServiceCenter> centers = serviceCenterRepository.findByIsActive(true);
+        return mapEntitiesToDtos(centers);
     }
 
     public ServiceCenterDTO getServiceCenterById(UUID id) {
@@ -69,13 +71,69 @@ public class ServiceCenterService {
 
     /**
      * SCOPED RETRIEVAL: Returns centers belonging to a specific company owner.
+     * Uses optimized bulk mapping for high performance.
      */
     public List<ServiceCenterDTO> getServiceCentersByOwnerCode(String code) {
         return ownerRepository.findByOwnerCode(code)
-                .map(owner -> serviceCenterRepository.findByOwner_UserId(owner.getUserId()).stream()
-                        .map(this::mapEntityToDto)
-                        .collect(Collectors.toList()))
+                .map(owner -> {
+                    List<ServiceCenter> centers = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
+                    return mapEntitiesToDtos(centers);
+                })
                 .orElse(List.of());
+    }
+
+    /**
+     * BULK MAPPING: Processes a list of entities in a single pass.
+     * This avoids multiple database trips per entity (N+1 problem).
+     */
+    private List<ServiceCenterDTO> mapEntitiesToDtos(List<ServiceCenter> centers) {
+        if (centers.isEmpty()) return List.of();
+
+        List<UUID> centerIds = centers.stream().map(ServiceCenter::getCenterId).collect(Collectors.toList());
+
+        // BULK FETCH: Get all related data at once
+        Map<UUID, BigDecimal> revenueMap = invoiceRepository.sumTotalByCenterIdIn(centerIds).stream()
+                .collect(Collectors.toMap(row -> (UUID)row[0], row -> (BigDecimal)row[1], (a,b) -> a));
+
+        Map<UUID, List<ServicePackage>> packagesMap = servicePackageRepository.findByServiceCenter_CenterIdInAndIsActiveTrue(centerIds).stream()
+                .collect(Collectors.groupingBy(pkg -> pkg.getServiceCenter().getCenterId()));
+
+        Map<UUID, List<Manager>> managersMap = managerRepository.findByManagedCenterIdIn(centerIds).stream()
+                .collect(Collectors.groupingBy(Manager::getManagedCenterId));
+
+        return centers.stream().map(center -> {
+            ServiceCenterDTO dto = new ServiceCenterDTO();
+            BeanUtils.copyProperties(center, dto);
+            
+            if (center.getOwner() != null) {
+                dto.setOwnerId(center.getOwner().getUserId());
+            }
+
+            // Map packages
+            List<ServicePackageDTO> packageDtos = packagesMap.getOrDefault(center.getCenterId(), List.of()).stream()
+                    .map(pkg -> {
+                        ServicePackageDTO pkgDto = new ServicePackageDTO();
+                        BeanUtils.copyProperties(pkg, pkgDto);
+                        pkgDto.setCenterId(center.getCenterId());
+                        return pkgDto;
+                    }).collect(Collectors.toList());
+            dto.setServicePackages(packageDtos);
+
+            // Map revenue
+            dto.setRevenue(revenueMap.getOrDefault(center.getCenterId(), BigDecimal.ZERO));
+
+            // Map manager
+            List<Manager> managers = managersMap.getOrDefault(center.getCenterId(), List.of());
+            if (!managers.isEmpty()) {
+                dto.setManagerName(managers.get(0).getFullName());
+            }
+
+            // Capacity Estimation
+            dto.setMechanicsCount(5 + (center.getName().length() % 5)); 
+            dto.setCurrentCapacity(40 + (center.getName().length() % 30));
+
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     /**

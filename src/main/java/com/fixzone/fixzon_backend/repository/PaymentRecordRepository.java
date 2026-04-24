@@ -10,6 +10,8 @@ import java.util.UUID;
 public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, UUID> {
     List<PaymentRecord> findByInvoiceId(UUID invoiceId);
     List<PaymentRecord> findByCenterId(UUID centerId);
+    List<PaymentRecord> findByCenterIdIn(java.util.Collection<UUID> centerIds);
+    List<PaymentRecord> findByCenterIdInAndCreatedAtBetween(java.util.Collection<UUID> centerIds, java.time.LocalDateTime start, java.time.LocalDateTime end);
     List<PaymentRecord> findByStatus(String status);
     List<PaymentRecord> findByMethod(String method);
 }

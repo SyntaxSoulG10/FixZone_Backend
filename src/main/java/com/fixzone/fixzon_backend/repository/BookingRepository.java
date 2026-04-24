@@ -20,6 +20,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByCenterId(UUID centerId);
 
     List<Booking> findByCenterIdIn(Collection<UUID> centerIds);
+    List<Booking> findByCenterIdInAndBookingDateBetween(Collection<UUID> centerIds, LocalDate start, LocalDate end);
     
     List<Booking> findByCustomerId(UUID customerId);
     

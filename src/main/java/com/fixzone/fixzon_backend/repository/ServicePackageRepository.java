@@ -8,6 +8,7 @@ import java.util.UUID;
 public interface ServicePackageRepository extends JpaRepository<ServicePackage, UUID> {
     List<ServicePackage> findByServiceCenter_CenterId(UUID centerId);
     List<ServicePackage> findByServiceCenter_CenterIdAndIsActiveTrue(UUID centerId);
+    List<ServicePackage> findByServiceCenter_CenterIdInAndIsActiveTrue(java.util.Collection<UUID> centerIds);
     List<ServicePackage> findByIsActiveTrue();
 
     @org.springframework.data.jpa.repository.Query("SELECT sp FROM ServicePackage sp JOIN Owner o ON sp.serviceCenter.owner.userId = o.userId WHERE o.ownerCode = :ownerCode AND sp.isActive = true")
