@@ -5,6 +5,7 @@ import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.model.Invoice;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
+import com.fixzone.fixzon_backend.model.PaymentRecord;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.InvoiceRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
@@ -26,7 +27,6 @@ public class AnalyticsService {
     private final InvoiceRepository invoiceRepository;
     private final BookingRepository bookingRepository;
     private final ServiceCenterRepository serviceCenterRepository;
-    private final CustomerRepository customerRepository;
     private final PaymentRecordRepository paymentRecordRepository;
     private final OwnerRepository ownerRepository;
 
@@ -39,7 +39,6 @@ public class AnalyticsService {
         this.invoiceRepository = invoiceRepository;
         this.bookingRepository = bookingRepository;
         this.serviceCenterRepository = serviceCenterRepository;
-        this.customerRepository = customerRepository;
         this.paymentRecordRepository = paymentRecordRepository;
         this.ownerRepository = ownerRepository;
     }
@@ -88,7 +87,6 @@ public class AnalyticsService {
         long pendingJobs = bookings.stream().filter(b -> b.getStatus() == BookingStatus.CONFIRMED).count();
         BigDecimal avgJobValue = totalJobs > 0 ? totalRevenue.divide(BigDecimal.valueOf(totalJobs), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
 
-        // --- TREND CALCULATIONS ---
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime firstDayCurrentMonth = now.withDayOfMonth(1).withHour(0).withMinute(0);
         LocalDateTime firstDayLastMonth = firstDayCurrentMonth.minusMonths(1);
@@ -112,25 +110,21 @@ public class AnalyticsService {
         long pendingOld = allBookings.stream().filter(b -> b.getStatus() == BookingStatus.CONFIRMED && b.getBookingDate() != null && b.getBookingDate().isBefore(now.toLocalDate().minusDays(7))).count();
         String pendingJobsChange = calculatePercentageChange(BigDecimal.valueOf(pendingJobs), BigDecimal.valueOf(pendingOld));
 
-        // --- CHART DATA ---
-        List<com.fixzone.fixzon_backend.model.PaymentRecord> allPayments = centerIds.stream()
+        List<PaymentRecord> allPayments = centerIds.stream()
                 .flatMap(centerId -> paymentRecordRepository.findByCenterId(centerId).stream()).collect(Collectors.toList());
 
         BigDecimal onlineRevenue = allPayments.stream()
                 .filter(p -> "CARD".equalsIgnoreCase(p.getMethod()) || "ONLINE".equalsIgnoreCase(p.getMethod()))
-                .map(com.fixzone.fixzon_backend.model.PaymentRecord::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(PaymentRecord::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal handCollectionRevenue = allPayments.stream()
                 .filter(p -> "CASH".equalsIgnoreCase(p.getMethod()))
-                .map(com.fixzone.fixzon_backend.model.PaymentRecord::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(PaymentRecord::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<AnalyticsDTO.MonthlyDataDTO> revenueOverview = invoices.stream()
                 .filter(i -> "PAID".equalsIgnoreCase(i.getStatus()))
-                .collect(Collectors.groupingBy(i -> {
-                    if ("daily".equalsIgnoreCase(period)) return i.getIssuedAt().getYear() * 10000 + i.getIssuedAt().getMonthValue() * 100 + i.getIssuedAt().getDayOfMonth();
-                    return i.getIssuedAt().getYear() * 100 + i.getIssuedAt().getMonthValue();
-                }, TreeMap::new, Collectors.toList()))
+                .collect(Collectors.groupingBy(i -> i.getIssuedAt().getYear() * 100 + i.getIssuedAt().getMonthValue(), TreeMap::new, Collectors.toList()))
                 .entrySet().stream().map(entry -> {
-                    String name = "Data"; // Simplified for merge stability
+                    String name = java.time.Month.of(entry.getKey() % 100).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
                     return new AnalyticsDTO.MonthlyDataDTO(name, entry.getValue().stream().map(Invoice::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add), BigDecimal.ZERO, BigDecimal.ZERO);
                 }).collect(Collectors.toList());
 
