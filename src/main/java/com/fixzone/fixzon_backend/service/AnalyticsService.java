@@ -87,10 +87,10 @@ public class AnalyticsService {
                                 .reduce(BigDecimal.ZERO, BigDecimal::add);
                 List<Booking> allBookings = bookingRepository.findByCenterIdIn(centerIds);
                 
-                // Apply Filters to Bookings
+                // Apply Filters to Bookings - Use bookingDate (actual service date) instead of createdAt
                 List<Booking> bookings = allBookings.stream()
-                                .filter(b -> startFilter == null || b.getCreatedAt().isAfter(startFilter) || b.getCreatedAt().isEqual(startFilter))
-                                .filter(b -> endFilter == null || b.getCreatedAt().isBefore(endFilter) || b.getCreatedAt().isEqual(endFilter))
+                                .filter(b -> startFilter == null || b.getBookingDate().isAfter(startFilter.toLocalDate()) || b.getBookingDate().isEqual(startFilter.toLocalDate()))
+                                .filter(b -> endFilter == null || b.getBookingDate().isBefore(endFilter.toLocalDate()) || b.getBookingDate().isEqual(endFilter.toLocalDate()))
                                 .collect(Collectors.toList());
 
                 long totalJobs = bookings.size();
@@ -122,35 +122,36 @@ public class AnalyticsService {
                 LocalDateTime firstDayCurrentMonth = now.withDayOfMonth(1).withHour(0).withMinute(0);
                 LocalDateTime firstDayLastMonth = firstDayCurrentMonth.minusMonths(1);
 
-                BigDecimal currentMonthRevenue = invoices.stream()
+                BigDecimal currentMonthRevenue = allInvoices.stream()
                                 .filter(i -> "PAID".equalsIgnoreCase(i.getStatus())
-                                                && i.getIssuedAt().isAfter(firstDayCurrentMonth))
+                                                && !i.getIssuedAt().isBefore(firstDayCurrentMonth))
                                 .map(Invoice::getTotal)
                                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                BigDecimal lastMonthRevenue = invoices.stream()
+                BigDecimal lastMonthRevenue = allInvoices.stream()
                                 .filter(i -> "PAID".equalsIgnoreCase(i.getStatus())
-                                                && i.getIssuedAt().isAfter(firstDayLastMonth)
+                                                && !i.getIssuedAt().isBefore(firstDayLastMonth)
                                                 && i.getIssuedAt().isBefore(firstDayCurrentMonth))
                                 .map(Invoice::getTotal)
                                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                 String revenueChange = calculatePercentageChange(currentMonthRevenue, lastMonthRevenue);
 
-                long currentMonthJobs = bookings.stream()
-                                .filter(b -> b.getCreatedAt() != null && b.getCreatedAt().isAfter(firstDayCurrentMonth))
+                long currentMonthJobs = allBookings.stream()
+                                .filter(b -> b.getBookingDate() != null && !b.getBookingDate().isBefore(firstDayCurrentMonth.toLocalDate()))
                                 .count();
-                long lastMonthJobs = bookings.stream()
-                                .filter(b -> b.getCreatedAt() != null && b.getCreatedAt().isAfter(firstDayLastMonth)
-                                                && b.getCreatedAt().isBefore(firstDayCurrentMonth))
+                long lastMonthJobs = allBookings.stream()
+                                .filter(b -> b.getBookingDate() != null 
+                                                && !b.getBookingDate().isBefore(firstDayLastMonth.toLocalDate())
+                                                && b.getBookingDate().isBefore(firstDayCurrentMonth.toLocalDate()))
                                 .count();
                 String jobsChange = calculatePercentageChange(BigDecimal.valueOf(currentMonthJobs),
                                 BigDecimal.valueOf(lastMonthJobs));
 
                 // Comparison for Pending Jobs Change (Current vs 7 days ago snapshot)
-                long pendingOld = bookings.stream()
-                                .filter(b -> (b.getStatus() == BookingStatus.CONFIRMED) && b.getCreatedAt() != null
-                                                && b.getCreatedAt().isBefore(now.minusDays(7)))
+                long pendingOld = allBookings.stream()
+                                .filter(b -> (b.getStatus() == BookingStatus.CONFIRMED) && b.getBookingDate() != null
+                                                && b.getBookingDate().isBefore(now.toLocalDate().minusDays(7)))
                                 .count();
                 String pendingJobsChange = calculatePercentageChange(BigDecimal.valueOf(pendingJobs),
                                 BigDecimal.valueOf(pendingOld));
@@ -251,30 +252,63 @@ public class AnalyticsService {
                                 .sorted((c1, c2) -> c2.getRevenue().compareTo(c1.getRevenue()))
                                 .collect(Collectors.toList());
 
-                // Customer Growth - Real implementation
-                List<AnalyticsDTO.MonthlyGrowthDTO> customerGrowth = bookings.stream()
-                                .filter(b -> b.getCreatedAt() != null)
+
+                // Customer Growth - Dynamic implementation
+                Set<UUID> companyCustomerIds = allInvoices.stream()
+                                .map(Invoice::getIssuedToCustomerId)
+                                .collect(Collectors.toSet());
+                
+                List<com.fixzone.fixzon_backend.model.Customer> companyCustomers = customerRepository.findAllById(companyCustomerIds);
+
+                List<AnalyticsDTO.MonthlyGrowthDTO> customerGrowth = invoices.stream()
                                 .collect(Collectors.groupingBy(
-                                                b -> b.getCreatedAt().getYear() * 100 + b.getCreatedAt().getMonthValue(),
+                                                i -> {
+                                                    if ("daily".equalsIgnoreCase(period)) {
+                                                        return i.getIssuedAt().getYear() * 10000 + i.getIssuedAt().getMonthValue() * 100 + i.getIssuedAt().getDayOfMonth();
+                                                    } else if ("yearly".equalsIgnoreCase(period)) {
+                                                        return i.getIssuedAt().getYear();
+                                                    } else {
+                                                        return i.getIssuedAt().getYear() * 100 + i.getIssuedAt().getMonthValue();
+                                                    }
+                                                },
                                                 TreeMap::new,
-                                                Collectors.toSet()))
+                                                Collectors.toList()))
                                 .entrySet().stream()
                                 .map(entry -> {
-                                        int yearMonth = entry.getKey();
-                                        int year = yearMonth / 100;
-                                        int monthOrdinal = yearMonth % 100;
-                                        LocalDateTime start = LocalDateTime.of(year, monthOrdinal, 1, 0, 0);
-                                        LocalDateTime end = start.plusMonths(1);
+                                        int key = entry.getKey();
+                                        String name;
+                                        LocalDateTime start;
+                                        LocalDateTime end;
 
-                                        String monthName = java.time.Month.of(monthOrdinal)
-                                                        .getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                                        if ("daily".equalsIgnoreCase(period)) {
+                                            int year = key / 10000;
+                                            int month = (key % 10000) / 100;
+                                            int day = key % 100;
+                                            start = LocalDateTime.of(year, month, day, 0, 0);
+                                            end = start.plusDays(1);
+                                            name = day + " " + java.time.Month.of(month).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                                        } else if ("yearly".equalsIgnoreCase(period)) {
+                                            start = LocalDateTime.of(key, 1, 1, 0, 0);
+                                            end = start.plusYears(1);
+                                            name = String.valueOf(key);
+                                        } else {
+                                            int year = key / 100;
+                                            int month = key % 100;
+                                            start = LocalDateTime.of(year, month, 1, 0, 0);
+                                            end = start.plusMonths(1);
+                                            name = java.time.Month.of(month).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                                        }
 
-                                        int active = entry.getValue().stream().map(Booking::getCustomerId)
-                                                        .collect(Collectors.toSet()).size();
+                                        long newCust = companyCustomers.stream()
+                                                        .filter(c -> c.getCreatedAt() != null && c.getCreatedAt().isAfter(start) && c.getCreatedAt().isBefore(end))
+                                                        .count();
+                                        
+                                        long activeCust = entry.getValue().stream()
+                                                        .map(Invoice::getIssuedToCustomerId)
+                                                        .distinct()
+                                                        .count();
 
-                                        long newCust = customerRepository.countByCreatedAtBetween(start, end);
-
-                                        return new AnalyticsDTO.MonthlyGrowthDTO(monthName, (int) newCust, active);
+                                        return new AnalyticsDTO.MonthlyGrowthDTO(name, (int)newCust, (int)activeCust);
                                 })
                                 .collect(Collectors.toList());
 
