@@ -50,15 +50,16 @@ public class OwnerService {
     }
 
     public OwnerDTO registerOwner(OwnerDTO newOwnerRegistrationData) {
+        Objects.requireNonNull(newOwnerRegistrationData, "Registration data must not be null.");
         // Transform the DTO back to a JPA Entity because repositories only understand Entities.
-        Owner newOwnerEntity = transformToDatabaseEntity(newOwnerRegistrationData);
+        Owner newOwnerEntity = Objects.requireNonNull(transformToDatabaseEntity(newOwnerRegistrationData));
         
         // Ensure a unique identifier exists before saving to the database.
-        if (newOwnerEntity != null && newOwnerEntity.getUserId() == null) {
+        if (newOwnerEntity.getUserId() == null) {
             newOwnerEntity.setUserId(UUID.randomUUID());
         }
         
-        Owner persistedOwnerEntity = ownerRepository.save(newOwnerEntity);
+        Owner persistedOwnerEntity = Objects.requireNonNull(ownerRepository.save(newOwnerEntity));
         return transformToDataTransferObject(persistedOwnerEntity);
     }
 
