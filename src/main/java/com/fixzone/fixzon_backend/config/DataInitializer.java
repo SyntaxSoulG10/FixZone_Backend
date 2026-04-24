@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -42,6 +43,8 @@ public class DataInitializer implements CommandLineRunner {
     @Value("${spring.jpa.hibernate.ddl-auto:update}")
     private String ddlAuto;
 
+    private final DataSource dataSource;
+
     public DataInitializer(UserRepository userRepository, OwnerRepository ownerRepository,
             CustomerRepository customerRepository, ManagerRepository managerRepository,
             SuperAdminRepository superAdminRepository, ServiceCenterRepository serviceCenterRepository,
@@ -49,7 +52,7 @@ public class DataInitializer implements CommandLineRunner {
             InvoiceRepository invoiceRepository, PaymentRecordRepository paymentRecordRepository,
             NotificationRepository notificationRepository, SubscriptionRepository subscriptionRepository,
             AnalyticsRepository analyticsRepository, BookingHistoryRepository bookingHistoryRepository,
-            PaymentRepository paymentRepository, PasswordEncoder passwordEncoder) {
+            PaymentRepository paymentRepository, PasswordEncoder passwordEncoder, DataSource dataSource) {
         this.userRepository = userRepository;
         this.ownerRepository = ownerRepository;
         this.customerRepository = customerRepository;
@@ -66,11 +69,24 @@ public class DataInitializer implements CommandLineRunner {
         this.bookingHistoryRepository = bookingHistoryRepository;
         this.paymentRepository = paymentRepository;
         this.passwordEncoder = passwordEncoder;
+        this.dataSource = dataSource;
     }
 
     @Override
     @Transactional
     public void run(String... args) throws Exception {
+        // --- AUTOMATIC SCHEMA MIGRATION ---
+        // We explicitly alter the column types to TEXT to ensure large Base64 images are supported.
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            System.out.println("Applying schema migrations for large image support...");
+            stmt.execute("ALTER TABLE users ALTER COLUMN profile_picture_url TYPE TEXT");
+            stmt.execute("ALTER TABLE owner ALTER COLUMN banner_image_url TYPE TEXT");
+            System.out.println("Schema migrations applied successfully.");
+        } catch (Exception e) {
+            System.out.println("Note: Schema migration already applied or handled: " + e.getMessage());
+        }
+
         // Only run initialization if ddl-auto is set to 'create'
         if (!"create".equalsIgnoreCase(ddlAuto)) {
             System.out.println("ddl-auto is '" + ddlAuto + "', skipping fresh data initialization.");
@@ -121,7 +137,8 @@ public class DataInitializer implements CommandLineRunner {
                     passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(),
                     "system", LocalDateTime.now(), "system",
                     "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200&h=200&auto=format&fit=crop", "FIX00" + (i + 1), companies[i],
-                    "contact@" + ownerNames[i].toLowerCase().replace(" ", "") + ".lk", "+9411200000" + i));
+                    "contact@" + ownerNames[i].toLowerCase().replace(" ", "") + ".lk", "+9411200000" + i,
+                    "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=1000"));
         }
         ownerRepository.saveAll(owners);
 
@@ -329,7 +346,7 @@ public class DataInitializer implements CommandLineRunner {
         Owner pendingOwner = new Owner(UUID.randomUUID(), "Kusal Mendis", "kusal@test.com", "+94775000000",
                 passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(), "system",
                 LocalDateTime.now(), "system", "https://i.pravatar.cc/150?u=Kusal+Mendis", "FIXPEND01", "Mendis Auto",
-                "contact@mendis.lk", "+94112555555");
+                "contact@mendis.lk", "+94112555555", "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=1000");
         ownerRepository.save(pendingOwner);
 
         ServiceCenter pendingCenter = new ServiceCenter();

@@ -11,4 +11,5 @@ public class OwnerDTO extends UserDTO {
     private String companyEmail;
     private String companyNumber;
     private String passwordHash;
+    private String bannerImageUrl;
 }
