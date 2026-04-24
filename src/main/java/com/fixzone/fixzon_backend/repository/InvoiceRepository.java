@@ -14,4 +14,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     List<Invoice> findByIssuedToCustomerId(UUID customerId);
     List<Invoice> findByStatus(String status);
     List<Invoice> findByCompanyCode(String companyCode);
+    
+    @org.springframework.data.jpa.repository.Query("SELECT SUM(i.total) FROM Invoice i WHERE i.centerId = :centerId AND i.status = 'PAID'")
+    java.math.BigDecimal sumTotalByCenterId(@org.springframework.data.repository.query.Param("centerId") UUID centerId);
 }

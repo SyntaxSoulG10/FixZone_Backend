@@ -14,7 +14,7 @@ import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional(readOnly = true)
+@Transactional
 public class ServicePackageService {
 
     private final ServicePackageRepository repository;
@@ -25,18 +25,28 @@ public class ServicePackageService {
         this.centerRepository = centerRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<ServicePackageDTO> getAllPackages() {
         return repository.findByIsActiveTrue().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ServicePackageDTO> getPackagesByCenter(UUID centerId) {
         return repository.findByServiceCenter_CenterIdAndIsActiveTrue(centerId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<ServicePackageDTO> getPackagesByOwnerCode(String code) {
+        return repository.findPackagesByOwnerCode(code).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public ServicePackageDTO getPackageById(UUID id) {
         Objects.requireNonNull(id, "ID must not be null");
         return repository.findById(id)

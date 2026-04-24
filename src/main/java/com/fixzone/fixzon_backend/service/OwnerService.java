@@ -66,18 +66,38 @@ public class OwnerService {
     public OwnerDTO modifyOwner(UUID targetOwnerId, OwnerDTO updatedOwnerData) {
         Objects.requireNonNull(targetOwnerId, "The Owner ID parameter must not be null.");
         
-        // We check existence first; updating a non-existent entity could incorrectly create a new one.
-        if (ownerRepository.existsById(targetOwnerId)) {
-            Owner ownerEntityToUpdate = transformToDatabaseEntity(updatedOwnerData);
-            
-            if (ownerEntityToUpdate != null) {
-                // Ensure the entity updates the specific record rather than inserting a new one
-                ownerEntityToUpdate.setUserId(targetOwnerId);
-                Owner successfullyUpdatedEntity = ownerRepository.save(ownerEntityToUpdate);
+        try {
+            return ownerRepository.findById(targetOwnerId).map(existingOwner -> {
+                System.out.println("Updating owner: " + targetOwnerId);
+                // Update Owner specific fields
+                if (updatedOwnerData.getOwnerCode() != null) existingOwner.setOwnerCode(updatedOwnerData.getOwnerCode());
+                if (updatedOwnerData.getCompanyName() != null) existingOwner.setCompanyName(updatedOwnerData.getCompanyName());
+                if (updatedOwnerData.getCompanyEmail() != null) existingOwner.setCompanyEmail(updatedOwnerData.getCompanyEmail());
+                if (updatedOwnerData.getCompanyNumber() != null) existingOwner.setCompanyNumber(updatedOwnerData.getCompanyNumber());
+                if (updatedOwnerData.getBannerImageUrl() != null) {
+                    System.out.println("Updating banner image. Length: " + updatedOwnerData.getBannerImageUrl().length());
+                    existingOwner.setBannerImageUrl(updatedOwnerData.getBannerImageUrl());
+                }
+                
+                // Update inherited User fields
+                if (updatedOwnerData.getFullName() != null) existingOwner.setFullName(updatedOwnerData.getFullName());
+                if (updatedOwnerData.getEmail() != null) existingOwner.setEmail(updatedOwnerData.getEmail());
+                if (updatedOwnerData.getPhone() != null) existingOwner.setPhone(updatedOwnerData.getPhone());
+                if (updatedOwnerData.getProfilePictureUrl() != null) {
+                    System.out.println("Updating profile picture. Length: " + updatedOwnerData.getProfilePictureUrl().length());
+                    existingOwner.setProfilePictureUrl(updatedOwnerData.getProfilePictureUrl());
+                }
+                if (updatedOwnerData.getStatus() != null) existingOwner.setStatus(updatedOwnerData.getStatus());
+                
+                Owner successfullyUpdatedEntity = ownerRepository.save(existingOwner);
+                System.out.println("Owner saved successfully!");
                 return transformToDataTransferObject(successfullyUpdatedEntity);
-            }
+            }).orElse(null);
+        } catch (Exception e) {
+            System.err.println("CRITICAL ERROR during owner modification: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
         }
-        return null; // Signals to the controller that the entity was not found
     }
 
     public void removeOwner(UUID targetOwnerId) {
@@ -94,6 +114,18 @@ public class OwnerService {
         
         OwnerDTO resultantDto = new OwnerDTO();
         BeanUtils.copyProperties(sourceOwnerEntity, resultantDto);
+        
+        // Explicitly map inherited User fields to ensure they are captured correctly in the DTO
+        resultantDto.setUserId(sourceOwnerEntity.getUserId());
+        resultantDto.setFullName(sourceOwnerEntity.getFullName());
+        resultantDto.setEmail(sourceOwnerEntity.getEmail());
+        resultantDto.setPhone(sourceOwnerEntity.getPhone());
+        resultantDto.setRole(sourceOwnerEntity.getRole());
+        resultantDto.setProfilePictureUrl(sourceOwnerEntity.getProfilePictureUrl());
+        resultantDto.setStatus(sourceOwnerEntity.getStatus());
+        resultantDto.setCreatedAt(sourceOwnerEntity.getCreatedAt());
+        resultantDto.setUpdatedAt(sourceOwnerEntity.getUpdatedAt());
+        
         return resultantDto;
     }
 

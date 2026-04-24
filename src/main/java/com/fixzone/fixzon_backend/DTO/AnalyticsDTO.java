@@ -64,6 +64,8 @@ public class AnalyticsDTO {
     public static class MonthlyDataDTO {
         private String name;
         private BigDecimal revenue;
+        private BigDecimal onlineRevenue;
+        private BigDecimal cashRevenue;
     }
 
     @Data

@@ -16,12 +16,17 @@ import java.util.List;
 @CrossOrigin("*")
 public class CustomerController {
 
-
     @Autowired
     private CustomerService customerService;
 
     @GetMapping
     public List<CustomerDTO> getAllCustomers() {
         return customerService.getAllCustomers();
+    }
+
+    @GetMapping("/current")
+    public List<CustomerDTO> getCurrentOwnerCustomers() {
+        // Hardcoded for development
+        return customerService.getCustomersByOwnerCode("FIX001");
     }
 }

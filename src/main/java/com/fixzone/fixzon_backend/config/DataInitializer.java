@@ -7,8 +7,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -17,107 +22,139 @@ public class DataInitializer implements CommandLineRunner {
     private final ServiceCenterRepository serviceCenterRepository;
     private final ServicePackageRepository servicePackageRepository;
     private final UserRepository userRepository;
+    private final BookingRepository bookingRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final PaymentRecordRepository paymentRecordRepository;
+    private final NotificationRepository notificationRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final AnalyticsRepository analyticsRepository;
+    private final BookingHistoryRepository bookingHistoryRepository;
+    private final PaymentRepository paymentRepository;
+    private final OwnerRepository ownerRepository;
+    private final CustomerRepository customerRepository;
+    private final ManagerRepository managerRepository;
+    private final SuperAdminRepository superAdminRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JdbcTemplate jdbcTemplate;
+    private final DataSource dataSource;
 
-    public DataInitializer(ServiceCenterRepository serviceCenterRepository,
-            ServicePackageRepository servicePackageRepository,
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder,
-            JdbcTemplate jdbcTemplate) {
+    @Value("${spring.jpa.hibernate.ddl-auto:update}")
+    private String ddlAuto;
+
+    public DataInitializer(UserRepository userRepository, OwnerRepository ownerRepository,
+            CustomerRepository customerRepository, ManagerRepository managerRepository,
+            SuperAdminRepository superAdminRepository, ServiceCenterRepository serviceCenterRepository,
+            ServicePackageRepository servicePackageRepository, BookingRepository bookingRepository,
+            InvoiceRepository invoiceRepository, PaymentRecordRepository paymentRecordRepository,
+            NotificationRepository notificationRepository, SubscriptionRepository subscriptionRepository,
+            AnalyticsRepository analyticsRepository, BookingHistoryRepository bookingHistoryRepository,
+            PaymentRepository paymentRepository, PasswordEncoder passwordEncoder, 
+            DataSource dataSource) {
+        this.userRepository = userRepository;
+        this.ownerRepository = ownerRepository;
+        this.customerRepository = customerRepository;
+        this.managerRepository = managerRepository;
+        this.superAdminRepository = superAdminRepository;
         this.serviceCenterRepository = serviceCenterRepository;
         this.servicePackageRepository = servicePackageRepository;
-        this.userRepository = userRepository;
+        this.bookingRepository = bookingRepository;
+        this.invoiceRepository = invoiceRepository;
+        this.paymentRecordRepository = paymentRecordRepository;
+        this.notificationRepository = notificationRepository;
+        this.subscriptionRepository = subscriptionRepository;
+        this.analyticsRepository = analyticsRepository;
+        this.bookingHistoryRepository = bookingHistoryRepository;
+        this.paymentRepository = paymentRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jdbcTemplate = jdbcTemplate;
+        this.dataSource = dataSource;
     }
 
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        System.out.println(">>> RESTORING TEAM WORK DATA <<<");
+        System.out.println(">>> APPLYING SCHEMA MIGRATIONS AND DATA INITIALIZATION <<<");
 
-        // 1. Repair Schema First
-        try {
-            jdbcTemplate.execute(
-                    "ALTER TABLE payments ALTER COLUMN booking_id TYPE bigint USING (booking_id::text::bigint)");
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            stmt.execute("ALTER TABLE users ALTER COLUMN profile_picture_url TYPE TEXT");
+            stmt.execute("ALTER TABLE owner ALTER COLUMN banner_image_url TYPE TEXT");
+            stmt.execute("ALTER TABLE payments ALTER COLUMN booking_id TYPE bigint USING (booking_id::text::bigint)");
         } catch (Exception e) {
+            System.out.println("Schema migration note: " + e.getMessage());
         }
 
-        // 2. Restore Original Users
-        User admin = ensureUser(UUID.fromString("11111111-1111-1111-1111-111111111111"), "admin@fixzone.com",
-                "Main Super Admin", "ROLE_SUPER_ADMIN", "Admin123!");
-        User owner1 = ensureUser(UUID.fromString("22222222-2222-2222-2222-222222222222"), "owner1@fixzone.com",
-                "Elite Owner", "ROLE_COMPANY_OWNER", "Owner123!");
-        User owner2 = ensureUser(UUID.fromString("33333333-3333-3333-3333-333333333333"), "owner2@fixzone.com",
-                "Zenith Owner", "ROLE_COMPANY_OWNER", "Owner123!");
-        User charlie = ensureUser(UUID.fromString("00000000-0000-0000-0000-000000000001"), "charlie@example.com",
-                "Charlie Customer", "ROLE_CUSTOMER", "charlie123");
-
-        // 3. Restore Original Service Centers
-        if (serviceCenterRepository.count() == 0) {
-            ServiceCenter sc1 = createCenter(UUID.fromString("a1e11111-1111-1111-1111-111111111111"), "Elite Motors",
-                    "12 High Level Rd, Nugegoda", "+1-555-0101", owner1);
-            ServiceCenter sc2 = createCenter(UUID.fromString("b2e22222-2222-2222-2222-222222222222"),
-                    "Zenith Performance", "45 Station Rd, Bambalapitiya", "+1-555-0102", owner2);
-            ServiceCenter sc3 = createCenter(UUID.fromString("c3e33333-3333-3333-3333-333333333333"),
-                    "City Tire & Lube", "78 Peradeniya Rd, Kandy", "+1-555-0103", owner1);
-
-            // 4. Restore Original Packages
-            createPackage(sc1, "Full Maintenance", "Oil Change, Filter, Brake Check",
-                    "Comprehensive vehicle inspection.", "9500.00", 120);
-            createPackage(sc1, "Basic Service", "Oil Change", "Quick check-up.", "4500.00", 45);
-            createPackage(sc1, "AC Refill & Service", "Gas recharge", "Keep it cool.", "5500.00", 60);
-
-            createPackage(sc2, "Performance Tune-up", "ECU Remap", "Maximize output.", "450.00", 180);
-            createPackage(sc2, "Premium Detailing", "Wax & Polish", "Showroom shine.", "15000.00", 240);
-
-            createPackage(sc3, "Tire Rotation & Balance", "4 Wheels", "Even wear.", "2500.00", 40);
-            createPackage(sc3, "Wheel Alignment", "Precision Alignment", "Smooth steering.", "3500.00", 50);
-            createPackage(sc3, "Hybrid Battery Health", "Scan & Report", "Efficiency check.", "4000.00", 45);
-
-            System.out.println(">>> ORIGINAL TEAM DATA RESTORED SUCCESSFULLY <<<");
+        if (!"create".equalsIgnoreCase(ddlAuto) && userRepository.count() > 0) {
+            System.out.println("Existing data found, ensuring Mock Charlie Customer exists...");
+            ensureMockCharlie();
+            return;
         }
 
-        System.out.println(">>> ENVIRONMENT READY <<<");
+        System.out.println("--- CLEARING OLD DATA AND STARTING FRESH SEEDING ---");
+
+        analyticsRepository.deleteAll();
+        subscriptionRepository.deleteAll();
+        notificationRepository.deleteAll();
+        paymentRecordRepository.deleteAll();
+        paymentRepository.deleteAll();
+        invoiceRepository.deleteAll();
+        bookingHistoryRepository.deleteAll();
+        bookingRepository.deleteAll();
+        servicePackageRepository.deleteAll();
+        serviceCenterRepository.deleteAll();
+        managerRepository.deleteAll();
+        customerRepository.deleteAll();
+        ownerRepository.deleteAll();
+        superAdminRepository.deleteAll();
+        userRepository.deleteAll();
+
+        ensureMockCharlie();
+
+        List<SuperAdmin> superAdmins = new ArrayList<>();
+        String[] adminNames = { "Aruna Kumara", "Ruwan Silva", "Gihan Fernando" };
+        for (int i = 0; i < adminNames.length; i++) {
+            superAdmins.add(new SuperAdmin(UUID.randomUUID(), adminNames[i], "admin" + (i + 1) + "@fixzone.lk",
+                    "+9411555000" + i, passwordEncoder.encode("Admin123!"), "ROLE_SUPER_ADMIN", true,
+                    LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
+                    "https://i.pravatar.cc/150?u=" + adminNames[i].replace(" ", "+"), "ADM-00" + (i + 1)));
+        }
+        superAdminRepository.saveAll(superAdmins);
+
+        List<Owner> owners = new ArrayList<>();
+        String[] ownerNames = { "Janaka Ranasinghe", "Tharindu Perera" };
+        for (int i = 0; i < ownerNames.length; i++) {
+            owners.add(new Owner(UUID.randomUUID(), ownerNames[i], "owner" + (i + 1) + "@fixzone.lk", "+9477100000" + i,
+                    passwordEncoder.encode("pass123"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(),
+                    "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150", "FIX00" + (i + 1), "Motors",
+                    "contact@motors.lk", "+9411200000" + i, "https://images.unsplash.com"));
+        }
+        ownerRepository.saveAll(owners);
+
+        for (Owner owner : owners) {
+            ServiceCenter sc = new ServiceCenter(UUID.randomUUID(), owner, owner.getCompanyName() + " HQ", "Colombo",
+                    "+9411400", "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
+                    LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, "APPROVED", null, null, null, null, null);
+            serviceCenterRepository.save(sc);
+
+            ServicePackage p = new ServicePackage(UUID.randomUUID(), sc, "Full Service", "Package", "Oil & Filter", 
+                    new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system");
+            servicePackageRepository.save(p);
+        }
+
+        System.out.println("--- DATA SEEDING COMPLETE ---");
     }
 
-    private User ensureUser(UUID id, String email, String name, String role, String pass) {
-        return userRepository.findById(id).orElseGet(() -> {
-            User u = new User();
-            u.setUserId(id);
-            u.setEmail(email);
-            u.setFullName(name);
-            u.setRole(role);
-            u.setPasswordHash(passwordEncoder.encode(pass));
-            u.setStatus("Active");
-            return userRepository.save(u);
-        });
-    }
-
-    private ServiceCenter createCenter(UUID id, String name, String addr, String phone, User owner) {
-        ServiceCenter sc = new ServiceCenter();
-        sc.setCenterId(id);
-        sc.setName(name);
-        sc.setAddress(addr);
-        sc.setContactPhone(phone);
-        sc.setOwner(owner);
-        sc.setIsActive(true);
-        sc.setStatus("APPROVED");
-        sc.setOpeningHours("08:00 - 18:00");
-        return serviceCenterRepository.save(sc);
-    }
-
-    private void createPackage(ServiceCenter sc, String name, String type, String desc, String price, int duration) {
-        ServicePackage p = new ServicePackage();
-        p.setPackageId(UUID.randomUUID());
-        p.setServiceCenter(sc);
-        p.setName(name);
-        p.setType(type);
-        p.setDescription(desc);
-        p.setBasePrice(new BigDecimal(price));
-        p.setEstimatedDurationMins(duration);
-        p.setIsActive(true);
-        servicePackageRepository.save(p);
+    private void ensureMockCharlie() {
+        UUID charlieId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        if (!userRepository.existsById(charlieId)) {
+            Customer charlie = new Customer();
+            charlie.setUserId(charlieId);
+            charlie.setEmail("charlie@example.com");
+            charlie.setFullName("Charlie Customer");
+            charlie.setRole("ROLE_CUSTOMER");
+            charlie.setPasswordHash(passwordEncoder.encode("charlie123"));
+            charlie.setStatus("Active");
+            charlie.setCustomerCode("CUST-MOCK");
+            customerRepository.save(charlie);
+            System.out.println(">>> Mock Charlie Customer created successfully <<<");
+        }
     }
 }

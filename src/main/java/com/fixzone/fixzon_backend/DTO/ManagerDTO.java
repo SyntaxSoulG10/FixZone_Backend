@@ -10,4 +10,5 @@ public class ManagerDTO extends UserDTO {
     private String managerCode;
     private UUID managedCenterId;
     private String passwordHash; // Keep for creation/updates if needed
+    private Boolean sendInvite;
 }

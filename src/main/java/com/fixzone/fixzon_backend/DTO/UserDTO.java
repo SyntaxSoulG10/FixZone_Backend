@@ -17,5 +17,6 @@ public class UserDTO {
     private String createdBy;
     private LocalDateTime updatedAt;
     private String updatedBy;
+    private String status;
     private String profilePictureUrl;
 }
