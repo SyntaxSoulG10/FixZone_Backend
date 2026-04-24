@@ -23,6 +23,10 @@ public class BookingRequestDTO {
     // 🔹 Time slot (from UI)
     private LocalTime bookingTime;
 
+    // 🔹 IDs for tracking
+    private UUID customerId;
+    private UUID tenantId;
+
     // 🔹 Optional note (special request)
     private String specialRequest;
 }

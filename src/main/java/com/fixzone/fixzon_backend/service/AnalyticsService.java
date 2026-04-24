@@ -4,6 +4,16 @@ import com.fixzone.fixzon_backend.DTO.AnalyticsDTO;
 import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.model.*;
 import com.fixzone.fixzon_backend.repository.*;
+import com.fixzone.fixzon_backend.model.Booking;
+import com.fixzone.fixzon_backend.model.Invoice;
+import com.fixzone.fixzon_backend.model.ServiceCenter;
+import com.fixzone.fixzon_backend.model.PaymentRecord;
+import com.fixzone.fixzon_backend.repository.BookingRepository;
+import com.fixzone.fixzon_backend.repository.InvoiceRepository;
+import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
+import com.fixzone.fixzon_backend.repository.CustomerRepository;
+import com.fixzone.fixzon_backend.repository.PaymentRecordRepository;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -122,7 +132,7 @@ public class AnalyticsService {
                 .filter(Objects::nonNull).sorted((a,b) -> b.getRevenue().compareTo(a.getRevenue()))
                 .collect(Collectors.toList());
 
-        // 🔥 OPTIMIZATION: RESOLVE TRANSACTIONS WITHOUT N+1 QUERIES
+        // OPTIMIZATION: RESOLVE TRANSACTIONS WITHOUT N+1 QUERIES
         List<PaymentRecord> recent = allPayments.stream()
                 .sorted(Comparator.comparing(PaymentRecord::getCreatedAt).reversed())
                 .limit(15).collect(Collectors.toList());

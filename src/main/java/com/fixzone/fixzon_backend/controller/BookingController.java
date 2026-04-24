@@ -14,6 +14,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/bookings")
+@CrossOrigin("*")
 public class BookingController {
 
     private final BookingService bookingService;
@@ -74,6 +75,14 @@ public class BookingController {
         return ResponseEntity.ok(!taken);
     }
 
+    @GetMapping("/available-slots")
+    public ResponseEntity<List<String>> getAvailableSlots(
+            @RequestParam UUID centerId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        return ResponseEntity.ok(bookingService.getAvailableSlots(centerId, date));
+    }
+
     @GetMapping("/active")
     public ResponseEntity<List<BookingResponseDTO>> getActiveBookings() {
         return ResponseEntity.ok(bookingService.getBookingsByStatus("CONFIRMED"));
@@ -128,6 +137,11 @@ public class BookingController {
     @PutMapping("/{id}/complete")
     public ResponseEntity<BookingResponseDTO> completeBooking(@PathVariable UUID id) {
         return ResponseEntity.ok(bookingService.completeBooking(id));
+    }
+
+    @PutMapping("/{id}/start-service")
+    public ResponseEntity<BookingResponseDTO> startService(@PathVariable UUID id) {
+        return ResponseEntity.ok(bookingService.startService(id));
     }
 
 

@@ -28,6 +28,12 @@ public class Payment {
     @Column(name = "vehicle_id")
     private java.util.UUID vehicleId;
 
+    @Column(name = "center_id")
+    private java.util.UUID centerId;
+
+    @Column(name = "tenant_id")
+    private java.util.UUID tenantId;
+
     @Column(name = "date")
     private String date;
 
