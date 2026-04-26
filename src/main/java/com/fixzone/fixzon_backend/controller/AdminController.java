@@ -2,8 +2,10 @@ package com.fixzone.fixzon_backend.controller;
  
 import com.fixzone.fixzon_backend.DTO.NotificationDTO;
 import com.fixzone.fixzon_backend.DTO.ServiceCenterDTO;
+import com.fixzone.fixzon_backend.DTO.SuperAdminAnalyticsDTO;
 import com.fixzone.fixzon_backend.DTO.UserDTO;
 import com.fixzone.fixzon_backend.service.AdminService;
+import com.fixzone.fixzon_backend.service.SuperAdminAnalyticsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -16,14 +18,21 @@ import java.util.UUID;
 public class AdminController {
  
     private final AdminService adminService;
- 
-    public AdminController(AdminService adminService) {
+    private final SuperAdminAnalyticsService superAdminAnalyticsService;
+
+    public AdminController(AdminService adminService, SuperAdminAnalyticsService superAdminAnalyticsService) {
         this.adminService = adminService;
+        this.superAdminAnalyticsService = superAdminAnalyticsService;
     }
  
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
         return ResponseEntity.ok(adminService.getSystemStats());
+    }
+
+    @GetMapping("/analytics")
+    public ResponseEntity<SuperAdminAnalyticsDTO> getSuperAdminAnalytics() {
+        return ResponseEntity.ok(superAdminAnalyticsService.getAnalytics());
     }
  
     @GetMapping("/users")
