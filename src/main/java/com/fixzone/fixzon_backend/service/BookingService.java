@@ -188,8 +188,8 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<String> getAvailableSlots(UUID centerId, LocalDate date) {
-        // Standard hours: 09:00 to 17:00 (hourly)
-        List<String> allSlots = List.of("09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00");
+        // Standard hours: 08:00 to 18:00 (hourly)
+        List<String> allSlots = List.of("08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00");
         
         return allSlots.stream()
                 .filter(slotStr -> !isSlotTaken(centerId, date, LocalTime.parse(slotStr)))
