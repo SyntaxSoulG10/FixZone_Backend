@@ -167,6 +167,10 @@ public class ServiceCenterService {
         existing.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : existing.getIsActive());
         existing.setUpdatedBy(dto.getUpdatedBy());
         existing.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
+        
+        if (dto.getImageUrl() != null && !dto.getImageUrl().isEmpty()) {
+            existing.setImageUrl(dto.getImageUrl());
+        }
 
         return mapEntityToDto(serviceCenterRepository.save(existing));
     }
@@ -243,6 +247,12 @@ public class ServiceCenterService {
         center.setCreatedBy(dto.getCreatedBy());
         center.setUpdatedBy(dto.getUpdatedBy());
         center.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
+        
+        // Handle imageUrl with a dummy fallback if null
+        center.setImageUrl(dto.getImageUrl() != null && !dto.getImageUrl().isEmpty() 
+            ? dto.getImageUrl() 
+            : "https://images.unsplash.com/photo-1625047509168-a71c67c00684?q=80&w=1470&auto=format&fit=crop");
+            
         return center;
     }
 }

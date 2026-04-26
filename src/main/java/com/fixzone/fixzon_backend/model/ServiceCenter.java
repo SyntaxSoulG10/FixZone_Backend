@@ -75,6 +75,9 @@ public class ServiceCenter {
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
     
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+    
     @OneToMany(mappedBy = "serviceCenter", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ServicePackage> servicePackages;
 

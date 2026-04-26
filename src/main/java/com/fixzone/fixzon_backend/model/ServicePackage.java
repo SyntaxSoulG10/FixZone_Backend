@@ -29,7 +29,10 @@ public class ServicePackage {
     private String name;
 
     @Column(name = "type", length = 100)
-    private String type; // Can be used for comma-separated features
+    private String type;
+
+    @Column(name = "vehicle_type", length = 50)
+    private String vehicleType; // e.g. car, bike, van, lorry
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
