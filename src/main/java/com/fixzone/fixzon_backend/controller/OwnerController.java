@@ -21,7 +21,6 @@ public class OwnerController {
 
     // We inject the service via the constructor instead of field injection.
     // This makes the controller easier to unit test because we can pass mock services directly.
-    @Autowired
     public OwnerController(OwnerService ownerService) {
         this.ownerService = ownerService;
     }

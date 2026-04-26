@@ -22,9 +22,11 @@ public class PaymentController {
     }
 
     @PostMapping("/init")
-    public ResponseEntity<?> initPayment(@RequestBody InitPaymentRequest request) {
+    public ResponseEntity<?> initPayment(@RequestBody InitPaymentRequest request, java.security.Principal principal) {
         try {
-            com.fixzone.fixzon_backend.model.Payment payment = paymentService.initPayment(request, request.getBookingId());
+            // If authenticated, we should use the real customer ID
+            String customerEmail = principal != null ? principal.getName() : null;
+            com.fixzone.fixzon_backend.model.Payment payment = paymentService.initPayment(request, request.getBookingId(), customerEmail);
             return ResponseEntity.ok(java.util.Map.of("paymentId", payment.getId()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());

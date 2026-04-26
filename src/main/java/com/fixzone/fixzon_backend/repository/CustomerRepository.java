@@ -14,4 +14,6 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     List<Customer> findCustomersByCenterIds(@org.springframework.data.repository.query.Param("centerIds") List<UUID> centerIds);
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    java.util.Optional<Customer> findByEmail(String email);
 }
