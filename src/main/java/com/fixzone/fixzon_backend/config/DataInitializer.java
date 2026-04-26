@@ -82,7 +82,9 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         if (!"create".equalsIgnoreCase(ddlAuto) && userRepository.count() > 0) {
-            // ensureMockCharlie(); // Removed
+            System.out.println("Existing data found, ensuring Mock Charlie Customer exists...");
+            ensureMockCharlie();
+            ensureMockManager();
             return;
         }
 
@@ -141,6 +143,48 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         System.out.println("--- DATA SEEDING COMPLETE ---");
+        
+        ensureMockManager();
     }
 
+    private void ensureMockManager() {
+        if (!userRepository.existsByEmail("manager1@fixzone.lk") && serviceCenterRepository.count() > 0) {
+            ServiceCenter firstCenter = serviceCenterRepository.findAll().get(0);
+            Manager manager = new Manager(
+                UUID.randomUUID(),
+                "Roshan Wijesinghe",
+                "manager1@fixzone.lk",
+                "+94772000000",
+                passwordEncoder.encode("FixzoneManager!2026"),
+                "ROLE_SERVICE_MANAGER",
+                true,
+                LocalDateTime.now(),
+                LocalDateTime.now(),
+                "system",
+                LocalDateTime.now(),
+                "system",
+                "https://i.pravatar.cc/150",
+                "MGR-001",
+                firstCenter.getCenterId()
+            );
+            managerRepository.save(manager);
+            System.out.println(">>> Mock Manager created successfully <<<");
+        }
+    }
+
+    private void ensureMockCharlie() {
+        UUID charlieId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        if (!userRepository.existsById(charlieId)) {
+            Customer charlie = new Customer();
+            charlie.setUserId(charlieId);
+            charlie.setEmail("charlie@example.com");
+            charlie.setFullName("Charlie Customer");
+            charlie.setRole("ROLE_CUSTOMER");
+            charlie.setPasswordHash(passwordEncoder.encode("FixZone@2026!Secure"));
+            charlie.setStatus("Active");
+            charlie.setCustomerCode("CUST-MOCK");
+            customerRepository.save(charlie);
+            System.out.println(">>> Mock Charlie Customer created successfully <<<");
+        }
+    }
 }
