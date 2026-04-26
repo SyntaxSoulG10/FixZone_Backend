@@ -8,6 +8,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.fixzone.fixzon_backend.service.OwnerService;
+import com.fixzone.fixzon_backend.DTO.OwnerDTO;
+
 @RestController
 @RequestMapping("/api/managers")
 @CrossOrigin(origins = "*")
@@ -16,9 +20,11 @@ public class ManagerController {
     // Enforcing immutability via constructor-based dependency injection
     // This is superior to @Autowired fields because it makes the controller testable without Spring Context reflection
     private final ManagerService managerService;
+    private final OwnerService ownerService;
 
-    public ManagerController(ManagerService managerService) {
+    public ManagerController(ManagerService managerService, OwnerService ownerService) {
         this.managerService = managerService;
+        this.ownerService = ownerService;
     }
 
     @GetMapping
@@ -28,8 +34,20 @@ public class ManagerController {
 
     @GetMapping("/current")
     public ResponseEntity<List<ManagerDTO>> getCurrentOwnerManagers() {
-        // Hardcoded for development
-        return ResponseEntity.ok(managerService.getManagersByOwnerCode("FIX001"));
+        try {
+            // Get the current authenticated user's email from the SecurityContext
+            String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            
+            // Retrieve the owner to get their ownerCode
+            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+            if (owner == null) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).build();
+            }
+
+            return ResponseEntity.ok(managerService.getManagersByOwnerCode(owner.getOwnerCode()));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch current managers: " + e.getMessage());
+        }
     }
 
     @GetMapping("/{id}")

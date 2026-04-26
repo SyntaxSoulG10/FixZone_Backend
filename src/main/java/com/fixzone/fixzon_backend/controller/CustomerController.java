@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.fixzone.fixzon_backend.service.OwnerService;
+import com.fixzone.fixzon_backend.DTO.OwnerDTO;
+
 @RestController
 @RequestMapping("/api/customers")
 @CrossOrigin("*")
@@ -19,6 +23,9 @@ public class CustomerController {
 
     @Autowired
     private CustomerService customerService;
+
+    @Autowired
+    private OwnerService ownerService;
 
     @GetMapping
     public ResponseEntity<List<CustomerDTO>> getAllCustomers() {
@@ -32,8 +39,16 @@ public class CustomerController {
     @GetMapping("/current")
     public ResponseEntity<List<CustomerDTO>> getCurrentOwnerCustomers() {
         try {
-            // Hardcoded for development
-            return ResponseEntity.ok(customerService.getCustomersByOwnerCode("FIX001"));
+            // Get the current authenticated user's email from the SecurityContext
+            String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            
+            // Retrieve the owner to get their ownerCode
+            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+            if (owner == null) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).build();
+            }
+
+            return ResponseEntity.ok(customerService.getCustomersByOwnerCode(owner.getOwnerCode()));
         } catch (Exception e) {
             throw new RuntimeException("Failed to fetch current customers: " + e.getMessage());
         }

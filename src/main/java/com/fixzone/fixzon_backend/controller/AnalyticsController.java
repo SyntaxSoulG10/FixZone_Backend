@@ -6,6 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.fixzone.fixzon_backend.service.OwnerService;
+import com.fixzone.fixzon_backend.DTO.OwnerDTO;
+
 @RestController
 @RequestMapping("/api/analytics")
 @CrossOrigin(origins = "*")
@@ -13,6 +17,9 @@ public class AnalyticsController {
 
     @Autowired
     private AnalyticsService analyticsService;
+
+    @Autowired
+    private OwnerService ownerService;
 
     @GetMapping("/company/{companyCode}")
     public ResponseEntity<AnalyticsDTO> getCompanyAnalytics(
@@ -36,8 +43,16 @@ public class AnalyticsController {
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false, defaultValue = "monthly") String period) {
         try {
-            // Hardcoded for development until authentication is finished
-            AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics("FIX001", centerId, startDate, endDate, period);
+            // Get the current authenticated user's email from the SecurityContext
+            String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            
+            // Retrieve the owner to get their ownerCode
+            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+            if (owner == null) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).build();
+            }
+
+            AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics(owner.getOwnerCode(), centerId, startDate, endDate, period);
             return ResponseEntity.ok(analyticsData);
         } catch (Exception e) {
             throw new RuntimeException("Failed to fetch current analytics: " + e.getMessage());

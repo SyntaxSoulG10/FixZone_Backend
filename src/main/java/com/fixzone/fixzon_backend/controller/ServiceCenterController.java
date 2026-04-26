@@ -7,6 +7,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.fixzone.fixzon_backend.service.OwnerService;
+import com.fixzone.fixzon_backend.DTO.OwnerDTO;
+
 @RestController
 @RequestMapping("/api/service-centers")
 @CrossOrigin("*")
@@ -14,9 +18,11 @@ public class ServiceCenterController {
 
     // Using constructor injection strictly enforces the presence of dependencies at instantiation
     private final ServiceCenterService serviceCenterService;
+    private final OwnerService ownerService;
 
-    public ServiceCenterController(ServiceCenterService serviceCenterService) {
+    public ServiceCenterController(ServiceCenterService serviceCenterService, OwnerService ownerService) {
         this.serviceCenterService = serviceCenterService;
+        this.ownerService = ownerService;
     }
 
     @GetMapping
@@ -26,8 +32,20 @@ public class ServiceCenterController {
 
     @GetMapping("/current")
     public ResponseEntity<List<ServiceCenterDTO>> getCurrentOwnerCenters() {
-        // Hardcoded for development
-        return ResponseEntity.ok(serviceCenterService.getServiceCentersByOwnerCode("FIX001"));
+        try {
+            // Get the current authenticated user's email from the SecurityContext
+            String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            
+            // Retrieve the owner to get their ownerCode
+            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+            if (owner == null) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).build();
+            }
+
+            return ResponseEntity.ok(serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode()));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch current centers: " + e.getMessage());
+        }
     }
 
     @GetMapping("/{id}")

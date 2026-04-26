@@ -53,6 +53,12 @@ public class OwnerService {
                 .orElse(null);
     }
 
+    public OwnerDTO retrieveOwnerByEmail(String email) {
+        return ownerRepository.findByEmail(email)
+                .map(this::transformToDataTransferObject)
+                .orElse(null);
+    }
+
     /**
      * Registers a new owner. We generate a unique UUID if one isn't provided.
      */

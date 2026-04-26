@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,8 +30,10 @@ public class OwnerController {
     @GetMapping("/current")
     public ResponseEntity<OwnerDTO> fetchCurrentOwner() {
         try {
-            // Hardcoded for development until authentication is finished
-            OwnerDTO retrievedOwner = ownerService.retrieveOwnerByCode("FIX001");
+            // Get the current authenticated user's email from the SecurityContext
+            String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            
+            OwnerDTO retrievedOwner = ownerService.retrieveOwnerByEmail(email);
             if (retrievedOwner == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
