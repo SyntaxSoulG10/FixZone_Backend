@@ -106,13 +106,13 @@ public class DataInitializer implements CommandLineRunner {
         superAdminRepository.deleteAll();
         userRepository.deleteAll();
 
-        ensureMockCharlie();
+        // ensureMockCharlie(); // Removed
 
         List<SuperAdmin> superAdmins = new ArrayList<>();
         String[] adminNames = { "Aruna Kumara", "Ruwan Silva", "Gihan Fernando" };
         for (int i = 0; i < adminNames.length; i++) {
             superAdmins.add(new SuperAdmin(UUID.randomUUID(), adminNames[i], "admin" + (i + 1) + "@fixzone.lk",
-                    "+9411555000" + i, passwordEncoder.encode("FixzoneAdmin!2026"), "ROLE_SUPER_ADMIN", true,
+                    "+9411555000" + i, passwordEncoder.encode("FixZone@2026!Secure"), "ROLE_SUPER_ADMIN", true,
                     LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
                     "https://i.pravatar.cc/150?u=" + adminNames[i].replace(" ", "+"), "ADM-00" + (i + 1)));
         }
@@ -122,19 +122,22 @@ public class DataInitializer implements CommandLineRunner {
         String[] ownerNames = { "Janaka Ranasinghe", "Tharindu Perera" };
         for (int i = 0; i < ownerNames.length; i++) {
             owners.add(new Owner(UUID.randomUUID(), ownerNames[i], "owner" + (i + 1) + "@fixzone.lk", "+9477100000" + i,
-                    passwordEncoder.encode("FixzoneOwner!2026"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(),
+                    passwordEncoder.encode("FixZone@2026!Secure"), "OWNER", true, LocalDateTime.now(), LocalDateTime.now(),
                     "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150", "FIX00" + (i + 1), "Motors",
                     "contact@motors.lk", "+9411200000" + i, "https://images.unsplash.com"));
         }
         ownerRepository.saveAll(owners);
 
-        for (Owner owner : owners) {
-            ServiceCenter sc = new ServiceCenter(UUID.randomUUID(), owner, owner.getCompanyName() + " HQ", "Colombo",
+        for (int i = 0; i < owners.size(); i++) {
+            Owner owner = owners.get(i);
+            UUID scId = UUID.fromString("11111111-1111-1111-1111-11111111111" + (i + 1));
+            ServiceCenter sc = new ServiceCenter(scId, owner, owner.getCompanyName() + " HQ", "Colombo",
                     "+9411400", "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
                     LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, "APPROVED", null, null, null, null, null);
             serviceCenterRepository.save(sc);
 
-            ServicePackage p = new ServicePackage(UUID.randomUUID(), sc, "Full Service", "Package", "Oil & Filter", 
+            UUID pkgId = UUID.fromString("22222222-2222-2222-2222-22222222222" + (i + 1));
+            ServicePackage p = new ServicePackage(pkgId, sc, "Full Service", "Package", "Oil & Filter", 
                     new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system");
             servicePackageRepository.save(p);
         }
@@ -177,7 +180,7 @@ public class DataInitializer implements CommandLineRunner {
             charlie.setEmail("charlie@example.com");
             charlie.setFullName("Charlie Customer");
             charlie.setRole("ROLE_CUSTOMER");
-            charlie.setPasswordHash(passwordEncoder.encode("FixzoneCustomer!2026"));
+            charlie.setPasswordHash(passwordEncoder.encode("FixZone@2026!Secure"));
             charlie.setStatus("Active");
             charlie.setCustomerCode("CUST-MOCK");
             customerRepository.save(charlie);

@@ -9,6 +9,7 @@ import com.fixzone.fixzon_backend.model.ServicePackage;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.PaymentRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
+import com.fixzone.fixzon_backend.repository.AuthRepository;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Refund;
@@ -32,16 +33,19 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final ServicePackageRepository servicePackageRepository;
     private final BookingRepository bookingRepository;
+    private final AuthRepository authRepository;
 
     public PaymentService(PaymentRepository paymentRepository,
                           ServicePackageRepository servicePackageRepository,
-                          BookingRepository bookingRepository) {
+                          BookingRepository bookingRepository,
+                          AuthRepository authRepository) {
         this.paymentRepository = paymentRepository;
         this.servicePackageRepository = servicePackageRepository;
         this.bookingRepository = bookingRepository;
+        this.authRepository = authRepository;
     }
 
-    public Payment initPayment(InitPaymentRequest request, String bookingId) {
+    public Payment initPayment(InitPaymentRequest request, String bookingId, String customerEmail) {
         if (request.getServicePackageId() == null) throw new RuntimeException("Service Package ID is missing");
         
         UUID packageId = UUID.fromString(request.getServicePackageId());
@@ -66,6 +70,13 @@ public class PaymentService {
         payment.setTimeSlot(request.getTimeSlot());
         payment.setAmount(initialAmount);
         payment.setStatus(PaymentStatus.PENDING);
+
+        // Set real customer ID if email is provided
+        if (customerEmail != null) {
+            authRepository.findByEmail(customerEmail).ifPresent(user -> {
+                payment.setCustomerId(user.getUserId());
+            });
+        }
 
         return paymentRepository.save(payment);
     }
@@ -158,8 +169,12 @@ public class PaymentService {
                         booking = new Booking();
                         booking.setBookingId(UUID.randomUUID());
                         
-                        // MOCK CUSTOMER ID for UI Testing
-                        booking.setCustomerId(UUID.fromString("00000000-0000-0000-0000-000000000001"));
+                        // Use real customer ID from payment record
+                        if (payment.getCustomerId() != null) {
+                            booking.setCustomerId(payment.getCustomerId());
+                        } else {
+                            throw new RuntimeException("Cannot create booking: Customer ID is missing from payment record");
+                        }
                         
                         booking.setTenantId(payment.getTenantId());
                         booking.setCenterId(payment.getCenterId());
