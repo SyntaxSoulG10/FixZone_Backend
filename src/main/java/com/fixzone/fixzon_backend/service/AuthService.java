@@ -55,7 +55,9 @@ public class AuthService {
                 user.getUserId(),
                 user.getEmail(),
                 user.getRole(),
-                user.getFullName()
+                user.getFullName(),
+                user.getProfilePictureUrl(),
+                user.getPhone()
         );
     }
 
@@ -68,6 +70,7 @@ public class AuthService {
         customer.setUserId(UUID.randomUUID());
         customer.setFullName(request.getFullName());
         customer.setEmail(request.getEmail());
+        customer.setPhone(request.getPhone());
         customer.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         customer.setRole(Role.ROLE_CUSTOMER.name());
         customer.setEmailVerified(false);
@@ -83,7 +86,9 @@ public class AuthService {
                 customer.getUserId(),
                 customer.getEmail(),
                 customer.getRole(),
-                customer.getFullName()
+                customer.getFullName(),
+                customer.getProfilePictureUrl(),
+                customer.getPhone()
         );
     }
 
@@ -113,7 +118,9 @@ public class AuthService {
                 owner.getUserId(),
                 owner.getEmail(),
                 owner.getRole(),
-                owner.getFullName()
+                owner.getFullName(),
+                owner.getProfilePictureUrl(),
+                owner.getPhone()
         );
     }
 }

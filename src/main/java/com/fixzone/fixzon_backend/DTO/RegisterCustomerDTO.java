@@ -7,4 +7,5 @@ public class RegisterCustomerDTO {
     private String fullName;
     private String email;
     private String password;
+    private String phone;
 }
