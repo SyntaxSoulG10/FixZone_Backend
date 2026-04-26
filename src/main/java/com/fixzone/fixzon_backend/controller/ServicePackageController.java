@@ -25,8 +25,8 @@ public class ServicePackageController {
 
     @GetMapping("/current")
     public ResponseEntity<List<ServicePackageDTO>> getCurrentOwnerPackages() {
-        // Hardcoded for development
-        return ResponseEntity.ok(service.getPackagesByOwnerCode("FIX001"));
+        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        return ResponseEntity.ok(service.getPackagesByOwnerEmail(email));
     }
 
     @GetMapping("/{id}")

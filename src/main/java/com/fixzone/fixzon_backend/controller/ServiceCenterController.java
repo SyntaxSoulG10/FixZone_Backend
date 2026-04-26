@@ -57,6 +57,11 @@ public class ServiceCenterController {
     @PostMapping
     public ResponseEntity<ServiceCenterDTO> createServiceCenter(@jakarta.validation.Valid @RequestBody ServiceCenterDTO dto) {
         try {
+            String email = SecurityContextHolder.getContext().getAuthentication().getName();
+            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+            if (owner != null) {
+                dto.setOwnerId(owner.getUserId());
+            }
             return ResponseEntity.status(201).body(serviceCenterService.createServiceCenter(dto));
         } catch (Exception e) {
             throw new RuntimeException("Failed to create service center: " + e.getMessage());

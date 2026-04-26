@@ -40,6 +40,13 @@ public class ServicePackageService {
     }
 
     @Transactional(readOnly = true)
+    public List<ServicePackageDTO> getPackagesByOwnerEmail(String email) {
+        return repository.findPackagesByOwnerEmail(email).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<ServicePackageDTO> getPackagesByOwnerCode(String code) {
         return repository.findPackagesByOwnerCode(code).stream()
                 .map(this::convertToDTO)

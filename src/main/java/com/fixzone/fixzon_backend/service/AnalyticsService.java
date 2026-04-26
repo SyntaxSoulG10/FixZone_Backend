@@ -239,22 +239,31 @@ public class AnalyticsService {
      * historical trend lines. Using TreeMap ensures the results stay sorted by date.
      */
     private List<AnalyticsDTO.MonthlyDataDTO> getRevenueChartData(List<Invoice> invoiceList, List<PaymentRecord> paymentList, String groupingPeriod) {
+        // Group payments by time key for easy lookup
+        Map<Integer, List<PaymentRecord>> paymentsByTime = paymentList.stream()
+                .filter(p -> "SUCCESS".equalsIgnoreCase(p.getStatus()))
+                .collect(Collectors.groupingBy(p -> generateTimeKey(p.getCreatedAt(), groupingPeriod)));
+
         return invoiceList.stream()
                 .filter(invoice -> "PAID".equalsIgnoreCase(invoice.getStatus()))
                 .collect(Collectors.groupingBy(invoice -> generateTimeKey(invoice.getIssuedAt(), groupingPeriod), TreeMap::new, Collectors.toList()))
                 .entrySet().stream()
                 .map(entry -> {
-                    String label = formatTimelineLabel(entry.getKey(), groupingPeriod);
+                    int timeKey = entry.getKey();
+                    String label = formatTimelineLabel(timeKey, groupingPeriod);
                     BigDecimal totalAmount = entry.getValue().stream()
                             .map(Invoice::getTotal)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    
+                    List<PaymentRecord> periodPayments = paymentsByTime.getOrDefault(timeKey, List.of());
+                    BigDecimal cardAmount = sumPayments(periodPayments, "CARD", "ONLINE");
+                    BigDecimal cashAmount = sumPayments(periodPayments, "CASH");
                             
-                    // Logic: We estimate the split based on payment records if granular data is missing
                     return new AnalyticsDTO.MonthlyDataDTO(
                             label, 
                             totalAmount, 
-                            totalAmount.multiply(BigDecimal.valueOf(0.7)), 
-                            totalAmount.multiply(BigDecimal.valueOf(0.3))
+                            cardAmount,
+                            cashAmount
                     );
                 }).collect(Collectors.toList());
     }
