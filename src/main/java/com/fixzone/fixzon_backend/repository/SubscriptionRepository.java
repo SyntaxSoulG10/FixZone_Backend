@@ -11,5 +11,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
     long countByStatus(String status);
     java.util.List<Subscription> findByStatus(String status);
     java.util.List<Subscription> findAllByOrderByStartDateDesc();
+    long countByStartDateAfter(java.time.LocalDate date);
+    long countByStartDateBetween(java.time.LocalDate start, java.time.LocalDate end);
 }
 
