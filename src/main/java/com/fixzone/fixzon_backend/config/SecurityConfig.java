@@ -31,10 +31,11 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/customers/**").hasAuthority("ROLE_CUSTOMER")
+                        .requestMatchers("/api/customers/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER")
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_SUPER_ADMIN")
+                        .requestMatchers("/api/analytics/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_OWNER")
                         .requestMatchers("/api/owners/**").hasAuthority("ROLE_COMPANY_OWNER")
-                        .requestMatchers("/api/managers/**").hasAuthority("ROLE_SERVICE_MANAGER")
+                        .requestMatchers("/api/managers/**").hasAnyAuthority("ROLE_SERVICE_MANAGER", "ROLE_COMPANY_OWNER")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -286,8 +286,13 @@ public class DataInitializer implements CommandLineRunner {
             
             System.out.println("[DEBUG] Seeding Raja Motors - Branches: " + existingCount + ", History: " + historyCount);
 
-            // FORCE SEED: Clear and re-seed even if data exists
-            System.out.println("[DEBUG] FORCING SEED: Clearing and re-seeding history for Raja Motors...");
+            // SKIP SEEDING if history already exists to save time on startup
+            if (historyCount > 0) {
+                System.out.println("[DEBUG] Raja Motors already has history data. Skipping re-seed to speed up startup.");
+                return;
+            }
+
+            System.out.println("[DEBUG] NO HISTORY FOUND: Seeding history for Raja Motors...");
 
         System.out.println("Seeding 3 branches for Raja Motors...");
         // Delete existing ones to start fresh with 3 branches if it was partially seeded
