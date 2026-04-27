@@ -8,5 +8,6 @@ import java.util.UUID;
 public interface SubscriptionRepository extends JpaRepository<Subscription, UUID> {
 
     Optional<Subscription> findByOwnerUserId(UUID ownerId);
+    long countByStatus(String status);
 }
 
