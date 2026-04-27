@@ -3,6 +3,7 @@ package com.fixzone.fixzon_backend.controller;
 import com.fixzone.fixzon_backend.DTO.NotificationDTO;
 import com.fixzone.fixzon_backend.DTO.ServiceCenterDTO;
 import com.fixzone.fixzon_backend.DTO.SuperAdminAnalyticsDTO;
+import com.fixzone.fixzon_backend.DTO.SubscriptionDTO;
 import com.fixzone.fixzon_backend.DTO.UserDTO;
 import com.fixzone.fixzon_backend.service.AdminService;
 import com.fixzone.fixzon_backend.service.SuperAdminAnalyticsService;
@@ -77,6 +78,20 @@ public class AdminController {
     public ResponseEntity<List<NotificationDTO>> getNotifications() {
         return ResponseEntity.ok(adminService.getAdminNotifications());
     }
+
+    @GetMapping("/subscriptions")
+    public ResponseEntity<List<SubscriptionDTO>> getSubscriptions(@RequestParam(required = false) String status) {
+        return ResponseEntity.ok(adminService.getSubscriptions(status));
+    }
+
+    @GetMapping("/subscriptions/{id}")
+    public ResponseEntity<SubscriptionDTO> getSubscriptionById(@PathVariable UUID id) {
+        return ResponseEntity.ok(adminService.getSubscriptionById(id));
+    }
+
+    @PatchMapping("/subscriptions/{id}/status")
+    public ResponseEntity<SubscriptionDTO> updateSubscriptionStatus(
+            @PathVariable UUID id, @RequestParam String status) {
+        return ResponseEntity.ok(adminService.updateSubscriptionStatus(id, status));
+    }
 }
-
-

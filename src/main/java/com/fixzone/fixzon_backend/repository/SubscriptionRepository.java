@@ -9,5 +9,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, UUID
 
     Optional<Subscription> findByOwnerUserId(UUID ownerId);
     long countByStatus(String status);
+    java.util.List<Subscription> findByStatus(String status);
+    java.util.List<Subscription> findAllByOrderByStartDateDesc();
 }
 
