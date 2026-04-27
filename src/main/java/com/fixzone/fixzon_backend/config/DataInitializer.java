@@ -285,6 +285,9 @@ public class DataInitializer implements CommandLineRunner {
             long historyCount = bookingRepository.countByTenantId(owner.getUserId());
             
             System.out.println("[DEBUG] Seeding Raja Motors - Branches: " + existingCount + ", History: " + historyCount);
+            
+            // Always update existing manager images if they are already in the DB
+            updateManagerImagesForOwner(owner);
 
             // SKIP SEEDING if history already exists, but UPDATE metrics to ensure they are accurate
             if (historyCount > 0) {
@@ -336,10 +339,7 @@ public class DataInitializer implements CommandLineRunner {
                         "Full body wash, vacuum, and wax.", new BigDecimal("5500.00"), 90, true, 
                         LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
 
-                String mgrImg = "https://images.unsplash.com/photo-" + 
-                    (loc.equals("Colombo") ? "1560250097-0b93528c311a" : 
-                     loc.equals("Kandy") ? "1573496359142-b8d87734a5a2" : "1472099645785-5658abf4ff4e") + 
-                    "?q=80&w=256&h=256&auto=format&fit=crop";
+                String mgrImg = "https://images.unsplash.com/photo-1651684215020-f7a5b6610f23?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvZmlsZSUyMHBob3Rvc3xlbnwwfHwwfHx8MA%3D%3D";
                 
                 Manager mgr = new Manager(UUID.randomUUID(), loc + " Branch Manager", "manager." + loc.toLowerCase() + "@raja.lk", 
                         "+94771000" + loc.length(), passwordEncoder.encode("manager123"), "ROLE_SERVICE_MANAGER", true, 
@@ -510,6 +510,23 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("[SUCCESS] Customer metrics updated successfully for " + owner.getCompanyName());
         } catch (Exception e) {
             System.out.println("[ERROR] Failed to update customer metrics: " + e.getMessage());
+        }
+    }
+
+    private void updateManagerImagesForOwner(Owner owner) {
+        try {
+            String newMgrImg = "https://images.unsplash.com/photo-1651684215020-f7a5b6610f23?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvZmlsZSUyMHBob3Rvc3xlbnwwfHwwfHx8MA%3D%3D";
+            List<Manager> managers = managerRepository.findAll();
+            for (Manager manager : managers) {
+                // If it's a seeded manager (has a center belonging to this owner)
+                if (manager.getManagedCenterId() != null) {
+                    manager.setProfilePictureUrl(newMgrImg);
+                    managerRepository.save(manager);
+                }
+            }
+            System.out.println("[SUCCESS] Manager images updated to professional Unsplash URL.");
+        } catch (Exception e) {
+            System.out.println("[ERROR] Failed to update manager images: " + e.getMessage());
         }
     }
 }
