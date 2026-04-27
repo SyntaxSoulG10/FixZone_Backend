@@ -4,7 +4,7 @@ import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
