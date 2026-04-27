@@ -107,13 +107,13 @@ public class DataInitializer implements CommandLineRunner {
         superAdminRepository.deleteAll();
         userRepository.deleteAll();
 
-        ensureMockCharlie();
+        // ensureMockCharlie(); // Removed
 
         List<SuperAdmin> superAdmins = new ArrayList<>();
         String[] adminNames = { "Aruna Kumara", "Ruwan Silva", "Gihan Fernando" };
         for (int i = 0; i < adminNames.length; i++) {
             superAdmins.add(new SuperAdmin(UUID.randomUUID(), adminNames[i], "admin" + (i + 1) + "@fixzone.lk",
-                    "+9411555000" + i, passwordEncoder.encode("Admin123!"), "ROLE_SUPER_ADMIN", true,
+                    "+9411555000" + i, passwordEncoder.encode("FixZone@2026!Secure"), "ROLE_SUPER_ADMIN", true,
                     LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
                     "https://i.pravatar.cc/150?u=" + adminNames[i].replace(" ", "+"), "ADM-00" + (i + 1)));
         }
@@ -151,18 +151,48 @@ public class DataInitializer implements CommandLineRunner {
         
         ownerRepository.saveAll(owners);
 
-        for (Owner owner : owners) {
-            ServiceCenter sc = new ServiceCenter(UUID.randomUUID(), owner, owner.getCompanyName() + " HQ", "Colombo",
+        for (int i = 0; i < owners.size(); i++) {
+            Owner owner = owners.get(i);
+            UUID scId = UUID.fromString("11111111-1111-1111-1111-11111111111" + (i + 1));
+            ServiceCenter sc = new ServiceCenter(scId, owner, owner.getCompanyName() + " HQ", "Colombo",
                     "+9411400", "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
                     LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, "APPROVED", null, null, null, null, null);
             serviceCenterRepository.save(sc);
 
-            ServicePackage p = new ServicePackage(UUID.randomUUID(), sc, "Full Service", "Package", "Oil & Filter", 
+            UUID pkgId = UUID.fromString("22222222-2222-2222-2222-22222222222" + (i + 1));
+            ServicePackage p = new ServicePackage(pkgId, sc, "Full Service", "Package", "Oil & Filter", 
                     new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system");
             servicePackageRepository.save(p);
         }
 
         System.out.println("--- DATA SEEDING COMPLETE ---");
+        
+        ensureMockManager();
+    }
+
+    private void ensureMockManager() {
+        if (!userRepository.existsByEmail("manager1@fixzone.lk") && serviceCenterRepository.count() > 0) {
+            ServiceCenter firstCenter = serviceCenterRepository.findAll().get(0);
+            Manager manager = new Manager(
+                UUID.randomUUID(),
+                "Roshan Wijesinghe",
+                "manager1@fixzone.lk",
+                "+94772000000",
+                passwordEncoder.encode("FixzoneManager!2026"),
+                "ROLE_SERVICE_MANAGER",
+                true,
+                LocalDateTime.now(),
+                LocalDateTime.now(),
+                "system",
+                LocalDateTime.now(),
+                "system",
+                "https://i.pravatar.cc/150",
+                "MGR-001",
+                firstCenter.getCenterId()
+            );
+            managerRepository.save(manager);
+            System.out.println(">>> Mock Manager created successfully <<<");
+        }
     }
 
     private void ensureMockCharlie() {
@@ -173,7 +203,7 @@ public class DataInitializer implements CommandLineRunner {
             charlie.setEmail("charlie@example.com");
             charlie.setFullName("Charlie Customer");
             charlie.setRole("ROLE_CUSTOMER");
-            charlie.setPasswordHash(passwordEncoder.encode("charlie123"));
+            charlie.setPasswordHash(passwordEncoder.encode("FixZone@2026!Secure"));
             charlie.setStatus("Active");
             charlie.setCustomerCode("CUST-MOCK");
             customerRepository.save(charlie);

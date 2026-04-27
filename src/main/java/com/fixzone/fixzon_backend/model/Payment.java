@@ -34,6 +34,9 @@ public class Payment {
     @Column(name = "tenant_id")
     private java.util.UUID tenantId;
 
+    @Column(name = "customer_id")
+    private java.util.UUID customerId;
+
     @Column(name = "date")
     private String date;
 

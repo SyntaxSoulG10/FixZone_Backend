@@ -25,7 +25,6 @@ public class OwnerService {
      * Constructor injection is the recommended way to handle dependencies in Spring.
      * It makes the class easier to test and ensures all required fields are provided.
      */
-    @Autowired
     public OwnerService(OwnerRepository ownerRepository) {
         this.ownerRepository = ownerRepository;
     }
