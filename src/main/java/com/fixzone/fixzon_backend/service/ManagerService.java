@@ -96,7 +96,7 @@ public class ManagerService {
             manager.setUserId(UUID.randomUUID());
         }
         
-        manager.setRole("Manager");
+        manager.setRole("ROLE_SERVICE_MANAGER");
         manager.setStatus(manager.getStatus() != null ? manager.getStatus() : "Active");
         
         // UNIQUE IDENTIFIER: Create a human-readable manager code for internal tracking

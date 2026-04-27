@@ -173,6 +173,23 @@ public class ServiceCenterService {
 
     public void deleteServiceCenter(UUID id) {
         Objects.requireNonNull(id, "ID for deletion cannot be null");
+        
+        // CASCADING CLEANUP: Remove or nullify all associations before deleting the center
+        // 1. Delete associated service packages
+        List<ServicePackage> packages = servicePackageRepository.findByServiceCenter_CenterId(id);
+        servicePackageRepository.deleteAll(packages);
+        
+        // 2. Clear managers' center association (or delete them if they only belong to this center)
+        List<Manager> managers = managerRepository.findByManagedCenterId(id);
+        for (Manager manager : managers) {
+            manager.setManagedCenterId(null);
+            managerRepository.save(manager);
+        }
+        
+        // 3. Delete invoices and payment records linked to this center
+        invoiceRepository.deleteAll(invoiceRepository.findByCenterId(id));
+        
+        // 4. Finally delete the center itself
         serviceCenterRepository.deleteById(id);
     }
 
