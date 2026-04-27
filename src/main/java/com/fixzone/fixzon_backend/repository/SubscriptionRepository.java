@@ -8,13 +8,14 @@ import java.util.UUID;
 public interface SubscriptionRepository extends JpaRepository<Subscription, UUID> {
 
     Optional<Subscription> findByOwnerUserId(UUID ownerId);
+
     long countByStatus(String status);
+
     java.util.List<Subscription> findByStatus(String status);
-    
-    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"owner"})
+
     java.util.List<Subscription> findAllByOrderByStartDateDesc();
-    
+
     long countByStartDateAfter(java.time.LocalDate date);
+
     long countByStartDateBetween(java.time.LocalDate start, java.time.LocalDate end);
 }
-

@@ -33,11 +33,11 @@ public class AdminService {
     private final SubscriptionRepository subscriptionRepository;
     private final OwnerRepository ownerRepository;
 
-    public AdminService(ServiceCenterRepository serviceCenterRepository, 
-                        UserRepository userRepository,
-                        NotificationRepository notificationRepository,
-                        SubscriptionRepository subscriptionRepository,
-                        OwnerRepository ownerRepository) {
+    public AdminService(ServiceCenterRepository serviceCenterRepository,
+            UserRepository userRepository,
+            NotificationRepository notificationRepository,
+            SubscriptionRepository subscriptionRepository,
+            OwnerRepository ownerRepository) {
         this.serviceCenterRepository = serviceCenterRepository;
         this.userRepository = userRepository;
         this.notificationRepository = notificationRepository;
@@ -60,11 +60,11 @@ public class AdminService {
                 .orElseThrow(() -> new RuntimeException("Service Center not found"));
         sc.setStatus("APPROVED");
         sc.setIsActive(true);
-        
+
         // Notify owner
-        createNotification(sc.getOwner(), "Registration Approved", 
-            "Your service center '" + sc.getName() + "' has been approved.", "SUCCESS");
-            
+        createNotification(sc.getOwner(), "Registration Approved",
+                "Your service center '" + sc.getName() + "' has been approved.", "SUCCESS");
+
         return convertToDTO(serviceCenterRepository.save(sc));
     }
 
@@ -76,10 +76,10 @@ public class AdminService {
         sc.setStatus("REJECTED");
         sc.setIsActive(false);
         sc.setRejectionReason(reason);
-        
-        createNotification(sc.getOwner(), "Registration Rejected", 
-            "Your registration for '" + sc.getName() + "' was rejected. Reason: " + reason, "WARNING");
-            
+
+        createNotification(sc.getOwner(), "Registration Rejected",
+                "Your registration for '" + sc.getName() + "' was rejected. Reason: " + reason, "WARNING");
+
         return convertToDTO(serviceCenterRepository.save(sc));
     }
 
@@ -93,7 +93,8 @@ public class AdminService {
     }
 
     // --- User Account Management & Platform Security ---
-    // Methods for managing global user access, status transitions, and administrative oversight.
+    // Methods for managing global user access, status transitions, and
+    // administrative oversight.
 
     @Transactional
     public UserDTO updateUserStatus(UUID id, String status) {
@@ -123,7 +124,8 @@ public class AdminService {
     // --- Monitoring & Notifications ---
 
     private void createNotification(User recipient, String title, String message, String type) {
-        if (recipient == null) return;
+        if (recipient == null)
+            return;
         Notification note = new Notification();
         note.setRecipient(recipient);
         note.setTitle(title);
@@ -131,11 +133,11 @@ public class AdminService {
         note.setType(type);
         notificationRepository.save(note);
     }
-    
+
     public List<NotificationDTO> getAdminNotifications() {
         return notificationRepository.findAll().stream()
                 .map(this::convertToDTO)
-                .collect(Collectors.toList()); 
+                .collect(Collectors.toList());
     }
 
     public List<ServiceCenterDTO> getAllServiceCenters() {
@@ -168,13 +170,13 @@ public class AdminService {
     public SubscriptionDTO getSubscriptionById(UUID id) {
         Subscription sub = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Subscription not found"));
-        
+
         String companyName = "N/A";
         if (sub.getOwner() != null) {
             companyName = ownerRepository.findById(sub.getOwner().getUserId())
                     .map(Owner::getCompanyName).orElse("N/A");
         }
-        
+
         return convertToDTO(sub, Map.of(sub.getOwner().getUserId(), companyName));
     }
 
@@ -183,13 +185,13 @@ public class AdminService {
         Subscription sub = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Subscription not found"));
         sub.setStatus(status.toUpperCase());
-        
+
         // Notify owner of the change
-        createNotification(sub.getOwner(), "Subscription Status Updated", 
-            "Your subscription status has been changed to " + status + ".", "INFO");
-            
+        createNotification(sub.getOwner(), "Subscription Status Updated",
+                "Your subscription status has been changed to " + status + ".", "INFO");
+
         Subscription saved = subscriptionRepository.save(sub);
-        
+
         // Return DTO (company name lookup)
         String companyName = "N/A";
         if (saved.getOwner() != null) {
@@ -236,9 +238,6 @@ public class AdminService {
             dto.setOwnerId(sub.getOwner().getUserId());
             dto.setOwnerName(sub.getOwner().getFullName());
             dto.setCompanyName(companyNames.getOrDefault(sub.getOwner().getUserId(), "N/A"));
-            if (sub.getEndDate() != null) {
-                dto.setNextBilling(sub.getEndDate().toString());
-            }
         }
         return dto;
     }
