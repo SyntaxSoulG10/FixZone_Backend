@@ -20,13 +20,11 @@ import java.util.stream.Collectors;
 public class OwnerService {
 
     private final OwnerRepository ownerRepository;
+    private final ImageKitService imageKitService;
 
-    /**
-     * Constructor injection is the recommended way to handle dependencies in Spring.
-     * It makes the class easier to test and ensures all required fields are provided.
-     */
-    public OwnerService(OwnerRepository ownerRepository) {
+    public OwnerService(OwnerRepository ownerRepository, ImageKitService imageKitService) {
         this.ownerRepository = ownerRepository;
+        this.imageKitService = imageKitService;
     }
 
     /**
@@ -89,13 +87,29 @@ public class OwnerService {
                 if (updatedOwnerData.getCompanyName() != null) existingOwner.setCompanyName(updatedOwnerData.getCompanyName());
                 if (updatedOwnerData.getCompanyEmail() != null) existingOwner.setCompanyEmail(updatedOwnerData.getCompanyEmail());
                 if (updatedOwnerData.getCompanyNumber() != null) existingOwner.setCompanyNumber(updatedOwnerData.getCompanyNumber());
-                if (updatedOwnerData.getBannerImageUrl() != null) existingOwner.setBannerImageUrl(updatedOwnerData.getBannerImageUrl());
+                if (updatedOwnerData.getBannerImageUrl() != null && !updatedOwnerData.getBannerImageUrl().equals(existingOwner.getBannerImageUrl())) {
+                    System.out.println("[OWNER] Detected change in Banner Image. Length: " + updatedOwnerData.getBannerImageUrl().length());
+                    String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getBannerImageUrl(), "owner-banner-" + existingOwner.getUserId());
+                    existingOwner.setBannerImageUrl(uploadedUrl);
+                    System.out.println("[OWNER] Banner updated to: " + uploadedUrl);
+                } else {
+                    System.out.println("[OWNER] No change in Banner Image detected.");
+                }
                 
                 // Update inherited User profile fields
                 if (updatedOwnerData.getFullName() != null) existingOwner.setFullName(updatedOwnerData.getFullName());
                 if (updatedOwnerData.getEmail() != null) existingOwner.setEmail(updatedOwnerData.getEmail());
                 if (updatedOwnerData.getPhone() != null) existingOwner.setPhone(updatedOwnerData.getPhone());
-                if (updatedOwnerData.getProfilePictureUrl() != null) existingOwner.setProfilePictureUrl(updatedOwnerData.getProfilePictureUrl());
+                
+                if (updatedOwnerData.getProfilePictureUrl() != null && !updatedOwnerData.getProfilePictureUrl().equals(existingOwner.getProfilePictureUrl())) {
+                    System.out.println("[OWNER] Detected change in Profile Picture. Length: " + updatedOwnerData.getProfilePictureUrl().length());
+                    String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getProfilePictureUrl(), "owner-profile-" + existingOwner.getUserId());
+                    existingOwner.setProfilePictureUrl(uploadedUrl);
+                    System.out.println("[OWNER] Profile picture updated to: " + uploadedUrl);
+                } else {
+                    System.out.println("[OWNER] No change in Profile Picture detected.");
+                }
+                
                 if (updatedOwnerData.getStatus() != null) existingOwner.setStatus(updatedOwnerData.getStatus());
                 
                 Owner successfullyUpdatedEntity = ownerRepository.save(existingOwner);
