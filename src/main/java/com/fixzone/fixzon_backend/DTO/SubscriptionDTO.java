@@ -13,4 +13,6 @@ public class SubscriptionDTO {
     private String status;
     private String billingHistory;
     private UUID ownerId;
+    private String ownerName;
+    private String companyName;
 }
