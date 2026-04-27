@@ -75,6 +75,19 @@ public class AuthService {
             throw new RuntimeException("Email is already taken");
         }
 
+        // Sri Lankan mobile number validation
+        // Expected formats: +947XXXXXXXX, 07XXXXXXXX, 7XXXXXXXX
+        String phone = request.getPhone();
+        if (phone != null && !phone.isEmpty()) {
+            // Remove spaces for validation
+            String cleanedPhone = phone.replace(" ", "");
+            String regex = "^(\\+94|0)?7[0-9]{8}$";
+            if (!cleanedPhone.matches(regex)) {
+                log.error("Registration failed: Invalid Sri Lankan phone number format: {}", phone);
+                throw new RuntimeException("Invalid Sri Lankan mobile number format");
+            }
+        }
+
         Customer customer = new Customer();
         customer.setUserId(UUID.randomUUID());
         customer.setFullName(request.getFullName());
@@ -102,8 +115,21 @@ public class AuthService {
     }
 
     public AuthResponseDTO registerOwner(RegisterOwnerDTO request) {
+        log.info("Attempting to register owner with email: {}", request.getEmail());
         if (authRepository.findByEmail(request.getEmail()).isPresent()) {
+            log.error("Registration failed: Email {} already taken", request.getEmail());
             throw new RuntimeException("Email is already taken");
+        }
+
+        // Sri Lankan mobile number validation
+        String phone = request.getPhone();
+        if (phone != null && !phone.isEmpty()) {
+            String cleanedPhone = phone.replace(" ", "");
+            String regex = "^(\\+94|0)?7[0-9]{8}$";
+            if (!cleanedPhone.matches(regex)) {
+                log.error("Registration failed: Invalid Sri Lankan phone number format: {}", phone);
+                throw new RuntimeException("Invalid Sri Lankan mobile number format");
+            }
         }
 
         Owner owner = new Owner();

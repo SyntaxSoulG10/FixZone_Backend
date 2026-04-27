@@ -33,6 +33,16 @@ public class UserService {
     public void updateProfile(UUID userId, String fullName, String phone) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Sri Lankan mobile number validation
+        if (phone != null && !phone.isEmpty()) {
+            String cleanedPhone = phone.replace(" ", "");
+            String regex = "^(\\+94|0)?7[0-9]{8}$";
+            if (!cleanedPhone.matches(regex)) {
+                throw new RuntimeException("Invalid Sri Lankan mobile number format");
+            }
+        }
+
         user.setFullName(fullName);
         user.setPhone(phone);
         userRepository.save(user);
