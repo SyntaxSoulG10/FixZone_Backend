@@ -47,6 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             String role = jwtUtil.extractRole(jwt);
             if (jwtUtil.validateToken(jwt, email)) {
+                System.out.println("JWT Debug: Email=" + email + ", Role=" + role);
                 UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                         email, null, Collections.singletonList(new SimpleGrantedAuthority(role)));
                 authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
