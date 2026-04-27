@@ -122,7 +122,7 @@ public class AuthService {
         }
 
         // Sri Lankan mobile number validation
-        String phone = request.getPhone();
+       /*  String phone = request.getPhone();
         if (phone != null && !phone.isEmpty()) {
             String cleanedPhone = phone.replace(" ", "");
             String regex = "^(\\+94|0)?7[0-9]{8}$";
@@ -130,7 +130,7 @@ public class AuthService {
                 log.error("Registration failed: Invalid Sri Lankan phone number format: {}", phone);
                 throw new RuntimeException("Invalid Sri Lankan mobile number format");
             }
-        }
+        }*/
 
         Owner owner = new Owner();
         owner.setUserId(UUID.randomUUID());

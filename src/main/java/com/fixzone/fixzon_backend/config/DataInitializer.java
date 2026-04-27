@@ -134,7 +134,7 @@ public class DataInitializer implements CommandLineRunner {
         ServiceCenter sc1 = new ServiceCenter(UUID.randomUUID(), owner1, "Auto Expert Service Garage", "Colombo 07",
                 "+94112345678", "08:00 - 18:00", new BigDecimal("4.8"), true, LocalDateTime.now(), "system",
                 LocalDateTime.now(), "system", new String[] { "car", "van" }, "APPROVED", null, null, null, null,
-                "https://images.unsplash.com/photo-1625047509168-a71c67c00684?q=80&w=1470&auto=format&fit=crop", null);
+                "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?q=80&w=1470&auto=format&fit=crop", null);
         serviceCenterRepository.save(sc1);
         // car packages
         servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc1, "Full Service - Car", "Package", "car",
