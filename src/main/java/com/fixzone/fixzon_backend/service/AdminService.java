@@ -9,6 +9,11 @@ import com.fixzone.fixzon_backend.model.Notification;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.UserRepository;
 import com.fixzone.fixzon_backend.repository.NotificationRepository;
+import com.fixzone.fixzon_backend.repository.SubscriptionRepository;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import com.fixzone.fixzon_backend.DTO.SubscriptionDTO;
+import com.fixzone.fixzon_backend.model.Subscription;
+import com.fixzone.fixzon_backend.model.Owner;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,13 +30,19 @@ public class AdminService {
     private final ServiceCenterRepository serviceCenterRepository;
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final OwnerRepository ownerRepository;
 
     public AdminService(ServiceCenterRepository serviceCenterRepository, 
                         UserRepository userRepository,
-                        NotificationRepository notificationRepository) {
+                        NotificationRepository notificationRepository,
+                        SubscriptionRepository subscriptionRepository,
+                        OwnerRepository ownerRepository) {
         this.serviceCenterRepository = serviceCenterRepository;
         this.userRepository = userRepository;
         this.notificationRepository = notificationRepository;
+        this.subscriptionRepository = subscriptionRepository;
+        this.ownerRepository = ownerRepository;
     }
 
     // --- Service Center Management ---
@@ -133,6 +144,61 @@ public class AdminService {
                 .collect(Collectors.toList());
     }
 
+    // --- Subscription Management ---
+
+    public List<SubscriptionDTO> getSubscriptions(String status) {
+        List<Subscription> subs = (status == null || status.equalsIgnoreCase("ALL"))
+                ? subscriptionRepository.findAllByOrderByStartDateDesc()
+                : subscriptionRepository.findByStatus(status.toUpperCase());
+
+        // Optimize: Bulk fetch owners to get company names
+        List<UUID> ownerIds = subs.stream()
+                .map(s -> s.getOwner() != null ? s.getOwner().getUserId() : null)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        Map<UUID, String> companyNames = ownerRepository.findAllById(ownerIds).stream()
+                .collect(Collectors.toMap(Owner::getUserId, Owner::getCompanyName, (a, b) -> a));
+
+        return subs.stream()
+                .map(s -> convertToDTO(s, companyNames))
+                .collect(Collectors.toList());
+    }
+
+    public SubscriptionDTO getSubscriptionById(UUID id) {
+        Subscription sub = subscriptionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Subscription not found"));
+        
+        String companyName = "N/A";
+        if (sub.getOwner() != null) {
+            companyName = ownerRepository.findById(sub.getOwner().getUserId())
+                    .map(Owner::getCompanyName).orElse("N/A");
+        }
+        
+        return convertToDTO(sub, Map.of(sub.getOwner().getUserId(), companyName));
+    }
+
+    @Transactional
+    public SubscriptionDTO updateSubscriptionStatus(UUID id, String status) {
+        Subscription sub = subscriptionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Subscription not found"));
+        sub.setStatus(status.toUpperCase());
+        
+        // Notify owner of the change
+        createNotification(sub.getOwner(), "Subscription Status Updated", 
+            "Your subscription status has been changed to " + status + ".", "INFO");
+            
+        Subscription saved = subscriptionRepository.save(sub);
+        
+        // Return DTO (company name lookup)
+        String companyName = "N/A";
+        if (saved.getOwner() != null) {
+            companyName = ownerRepository.findById(saved.getOwner().getUserId())
+                    .map(Owner::getCompanyName).orElse("N/A");
+        }
+        return convertToDTO(saved, Map.of(saved.getOwner().getUserId(), companyName));
+    }
+
     // --- Mapping Helpers ---
 
     private ServiceCenterDTO convertToDTO(ServiceCenter sc) {
@@ -161,5 +227,16 @@ public class AdminService {
         }
         return dto;
     }
-}
 
+    private SubscriptionDTO convertToDTO(Subscription sub, Map<UUID, String> companyNames) {
+        Objects.requireNonNull(sub, "Subscription must not be null");
+        SubscriptionDTO dto = new SubscriptionDTO();
+        BeanUtils.copyProperties(sub, dto);
+        if (sub.getOwner() != null) {
+            dto.setOwnerId(sub.getOwner().getUserId());
+            dto.setOwnerName(sub.getOwner().getFullName());
+            dto.setCompanyName(companyNames.getOrDefault(sub.getOwner().getUserId(), "N/A"));
+        }
+        return dto;
+    }
+}

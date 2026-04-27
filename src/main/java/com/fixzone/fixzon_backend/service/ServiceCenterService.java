@@ -21,7 +21,7 @@ import com.fixzone.fixzon_backend.model.ServicePackage;
 /**
  * SERVICE LAYER: ServiceCenterService
  * This service manages the operational lifecycle of service center branches.
- * It handles resource mapping, owner association, and calculates real-time 
+ * It handles resource mapping, owner association, and calculates real-time
  * metrics like revenue and capacity for the dashboard.
  */
 @Service
@@ -35,11 +35,11 @@ public class ServiceCenterService {
     private final ManagerRepository managerRepository;
 
     /**
-     * Dependency Injection via Constructor: Ensures all required repositories 
+     * Dependency Injection via Constructor: Ensures all required repositories
      * are provided at startup, preventing NullPointerExceptions during runtime.
      */
     public ServiceCenterService(
-            ServiceCenterRepository serviceCenterRepository, 
+            ServiceCenterRepository serviceCenterRepository,
             UserRepository userRepository,
             ServicePackageRepository servicePackageRepository,
             OwnerRepository ownerRepository,
@@ -87,15 +87,17 @@ public class ServiceCenterService {
      * This avoids multiple database trips per entity (N+1 problem).
      */
     private List<ServiceCenterDTO> mapEntitiesToDtos(List<ServiceCenter> centers) {
-        if (centers.isEmpty()) return List.of();
+        if (centers.isEmpty())
+            return List.of();
 
         List<UUID> centerIds = centers.stream().map(ServiceCenter::getCenterId).collect(Collectors.toList());
 
         // BULK FETCH: Get all related data at once
         Map<UUID, BigDecimal> revenueMap = invoiceRepository.sumTotalByCenterIdIn(centerIds).stream()
-                .collect(Collectors.toMap(row -> (UUID)row[0], row -> (BigDecimal)row[1], (a,b) -> a));
+                .collect(Collectors.toMap(row -> (UUID) row[0], row -> (BigDecimal) row[1], (a, b) -> a));
 
-        Map<UUID, List<ServicePackage>> packagesMap = servicePackageRepository.findByServiceCenter_CenterIdInAndIsActiveTrue(centerIds).stream()
+        Map<UUID, List<ServicePackage>> packagesMap = servicePackageRepository
+                .findByServiceCenter_CenterIdInAndIsActiveTrue(centerIds).stream()
                 .collect(Collectors.groupingBy(pkg -> pkg.getServiceCenter().getCenterId()));
 
         Map<UUID, List<Manager>> managersMap = managerRepository.findByManagedCenterIdIn(centerIds).stream()
@@ -104,7 +106,7 @@ public class ServiceCenterService {
         return centers.stream().map(center -> {
             ServiceCenterDTO dto = new ServiceCenterDTO();
             BeanUtils.copyProperties(center, dto);
-            
+
             if (center.getOwner() != null) {
                 dto.setOwnerId(center.getOwner().getUserId());
             }
@@ -129,7 +131,7 @@ public class ServiceCenterService {
             }
 
             // Capacity Estimation
-            dto.setMechanicsCount(5 + (center.getName().length() % 5)); 
+            dto.setMechanicsCount(5 + (center.getName().length() % 5));
             dto.setCurrentCapacity(40 + (center.getName().length() % 30));
 
             return dto;
@@ -150,12 +152,13 @@ public class ServiceCenterService {
 
     /**
      * UPDATE LOGIC: Modifies an existing service center.
-     * We favor explicit field setting over generic copy to maintain fine-grained control 
+     * We favor explicit field setting over generic copy to maintain fine-grained
+     * control
      * over which data is allowed to change.
      */
     public ServiceCenterDTO updateServiceCenter(UUID id, ServiceCenterDTO dto) {
         Objects.requireNonNull(id, "Target ID for update cannot be null");
-        
+
         ServiceCenter existing = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
 
@@ -194,22 +197,24 @@ public class ServiceCenterService {
     }
 
     /**
-     * MAPPING LOGIC (Entity to DTO): 
-     * This complex mapping enriches the center data with dynamic metrics 
+     * MAPPING LOGIC (Entity to DTO):
+     * This complex mapping enriches the center data with dynamic metrics
      * (revenue, managers, and service packages) for a rich UI experience.
      */
     private ServiceCenterDTO mapEntityToDto(ServiceCenter center) {
-        if (center == null) return null;
-        
+        if (center == null)
+            return null;
+
         ServiceCenterDTO dto = new ServiceCenterDTO();
         BeanUtils.copyProperties(center, dto);
-        
+
         if (center.getOwner() != null) {
             dto.setOwnerId(center.getOwner().getUserId());
         }
 
         // AGGREGATION: Pull related service packages and enrich their metadata
-        List<ServicePackageDTO> packages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId())
+        List<ServicePackageDTO> packages = servicePackageRepository
+                .findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId())
                 .stream()
                 .map(pkg -> {
                     ServicePackageDTO pkgDto = new ServicePackageDTO();
@@ -223,15 +228,16 @@ public class ServiceCenterService {
         // METRICS: Calculate real revenue from issued invoices
         BigDecimal revenue = invoiceRepository.sumTotalByCenterId(center.getCenterId());
         dto.setRevenue(revenue != null ? revenue : BigDecimal.ZERO);
-        
+
         // MANAGER ASSOCIATION: Identify the lead manager for this branch
         List<Manager> managers = managerRepository.findByManagedCenterId(center.getCenterId());
         if (!managers.isEmpty()) {
             dto.setManagerName(managers.get(0).getFullName());
         }
 
-        // CAPACITY ESTIMATION: These provide realistic placeholders for operational load metrics
-        dto.setMechanicsCount(5 + (center.getName().length() % 5)); 
+        // CAPACITY ESTIMATION: These provide realistic placeholders for operational
+        // load metrics
+        dto.setMechanicsCount(5 + (center.getName().length() % 5));
         dto.setCurrentCapacity(40 + (center.getName().length() % 30));
 
         return dto;

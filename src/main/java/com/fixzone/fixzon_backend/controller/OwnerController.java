@@ -15,13 +15,15 @@ import java.util.UUID;
 // This ensures that the frontend communicates with a clean, standardized API surface.
 @RestController
 @RequestMapping("/api/owners")
-@CrossOrigin(origins = "*") // Allows API requests from the frontend regardless of port differences during development
+@CrossOrigin(origins = "*") // Allows API requests from the frontend regardless of port differences during
+                            // development
 public class OwnerController {
 
     private final OwnerService ownerService;
 
     // We inject the service via the constructor instead of field injection.
-    // This makes the controller easier to unit test because we can pass mock services directly.
+    // This makes the controller easier to unit test because we can pass mock
+    // services directly.
     public OwnerController(OwnerService ownerService) {
         this.ownerService = ownerService;
     }
@@ -57,12 +59,13 @@ public class OwnerController {
     public ResponseEntity<OwnerDTO> fetchOwnerDetails(@PathVariable UUID ownerId) {
         try {
             OwnerDTO retrievedOwner = ownerService.retrieveOwnerById(ownerId);
-            
-            // Return a 404 Not Found if the requested owner doesn't exist, preventing blank responses.
+
+            // Return a 404 Not Found if the requested owner doesn't exist, preventing blank
+            // responses.
             if (retrievedOwner == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            
+
             return ResponseEntity.ok(retrievedOwner);
         } catch (Exception e) {
             throw new RuntimeException("Failed to fetch owner details: " + e.getMessage());
@@ -72,7 +75,8 @@ public class OwnerController {
     @PostMapping
     public ResponseEntity<OwnerDTO> registerNewOwner(@jakarta.validation.Valid @RequestBody OwnerDTO newOwnerData) {
         try {
-            // Registration is a disruptive action, so we return 201 Created to signify successful creation.
+            // Registration is a disruptive action, so we return 201 Created to signify
+            // successful creation.
             OwnerDTO createdOwner = ownerService.registerOwner(newOwnerData);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdOwner);
         } catch (Exception e) {
@@ -81,15 +85,17 @@ public class OwnerController {
     }
 
     @PutMapping("/{ownerId}")
-    public ResponseEntity<OwnerDTO> modifyOwnerDetails(@PathVariable UUID ownerId, @jakarta.validation.Valid @RequestBody OwnerDTO updatedOwnerData) {
+    public ResponseEntity<OwnerDTO> modifyOwnerDetails(@PathVariable UUID ownerId,
+            @jakarta.validation.Valid @RequestBody OwnerDTO updatedOwnerData) {
         try {
             OwnerDTO modifiedOwner = ownerService.modifyOwner(ownerId, updatedOwnerData);
-            
-            // Similar to the fetch method, we must handle the case where the target ID is invalid.
+
+            // Similar to the fetch method, we must handle the case where the target ID is
+            // invalid.
             if (modifiedOwner == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            
+
             return ResponseEntity.ok(modifiedOwner);
         } catch (Exception e) {
             throw new RuntimeException("Update failed: " + e.getMessage());
@@ -100,7 +106,8 @@ public class OwnerController {
     public ResponseEntity<Void> removeOwnerRecord(@PathVariable UUID ownerId) {
         try {
             ownerService.removeOwner(ownerId);
-            // We return 204 No Content because the deletion leaves no entity to return in the response body.
+            // We return 204 No Content because the deletion leaves no entity to return in
+            // the response body.
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             throw new RuntimeException("Deletion failed: " + e.getMessage());

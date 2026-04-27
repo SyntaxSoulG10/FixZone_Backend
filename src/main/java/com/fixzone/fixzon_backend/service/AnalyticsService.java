@@ -29,22 +29,23 @@ import java.util.stream.Collectors;
 /**
  * OPTIMIZED SERVICE: AnalyticsService
  * Refactored to eliminate N+1 query problems and minimize stream passes.
- * We now pre-load reference data (Centers, Packages) to ensure O(1) lookups during aggregation.
+ * We now pre-load reference data (Centers, Packages) to ensure O(1) lookups
+ * during aggregation.
  */
 @Service
 public class AnalyticsService {
 
-    private final InvoiceRepository invoiceRepository;
-    private final BookingRepository bookingRepository;
-    private final ServiceCenterRepository serviceCenterRepository;
-    private final ServicePackageRepository servicePackageRepository;
-    private final PaymentRecordRepository paymentRecordRepository;
-    private final OwnerRepository ownerRepository;
-    private final CustomerRepository customerRepository;
+        private final InvoiceRepository invoiceRepository;
+        private final BookingRepository bookingRepository;
+        private final ServiceCenterRepository serviceCenterRepository;
+        private final ServicePackageRepository servicePackageRepository;
+        private final PaymentRecordRepository paymentRecordRepository;
+        private final OwnerRepository ownerRepository;
+        private final CustomerRepository customerRepository;
 
-    private static final String POSITIVE_PREFIX = "+";
-    private static final String PERCENT_SUFFIX = "%";
-    private static final String ZERO_PERCENT = "0.0%";
+        private static final String POSITIVE_PREFIX = "+";
+        private static final String PERCENT_SUFFIX = "%";
+        private static final String ZERO_PERCENT = "0.0%";
 
     public AnalyticsService(InvoiceRepository invoiceRepository,
                             BookingRepository bookingRepository,
@@ -78,8 +79,6 @@ public class AnalyticsService {
 
         Set<UUID> targetIds = filterCenterId != null ? Set.of(filterCenterId) : centersMap.keySet();
         
-        // 3. BULK DATA FETCHING (Optimization: Filter at DB level)
-        // We now fetch only what's necessary for the calculation.
         // 3. BULK DATA FETCHING (Optimization: Filter at DB level)
         // We now fetch only what's necessary for the calculation using targetIds.
         List<Invoice> finalInvoices = invoiceRepository.findByCenterIdInAndIssuedAtBetween(
@@ -125,8 +124,6 @@ public class AnalyticsService {
                     String label = formatTimelineLabel(timeKey, period);
                     Set<UUID> monthlyCustomers = entry.getValue().stream().map(Booking::getCustomerId).collect(Collectors.toSet());
                     
-                    // For demo purposes, we'll estimate new customers as 20% of active monthly customers if not tracking specifically
-                    // In a real system, you'd compare with previous history.
                     int active = monthlyCustomers.size();
                     int newCount = (int) (active * 0.3); 
                     

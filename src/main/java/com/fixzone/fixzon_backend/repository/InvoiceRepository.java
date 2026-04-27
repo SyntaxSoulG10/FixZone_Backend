@@ -22,7 +22,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     List<Invoice> findByStatus(String status);
     List<Invoice> findByCompanyCode(String companyCode);
 
-    // Methods from HEAD (dev)
+    // Methods needed by AnalyticsService & ServiceCenterService
     List<Invoice> findByCompanyCodeAndIssuedAtBetween(String companyCode, LocalDateTime start, LocalDateTime end);
     List<Invoice> findByCenterIdInAndIssuedAtBetween(Collection<UUID> centerIds, LocalDateTime start, LocalDateTime end);
     

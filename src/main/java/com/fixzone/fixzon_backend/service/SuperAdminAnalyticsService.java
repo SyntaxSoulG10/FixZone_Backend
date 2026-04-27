@@ -51,7 +51,12 @@ public class SuperAdminAnalyticsService {
             dto.setTotalServiceCenters(serviceCenterRepository.count());
             dto.setPendingRegistrations((long) serviceCenterRepository.findByStatus("PENDING").size());
             dto.setActiveSubscriptions(subscriptionRepository.countByStatus("ACTIVE"));
-            dto.setSubscriptionChange("+5.7%"); 
+            
+            // Subscription Change (30 days vs previous 30 days) - using count as a proxy for growth
+            // Note: Since Subscription model doesn't have createdAt, we use startDate as a proxy
+            long currentSubs = subscriptionRepository.countByStartDateAfter(thirtyDaysAgo.toLocalDate());
+            long previousSubs = subscriptionRepository.countByStartDateBetween(sixtyDaysAgo.toLocalDate(), thirtyDaysAgo.toLocalDate());
+            dto.setSubscriptionChange(calculateGrowth(currentSubs, previousSubs));
         } catch (Exception e) {
             System.err.println("Error calculating stat cards: " + e.getMessage());
             dto.setTotalPlatformRevenue(BigDecimal.ZERO);
@@ -107,6 +112,14 @@ public class SuperAdminAnalyticsService {
         } catch (Exception e) {
             return "0%";
         }
+    }
+
+    private String calculateGrowth(long current, long previous) {
+        if (current == 0 && previous == 0) return "0%";
+        if (previous == 0) return "+" + current + " new";
+        
+        double change = ((double)(current - previous) / previous) * 100;
+        return (change >= 0 ? "+" : "") + String.format("%.1f", change) + "%";
     }
 
     private List<SuperAdminAnalyticsDTO.RevenueBarDTO> formatWeeklyRevenue(List<Object[]> data) {
