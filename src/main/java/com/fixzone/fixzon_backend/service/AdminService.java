@@ -236,6 +236,9 @@ public class AdminService {
             dto.setOwnerId(sub.getOwner().getUserId());
             dto.setOwnerName(sub.getOwner().getFullName());
             dto.setCompanyName(companyNames.getOrDefault(sub.getOwner().getUserId(), "N/A"));
+            if (sub.getEndDate() != null) {
+                dto.setNextBilling(sub.getEndDate().toString());
+            }
         }
         return dto;
     }
