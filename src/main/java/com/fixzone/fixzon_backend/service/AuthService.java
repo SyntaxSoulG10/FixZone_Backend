@@ -12,6 +12,7 @@ import com.fixzone.fixzon_backend.model.Customer;
 import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class AuthService {
 
     @Autowired
@@ -38,10 +40,15 @@ public class AuthService {
     private JwtUtil jwtUtil;
 
     public AuthResponseDTO login(AuthRequestDTO request) {
+        log.info("Attempting login for email: {}", request.getEmail());
         User user = authRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+                .orElseThrow(() -> {
+                    log.error("Login failed: User not found for email {}", request.getEmail());
+                    return new RuntimeException("Invalid email or password");
+                });
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            log.error("Login failed: Password mismatch for email {}", request.getEmail());
             throw new RuntimeException("Invalid email or password");
         }
 
@@ -62,7 +69,9 @@ public class AuthService {
     }
 
     public AuthResponseDTO registerCustomer(RegisterCustomerDTO request) {
+        log.info("Attempting to register customer with email: {}", request.getEmail());
         if (authRepository.findByEmail(request.getEmail()).isPresent()) {
+            log.error("Registration failed: Email {} already taken", request.getEmail());
             throw new RuntimeException("Email is already taken");
         }
 

@@ -17,4 +17,5 @@ public class VehicleDTO {
     private String plateNumber;
     private String imageUrl;
     private String lastServiceDate;
+    private Integer daysSinceService;
 }

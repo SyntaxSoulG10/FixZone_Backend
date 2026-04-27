@@ -6,6 +6,9 @@ import com.fixzone.fixzon_backend.repository.VehicleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -52,6 +55,19 @@ public class VehicleService {
     }
 
     private VehicleDTO convertToDTO(Vehicle vehicle) {
+        Integer daysSinceService = null;
+        if (vehicle.getLastServiceDate() != null && !vehicle.getLastServiceDate().isEmpty()) {
+            try {
+                // Expecting format DD/MM/YYYY
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                LocalDate serviceDate = LocalDate.parse(vehicle.getLastServiceDate(), formatter);
+                LocalDate today = LocalDate.now();
+                daysSinceService = (int) ChronoUnit.DAYS.between(serviceDate, today);
+            } catch (Exception e) {
+                // Fallback or ignore if format is invalid
+            }
+        }
+
         return new VehicleDTO(
                 vehicle.getId(),
                 vehicle.getCustomerId(),
@@ -60,7 +76,8 @@ public class VehicleService {
                 vehicle.getVehicleType(),
                 vehicle.getPlateNumber(),
                 vehicle.getImageUrl(),
-                vehicle.getLastServiceDate()
+                vehicle.getLastServiceDate(),
+                daysSinceService
         );
     }
 }
