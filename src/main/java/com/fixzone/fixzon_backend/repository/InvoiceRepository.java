@@ -22,26 +22,26 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     List<Invoice> findByStatus(String status);
     List<Invoice> findByCompanyCode(String companyCode);
 
-    // Monthly revenue for the last N months (PostgreSQL compatible)
-    @Query("""
-        SELECT EXTRACT(YEAR FROM i.issuedAt), EXTRACT(MONTH FROM i.issuedAt), SUM(i.total)
-        FROM Invoice i
-        WHERE i.status = 'PAID'
-        AND i.issuedAt >= :start
-        GROUP BY EXTRACT(YEAR FROM i.issuedAt), EXTRACT(MONTH FROM i.issuedAt)
-        ORDER BY EXTRACT(YEAR FROM i.issuedAt), EXTRACT(MONTH FROM i.issuedAt)
-        """)
+    // Monthly revenue for the last N months (PostgreSQL native)
+    @Query(value = """
+        SELECT EXTRACT(YEAR FROM issued_at) as year, EXTRACT(MONTH FROM issued_at) as month, SUM(total) as total
+        FROM invoices
+        WHERE status = 'PAID'
+        AND issued_at >= :start
+        GROUP BY EXTRACT(YEAR FROM issued_at), EXTRACT(MONTH FROM issued_at)
+        ORDER BY 1, 2
+        """, nativeQuery = true)
     List<Object[]> findMonthlyRevenueSince(@Param("start") LocalDateTime start);
 
-    // Weekly revenue breakdown (PostgreSQL compatible: 0=Sunday, 1=Monday... 6=Saturday)
-    @Query("""
-        SELECT EXTRACT(DOW FROM i.issuedAt), SUM(i.total)
-        FROM Invoice i
-        WHERE i.status = 'PAID'
-        AND i.issuedAt >= :start AND i.issuedAt <= :end
-        GROUP BY EXTRACT(DOW FROM i.issuedAt)
-        ORDER BY EXTRACT(DOW FROM i.issuedAt)
-        """)
+    // Weekly revenue breakdown (PostgreSQL native)
+    @Query(value = """
+        SELECT EXTRACT(DOW FROM issued_at) as dow, SUM(total) as daily_total
+        FROM invoices
+        WHERE status = 'PAID'
+        AND issued_at >= :start AND issued_at <= :end
+        GROUP BY EXTRACT(DOW FROM issued_at)
+        ORDER BY 1
+        """, nativeQuery = true)
     List<Object[]> findDailyRevenueBetween(
         @Param("start") LocalDateTime start,
         @Param("end") LocalDateTime end
