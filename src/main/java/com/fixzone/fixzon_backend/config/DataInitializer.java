@@ -186,7 +186,7 @@ public class DataInitializer implements CommandLineRunner {
                 "system",
                 LocalDateTime.now(),
                 "system",
-                "https://i.pravatar.cc/150",
+                "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=256&h=256&auto=format&fit=crop",
                 "MGR-001",
                 firstCenter.getCenterId()
             );
@@ -286,9 +286,10 @@ public class DataInitializer implements CommandLineRunner {
             
             System.out.println("[DEBUG] Seeding Raja Motors - Branches: " + existingCount + ", History: " + historyCount);
 
-            // SKIP SEEDING if history already exists to save time on startup
+            // SKIP SEEDING if history already exists, but UPDATE metrics to ensure they are accurate
             if (historyCount > 0) {
-                System.out.println("[DEBUG] Raja Motors already has history data. Skipping re-seed to speed up startup.");
+                System.out.println("[DEBUG] Raja Motors already has history data. Updating metrics from existing records...");
+                updateCustomerMetricsForOwner(owner);
                 return;
             }
 
@@ -322,29 +323,41 @@ public class DataInitializer implements CommandLineRunner {
                         LocalDateTime.now(), "system", new String[] {"Toyota", "Honda", "Nissan", "Suzuki"}, "APPROVED", null, null, null, null, null);
                 centers.add(serviceCenterRepository.save(sc));
 
-                ServicePackage sp = new ServicePackage(UUID.randomUUID(), sc, "Premium Full Service", "Full maintenance package", 
-                        "Oil change, filter, brake check, etc.", new BigDecimal("12500.00"), 120, true, 
-                        LocalDateTime.now(), "system", LocalDateTime.now(), "system");
-                packages.add(servicePackageRepository.save(sp));
+                // Add 3 distinct packages per center for variety
+                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Basic Service", "Base maintenance", 
+                        "Essential oil and filter change.", new BigDecimal("8500.00"), 60, true, 
+                        LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+                
+                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Premium Full Service", "Full maintenance package", 
+                        "Oil change, filter, brake check, engine scan.", new BigDecimal("15500.00"), 120, true, 
+                        LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
 
-                Manager mgr = new Manager(UUID.randomUUID(), loc + " Manager", "manager." + loc.toLowerCase() + "@raja.lk", 
+                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Interior & Exterior Detail", "Deep cleaning", 
+                        "Full body wash, vacuum, and wax.", new BigDecimal("5500.00"), 90, true, 
+                        LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+
+                String mgrImg = "https://images.unsplash.com/photo-" + 
+                    (loc.equals("Colombo") ? "1560250097-0b93528c311a" : 
+                     loc.equals("Kandy") ? "1573496359142-b8d87734a5a2" : "1472099645785-5658abf4ff4e") + 
+                    "?q=80&w=256&h=256&auto=format&fit=crop";
+                
+                Manager mgr = new Manager(UUID.randomUUID(), loc + " Branch Manager", "manager." + loc.toLowerCase() + "@raja.lk", 
                         "+94771000" + loc.length(), passwordEncoder.encode("manager123"), "ROLE_SERVICE_MANAGER", true, 
                         null, LocalDateTime.now(), "system", LocalDateTime.now(), "system", 
-                        "https://i.pravatar.cc/150", "MGR-" + loc.substring(0, 3).toUpperCase(), sc.getCenterId());
+                        mgrImg, "MGR-" + loc.substring(0, 3).toUpperCase(), sc.getCenterId());
                 managers.add(managerRepository.save(mgr));
             }
         } else {
             centers = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
-            // Safe mapping: Ensure we have at least one package per center for seeding
+            // Ensure each center has at least some packages for seeding
             for (ServiceCenter center : centers) {
                 List<ServicePackage> centerPackages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
                 if (centerPackages.isEmpty()) {
-                    ServicePackage sp = new ServicePackage(UUID.randomUUID(), center, "Standard Service", "Base maintenance", 
+                    packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), center, "Standard Service", "Base maintenance", 
                             "Essential checks and oil service.", new BigDecimal("8500.00"), 60, true, 
-                            LocalDateTime.now(), "system", LocalDateTime.now(), "system");
-                    packages.add(servicePackageRepository.save(sp));
+                            LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
                 } else {
-                    packages.add(centerPackages.get(0));
+                    packages.addAll(centerPackages);
                 }
             }
         }
@@ -381,7 +394,11 @@ public class DataInitializer implements CommandLineRunner {
             for (int i = 0; i < dailyBookings; i++) {
                 ServiceCenter center = centers.get((int)(Math.random() * centers.size()));
                 Customer customer = customers.get((int)(Math.random() * customers.size()));
-                ServicePackage pkg = packages.get(centers.indexOf(center));
+                
+                // Pick a random package from this specific center's packages
+                List<ServicePackage> centerPackages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
+                if (centerPackages.isEmpty()) continue;
+                ServicePackage pkg = centerPackages.get((int)(Math.random() * centerPackages.size()));
                 
                 Booking b = new Booking();
                 b.setBookingId(UUID.randomUUID());
@@ -411,6 +428,9 @@ public class DataInitializer implements CommandLineRunner {
                 
                 bookingRepository.save(b);
 
+                // Update customer visits
+                customer.setVisits((customer.getVisits() == null ? 0 : customer.getVisits()) + 1);
+
                 // 1. Create Invoice FIRST to satisfy PaymentRecord FK constraint
                 Invoice inv = new Invoice();
                 inv.setInvoiceId(UUID.randomUUID());
@@ -426,6 +446,12 @@ public class DataInitializer implements CommandLineRunner {
                 inv.setIssuedAt(bookingDateTime.plusHours(2));
                 inv.setCreatedAt(bookingDateTime.plusHours(2));
                 invoiceRepository.save(inv);
+
+                // Update customer total spent if paid
+                if ("PAID".equals(inv.getStatus())) {
+                    customer.setTotalSpent((customer.getTotalSpent() == null ? BigDecimal.ZERO : customer.getTotalSpent()).add(inv.getTotal()));
+                }
+                customerRepository.save(customer);
 
                 // 2. Create Online Payment (Booking Fee) linked to Invoice
                 PaymentRecord onlinePayment = new PaymentRecord();
@@ -458,6 +484,32 @@ public class DataInitializer implements CommandLineRunner {
         } catch (Exception e) {
             System.out.println("[ERROR] Failed to seed Raja Motors data: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    private void updateCustomerMetricsForOwner(Owner owner) {
+        try {
+            // Find all customers who have bookings with this owner's centers
+            List<Customer> customers = customerRepository.findAll();
+            for (Customer customer : customers) {
+                long visits = bookingRepository.findByCustomerId(customer.getUserId()).stream()
+                    .filter(b -> b.getTenantId().equals(owner.getUserId()))
+                    .count();
+                
+                BigDecimal totalSpent = invoiceRepository.findByIssuedToCustomerId(customer.getUserId()).stream()
+                    .filter(inv -> "PAID".equalsIgnoreCase(inv.getStatus()))
+                    .map(Invoice::getTotal)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                
+                if (visits > 0 || totalSpent.compareTo(BigDecimal.ZERO) > 0) {
+                    customer.setVisits((int)visits);
+                    customer.setTotalSpent(totalSpent);
+                    customerRepository.save(customer);
+                }
+            }
+            System.out.println("[SUCCESS] Customer metrics updated successfully for " + owner.getCompanyName());
+        } catch (Exception e) {
+            System.out.println("[ERROR] Failed to update customer metrics: " + e.getMessage());
         }
     }
 }
