@@ -16,8 +16,11 @@ public class OwnerDTO extends UserDTO {
     @jakarta.validation.constraints.Email(message = "Invalid company email format")
     private String companyEmail;
 
-    @jakarta.validation.constraints.Pattern(regexp = "^[0-9+]{10,15}$", message = "Company phone must be 10-15 digits")
+    @jakarta.validation.constraints.Pattern(regexp = "^$|^[0-9+]{10,15}$", message = "Company phone must be 10-15 digits")
     private String companyNumber;
     private String passwordHash;
     private String bannerImageUrl;
+    private String facebookUrl;
+    private String twitterUrl;
+    private String instagramUrl;
 }

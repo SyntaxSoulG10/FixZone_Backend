@@ -95,6 +95,10 @@ public class OwnerService {
                 if (updatedOwnerData.getCompanyEmail() != null) existingOwner.setCompanyEmail(updatedOwnerData.getCompanyEmail());
                 if (updatedOwnerData.getCompanyNumber() != null) existingOwner.setCompanyNumber(updatedOwnerData.getCompanyNumber());
                 
+                if (updatedOwnerData.getFacebookUrl() != null) existingOwner.setFacebookUrl(updatedOwnerData.getFacebookUrl());
+                if (updatedOwnerData.getTwitterUrl() != null) existingOwner.setTwitterUrl(updatedOwnerData.getTwitterUrl());
+                if (updatedOwnerData.getInstagramUrl() != null) existingOwner.setInstagramUrl(updatedOwnerData.getInstagramUrl());
+                
                 if (updatedOwnerData.getBannerImageUrl() != null && !updatedOwnerData.getBannerImageUrl().equals(existingOwner.getBannerImageUrl())) {
                     System.out.println("[OWNER] Detected change in Banner Image. Length: " + updatedOwnerData.getBannerImageUrl().length());
                     String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getBannerImageUrl(), "owner-banner-" + existingOwner.getUserId());

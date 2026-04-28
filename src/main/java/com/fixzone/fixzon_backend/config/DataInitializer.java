@@ -139,7 +139,8 @@ public class DataInitializer implements CommandLineRunner {
                 "Raja Motors",
                 "contact@rajamotors.lk", 
                 "+94112000000", 
-                "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab"
+                "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab",
+                "https://facebook.com/rajamotors", "https://twitter.com/rajamotors", "https://instagram.com/rajamotors"
         );
         owners.add(rajaOwner);
 
@@ -147,7 +148,8 @@ public class DataInitializer implements CommandLineRunner {
         owners.add(new Owner(UUID.randomUUID(), "Tharindu Perera", "owner2@fixzone.lk", "+94771000001",
                 passwordEncoder.encode("pass123"), "ROLE_COMPANY_OWNER", true, LocalDateTime.now(), LocalDateTime.now(),
                 "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150", "FIX002", "Perera Motors",
-                "contact@perera.lk", "+94112000001", "https://images.unsplash.com"));
+                "contact@perera.lk", "+94112000001", "https://images.unsplash.com", 
+                "https://facebook.com/pereramotors", "https://twitter.com/pereramotors", "https://instagram.com/pereramotors"));
         
         ownerRepository.saveAll(owners);
 
@@ -237,7 +239,8 @@ public class DataInitializer implements CommandLineRunner {
                     "Raja Motors",
                     "contact@rajamotors.lk", 
                     "+94112000000", 
-                    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab"
+                    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab",
+                    "https://facebook.com/rajamotors", "https://twitter.com/rajamotors", "https://instagram.com/rajamotors"
             );
             ownerRepository.save(rajaOwner);
             seedRajaMotorsBranchesAndData(rajaOwner);
@@ -265,9 +268,12 @@ public class DataInitializer implements CommandLineRunner {
                     owner.setCreatedAt(user.getCreatedAt());
                 }
                 
-                // Sync essential details for analytics
+                // Sync essential details for analytics and UI testing
                 owner.setOwnerCode("RAJA001");
                 owner.setCompanyName("Raja Motors");
+                owner.setFacebookUrl("https://facebook.com/rajamotors");
+                owner.setTwitterUrl("https://twitter.com/rajamotors");
+                owner.setInstagramUrl("https://instagram.com/rajamotors");
                 ownerRepository.save(owner);
                 
                 System.out.println("[DEBUG] Proceeding to seed branches and history for: " + owner.getEmail());

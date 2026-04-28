@@ -18,7 +18,7 @@ public class UserDTO {
     @Email(message = "Invalid email format")
     private String email;
 
-    @jakarta.validation.constraints.Pattern(regexp = "^[0-9+]{10,15}$", message = "Phone must be 10-15 digits")
+    @jakarta.validation.constraints.Pattern(regexp = "^$|^[0-9+]{10,15}$", message = "Phone must be 10-15 digits")
     private String phone;
     private String role;
     private Boolean emailVerified;
