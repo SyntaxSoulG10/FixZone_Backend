@@ -2,6 +2,7 @@ package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.DTO.booking.BookingRequestDTO;
 import com.fixzone.fixzon_backend.DTO.booking.BookingResponseDTO;
+import com.fixzone.fixzon_backend.config.AppConstants;
 import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
@@ -73,7 +74,7 @@ public class BookingService {
         
         // Use a default tenant ID if not provided (for multi-tenant support)
         if (booking.getTenantId() == null) {
-            booking.setTenantId(UUID.fromString("00000000-0000-0000-0000-000000000000"));
+            booking.setTenantId(UUID.fromString(AppConstants.DEFAULT_TENANT_ID));
         }
         
         booking.setStatus(BookingStatus.PENDING_PAYMENT);
@@ -93,7 +94,7 @@ public class BookingService {
 
         // Rule: Must be at least 3 days before the original booking date
         long daysBetween = ChronoUnit.DAYS.between(LocalDate.now(), booking.getBookingDate());
-        if (daysBetween < 3) {
+        if (daysBetween < AppConstants.RESCHEDULE_MIN_DAYS_LEFT) {
             System.err.println(">>> RESCHEDULE DENIED: Only " + daysBetween + " days left.");
             throw new RuntimeException("Cannot reschedule within 3 days of booking date");
         }
@@ -126,9 +127,9 @@ public class BookingService {
         
         // Apply 5% penalty if within 3 days
         double penaltyPercent = 0.0;
-        if (daysBetween < 3) {
+        if (daysBetween < AppConstants.RESCHEDULE_MIN_DAYS_LEFT) {
             BigDecimal fee = booking.getBookingFee() != null ? booking.getBookingFee() : BigDecimal.ZERO;
-            BigDecimal penalty = fee.multiply(new BigDecimal("0.05"));
+            BigDecimal penalty = fee.multiply(new BigDecimal(AppConstants.PENALTY_PERCENT_5));
             booking.setCancellationPenalty(penalty);
             penaltyPercent = 5.0;
             System.out.println(">>> APPLYING 5% PENALTY: " + penalty);

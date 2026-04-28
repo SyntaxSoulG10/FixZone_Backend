@@ -6,6 +6,7 @@ import com.fixzone.fixzon_backend.model.Manager;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.repository.*;
+import com.fixzone.fixzon_backend.config.AppConstants;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -131,8 +132,8 @@ public class ServiceCenterService {
             }
 
             // Capacity Estimation
-            dto.setMechanicsCount(5 + (center.getName().length() % 5));
-            dto.setCurrentCapacity(40 + (center.getName().length() % 30));
+            dto.setMechanicsCount(AppConstants.BASE_MECHANICS_COUNT + (center.getName().length() % AppConstants.MECHANICS_VARIANCE_MODULO));
+            dto.setCurrentCapacity(AppConstants.BASE_CAPACITY + (center.getName().length() % AppConstants.CAPACITY_VARIANCE_MODULO));
 
             return dto;
         }).collect(Collectors.toList());
@@ -236,8 +237,8 @@ public class ServiceCenterService {
 
         // CAPACITY ESTIMATION: These provide realistic placeholders for operational
         // load metrics
-        dto.setMechanicsCount(5 + (center.getName().length() % 5));
-        dto.setCurrentCapacity(40 + (center.getName().length() % 30));
+        dto.setMechanicsCount(AppConstants.BASE_MECHANICS_COUNT + (center.getName().length() % AppConstants.MECHANICS_VARIANCE_MODULO));
+        dto.setCurrentCapacity(AppConstants.BASE_CAPACITY + (center.getName().length() % AppConstants.CAPACITY_VARIANCE_MODULO));
 
         return dto;
     }

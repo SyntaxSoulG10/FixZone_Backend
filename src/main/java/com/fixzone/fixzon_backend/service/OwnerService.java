@@ -1,6 +1,7 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.DTO.OwnerDTO;
+import com.fixzone.fixzon_backend.config.AppConstants;
 import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import org.springframework.beans.BeanUtils;
@@ -111,7 +112,7 @@ public class OwnerService {
                 
                 if (updatedOwnerData.getBannerImageUrl() != null && !updatedOwnerData.getBannerImageUrl().equals(existingOwner.getBannerImageUrl())) {
                     System.out.println("[OWNER] Detected change in Banner Image. Length: " + updatedOwnerData.getBannerImageUrl().length());
-                    String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getBannerImageUrl(), "owner-banner-" + existingOwner.getUserId());
+                    String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getBannerImageUrl(), AppConstants.OWNER_BANNER_PREFIX + existingOwner.getUserId());
                     existingOwner.setBannerImageUrl(uploadedUrl);
                     System.out.println("[OWNER] Banner updated to: " + uploadedUrl);
                 }
@@ -129,7 +130,7 @@ public class OwnerService {
                 
                 if (updatedOwnerData.getProfilePictureUrl() != null && !updatedOwnerData.getProfilePictureUrl().equals(existingOwner.getProfilePictureUrl())) {
                     System.out.println("[OWNER] Detected change in Profile Picture. Length: " + updatedOwnerData.getProfilePictureUrl().length());
-                    String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getProfilePictureUrl(), "owner-profile-" + existingOwner.getUserId());
+                    String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getProfilePictureUrl(), AppConstants.OWNER_PROFILE_PREFIX + existingOwner.getUserId());
                     existingOwner.setProfilePictureUrl(uploadedUrl);
                     System.out.println("[OWNER] Profile picture updated to: " + uploadedUrl);
                 }
