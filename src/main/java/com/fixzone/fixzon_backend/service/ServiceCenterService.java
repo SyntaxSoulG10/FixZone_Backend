@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -59,15 +59,29 @@ public class ServiceCenterService {
      * Optimized with bulk mapping to avoid N+1 query issues.
      */
     public List<ServiceCenterDTO> getAllServiceCenters() {
-        List<ServiceCenter> centers = serviceCenterRepository.findByIsActive(true);
-        return mapEntitiesToDtos(centers);
+        try {
+            List<ServiceCenter> centers = serviceCenterRepository.findByIsActive(true);
+            return mapEntitiesToDtos(centers);
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving service centers: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve service centers", e);
+        }
     }
 
     public ServiceCenterDTO getServiceCenterById(UUID id) {
-        Objects.requireNonNull(id, "Service Center ID cannot be null");
-        return serviceCenterRepository.findById(id)
-                .map(this::mapEntityToDto)
-                .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
+        if (id == null) {
+            throw new IllegalArgumentException("Service Center ID cannot be null");
+        }
+        try {
+            return serviceCenterRepository.findById(id)
+                    .map(this::mapEntityToDto)
+                    .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving service center: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve service center", e);
+        }
     }
 
     /**
@@ -75,12 +89,20 @@ public class ServiceCenterService {
      * Uses optimized bulk mapping for high performance.
      */
     public List<ServiceCenterDTO> getServiceCentersByOwnerCode(String code) {
-        return ownerRepository.findByOwnerCode(code)
-                .map(owner -> {
-                    List<ServiceCenter> centers = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
-                    return mapEntitiesToDtos(centers);
-                })
-                .orElse(List.of());
+        if (code == null || code.trim().isEmpty()) {
+            throw new IllegalArgumentException("Owner code cannot be null or empty");
+        }
+        try {
+            return ownerRepository.findByOwnerCode(code)
+                    .map(owner -> {
+                        List<ServiceCenter> centers = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
+                        return mapEntitiesToDtos(centers);
+                    })
+                    .orElse(List.of());
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving service centers by owner code: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve service centers by owner code", e);
+        }
     }
 
     /**
@@ -144,11 +166,19 @@ public class ServiceCenterService {
      * Automatically assigns a unique UUID if none is provided.
      */
     public ServiceCenterDTO createServiceCenter(ServiceCenterDTO dto) {
-        ServiceCenter center = mapDtoToEntity(dto);
-        if (center.getCenterId() == null) {
-            center.setCenterId(UUID.randomUUID());
+        if (dto == null) {
+            throw new IllegalArgumentException("Service Center data cannot be null");
         }
-        return mapEntityToDto(serviceCenterRepository.save(center));
+        try {
+            ServiceCenter center = mapDtoToEntity(dto);
+            if (center.getCenterId() == null) {
+                center.setCenterId(UUID.randomUUID());
+            }
+            return mapEntityToDto(serviceCenterRepository.save(center));
+        } catch (Exception e) {
+            System.err.println("Database error while creating service center: " + e.getMessage());
+            throw new RuntimeException("Failed to create service center", e);
+        }
     }
 
     /**
@@ -157,43 +187,67 @@ public class ServiceCenterService {
      * control over which data is allowed to change.
      */
     public ServiceCenterDTO updateServiceCenter(UUID id, ServiceCenterDTO dto) {
-        Objects.requireNonNull(id, "Target ID for update cannot be null");
+        if (id == null) {
+            throw new IllegalArgumentException("Target ID for update cannot be null");
+        }
+        if (dto == null) {
+            throw new IllegalArgumentException("Service Center data cannot be null");
+        }
 
-        ServiceCenter existing = serviceCenterRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
+        try {
+            ServiceCenter existing = serviceCenterRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
 
-        existing.setName(dto.getName());
-        existing.setAddress(dto.getAddress());
-        existing.setContactPhone(dto.getContactPhone());
-        existing.setOpeningHours(dto.getOpeningHours());
-        existing.setRating(dto.getRating());
-        existing.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : existing.getIsActive());
-        existing.setUpdatedBy(dto.getUpdatedBy());
-        existing.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
+            existing.setName(dto.getName());
+            existing.setAddress(dto.getAddress());
+            existing.setContactPhone(dto.getContactPhone());
+            existing.setOpeningHours(dto.getOpeningHours());
+            existing.setRating(dto.getRating());
+            existing.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : existing.getIsActive());
+            existing.setUpdatedBy(dto.getUpdatedBy());
+            existing.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
 
-        return mapEntityToDto(serviceCenterRepository.save(existing));
+            return mapEntityToDto(serviceCenterRepository.save(existing));
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Database error while updating service center: " + e.getMessage());
+            throw new RuntimeException("Failed to update service center", e);
+        }
     }
 
     public void deleteServiceCenter(UUID id) {
-        Objects.requireNonNull(id, "ID for deletion cannot be null");
-        
-        // CASCADING CLEANUP: Remove or nullify all associations before deleting the center
-        // 1. Delete associated service packages
-        List<ServicePackage> packages = servicePackageRepository.findByServiceCenter_CenterId(id);
-        servicePackageRepository.deleteAll(packages);
-        
-        // 2. Clear managers' center association (or delete them if they only belong to this center)
-        List<Manager> managers = managerRepository.findByManagedCenterId(id);
-        for (Manager manager : managers) {
-            manager.setManagedCenterId(null);
-            managerRepository.save(manager);
+        if (id == null) {
+            throw new IllegalArgumentException("ID for deletion cannot be null");
         }
         
-        // 3. Delete invoices and payment records linked to this center
-        invoiceRepository.deleteAll(invoiceRepository.findByCenterId(id));
-        
-        // 4. Finally delete the center itself
-        serviceCenterRepository.deleteById(id);
+        try {
+            if (!serviceCenterRepository.existsById(id)) {
+                throw new IllegalStateException("Service center not found with id: " + id);
+            }
+            // CASCADING CLEANUP: Remove or nullify all associations before deleting the center
+            // 1. Delete associated service packages
+            List<ServicePackage> packages = servicePackageRepository.findByServiceCenter_CenterId(id);
+            servicePackageRepository.deleteAll(packages);
+            
+            // 2. Clear managers' center association (or delete them if they only belong to this center)
+            List<Manager> managers = managerRepository.findByManagedCenterId(id);
+            for (Manager manager : managers) {
+                manager.setManagedCenterId(null);
+                managerRepository.save(manager);
+            }
+            
+            // 3. Delete invoices and payment records linked to this center
+            invoiceRepository.deleteAll(invoiceRepository.findByCenterId(id));
+            
+            // 4. Finally delete the center itself
+            serviceCenterRepository.deleteById(id);
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Database error while deleting service center: " + e.getMessage());
+            throw new RuntimeException("Failed to delete service center", e);
+        }
     }
 
     /**

@@ -8,7 +8,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Objects;
+
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -35,46 +35,91 @@ public class OwnerService {
      * Maps entities to DTOs to maintain a clean separation between DB and API layers.
      */
     public List<OwnerDTO> retrieveAllOwners() {
-        return ownerRepository.findAll().stream()
-            .map(this::transformToDataTransferObject)
-            .collect(Collectors.toList());
+        try {
+            return ownerRepository.findAll().stream()
+                .map(this::transformToDataTransferObject)
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving owners: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve all owners", e);
+        }
     }
 
     public OwnerDTO retrieveOwnerById(UUID targetOwnerId) {
-        Objects.requireNonNull(targetOwnerId, "The Owner ID parameter must not be null.");
-        return ownerRepository.findById(targetOwnerId)
-            .map(this::transformToDataTransferObject)
-            .orElse(null);
+        if (targetOwnerId == null) {
+            throw new IllegalArgumentException("The Owner ID parameter must not be null.");
+        }
+        try {
+            return ownerRepository.findById(targetOwnerId)
+                .map(this::transformToDataTransferObject)
+                .orElse(null);
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving owner by ID: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve owner by ID", e);
+        }
     }
 
     public OwnerDTO retrieveOwnerByCode(String ownerCode) {
-        return ownerRepository.findByOwnerCode(ownerCode)
-            .map(this::transformToDataTransferObject)
-            .orElse(null);
+        if (ownerCode == null || ownerCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Owner code must not be null or empty.");
+        }
+        try {
+            return ownerRepository.findByOwnerCode(ownerCode)
+                .map(this::transformToDataTransferObject)
+                .orElse(null);
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving owner by code: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve owner by code", e);
+        }
     }
 
     public OwnerDTO retrieveOwnerByEmail(String email) {
-        return ownerRepository.findByEmail(email)
-            .map(this::transformToDataTransferObject)
-            .orElse(null);
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Email must not be null or empty.");
+        }
+        try {
+            return ownerRepository.findByEmail(email)
+                .map(this::transformToDataTransferObject)
+                .orElse(null);
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving owner by email: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve owner by email", e);
+        }
     }
 
     /**
      * Registers a new owner. Generates a unique UUID if one isn't provided.
      */
     public OwnerDTO registerOwner(OwnerDTO newOwnerRegistrationData) {
-        Objects.requireNonNull(newOwnerRegistrationData, "Registration data must not be null.");
-        
-        // Transforms DTO to JPA Entity for repository operations.
-        Owner newOwnerEntity = Objects.requireNonNull(transformToDatabaseEntity(newOwnerRegistrationData));
-
-        // Generates unique identifier for new entities.
-        if (newOwnerEntity.getUserId() == null) {
-            newOwnerEntity.setUserId(UUID.randomUUID());
+        if (newOwnerRegistrationData == null) {
+            throw new IllegalArgumentException("Registration data must not be null.");
+        }
+        if (newOwnerRegistrationData.getEmail() == null || newOwnerRegistrationData.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Email is required for registration.");
         }
 
-        Owner persistedOwnerEntity = Objects.requireNonNull(ownerRepository.save(newOwnerEntity));
-        return transformToDataTransferObject(persistedOwnerEntity);
+        try {
+            // Check for existing email to avoid duplicates
+            if (ownerRepository.findByEmail(newOwnerRegistrationData.getEmail()).isPresent()) {
+                throw new IllegalStateException("An owner with this email already exists.");
+            }
+
+            // Transforms DTO to JPA Entity for repository operations.
+            Owner newOwnerEntity = transformToDatabaseEntity(newOwnerRegistrationData);
+
+            // Generates unique identifier for new entities.
+            if (newOwnerEntity.getUserId() == null) {
+                newOwnerEntity.setUserId(UUID.randomUUID());
+            }
+
+            Owner persistedOwnerEntity = ownerRepository.save(newOwnerEntity);
+            return transformToDataTransferObject(persistedOwnerEntity);
+        } catch (IllegalStateException e) {
+            throw e; // Rethrow expected state exceptions
+        } catch (Exception e) {
+            System.err.println("Database error during owner registration: " + e.getMessage());
+            throw new RuntimeException("Failed to register new owner", e);
+        }
     }
 
     /**
@@ -82,10 +127,22 @@ public class OwnerService {
      * Explicitly maps fields to preserve inherited user properties.
      */
     public OwnerDTO modifyOwner(UUID targetOwnerId, OwnerDTO updatedOwnerData) {
-        Objects.requireNonNull(targetOwnerId, "The Owner ID parameter must not be null.");
+        if (targetOwnerId == null) {
+            throw new IllegalArgumentException("The Owner ID parameter must not be null.");
+        }
+        if (updatedOwnerData == null) {
+            throw new IllegalArgumentException("Updated owner data must not be null.");
+        }
 
         try {
             return ownerRepository.findById(targetOwnerId).map(existingOwner -> {
+                // Check if email is being updated and if it's already taken by another user
+                if (updatedOwnerData.getEmail() != null && !updatedOwnerData.getEmail().equals(existingOwner.getEmail())) {
+                    if (ownerRepository.findByEmail(updatedOwnerData.getEmail()).isPresent()) {
+                        throw new IllegalStateException("Email is already in use by another owner.");
+                    }
+                }
+
                 // Updates owner-specific properties
                 if (updatedOwnerData.getOwnerCode() != null) {
                     existingOwner.setOwnerCode(updatedOwnerData.getOwnerCode());
@@ -142,16 +199,30 @@ public class OwnerService {
                 Owner successfullyUpdatedEntity = ownerRepository.save(existingOwner);
                 return transformToDataTransferObject(successfullyUpdatedEntity);
             }).orElse(null);
+        } catch (IllegalStateException e) {
+            throw e; // Rethrow validation exceptions
         } catch (Exception e) {
             // Logs critical errors during modification
             System.err.println("CRITICAL ERROR during owner modification: " + e.getMessage());
-            throw e;
+            throw new RuntimeException("Failed to update owner details", e);
         }
     }
 
     public void removeOwner(UUID targetOwnerId) {
-        Objects.requireNonNull(targetOwnerId, "The Owner ID parameter must not be null.");
-        ownerRepository.deleteById(targetOwnerId);
+        if (targetOwnerId == null) {
+            throw new IllegalArgumentException("The Owner ID parameter must not be null.");
+        }
+        try {
+            if (!ownerRepository.existsById(targetOwnerId)) {
+                throw new IllegalStateException("Cannot delete owner because no owner was found with ID: " + targetOwnerId);
+            }
+            ownerRepository.deleteById(targetOwnerId);
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Database error during owner deletion: " + e.getMessage());
+            throw new RuntimeException("Failed to delete owner", e);
+        }
     }
 
     /**

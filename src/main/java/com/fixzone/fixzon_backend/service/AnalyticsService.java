@@ -65,8 +65,12 @@ public class AnalyticsService {
     }
 
     public AnalyticsDTO getCompanyAnalytics(String companyCode, String centerIdStr, String startDateStr, String endDateStr, String period) {
+        if (companyCode == null || companyCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Company code is required for analytics");
+        }
         
-        // 1. PREPARE FILTERS & SCOPE
+        try {
+            // 1. PREPARE FILTERS & SCOPE
         UUID filterCenterId = parseCenterId(centerIdStr);
         LocalDateTime startRange = parseStartDate(startDateStr);
         LocalDateTime endRange = parseEndDate(endDateStr);
@@ -188,6 +192,12 @@ public class AnalyticsService {
                 sumPayments(allPayments, AppConstants.PAYMENT_METHOD_CARD, AppConstants.PAYMENT_METHOD_ONLINE), sumPayments(allPayments, AppConstants.PAYMENT_METHOD_CASH),
                 revenueChart, customerGrowth, serviceMix, centerRankings, recentTransactions
         );
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Error generating analytics: " + e.getMessage());
+            throw new RuntimeException("Failed to generate analytics dashboard data", e);
+        }
     }
 
     private UUID parseCenterId(String s) { return (s != null && !"all".equalsIgnoreCase(s) && !s.isEmpty()) ? UUID.fromString(s) : null; }

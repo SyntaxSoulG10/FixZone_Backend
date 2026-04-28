@@ -29,24 +29,37 @@ public class CustomerService {
     }
 
     public List<CustomerDTO> getAllCustomers() {
-        return customerRepository.findAll().stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        try {
+            return customerRepository.findAll().stream()
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving customers: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve customers", e);
+        }
     }
 
     public List<CustomerDTO> getCustomersByOwnerCode(String code) {
-        return ownerRepository.findByOwnerCode(code)
-                .map(owner -> {
-                    List<UUID> centerIds = serviceCenterRepository.findByOwner_UserId(owner.getUserId())
-                            .stream()
-                            .map(com.fixzone.fixzon_backend.model.ServiceCenter::getCenterId)
-                            .collect(Collectors.toList());
-                    if (centerIds.isEmpty()) return List.<CustomerDTO>of();
-                    return customerRepository.findCustomersByCenterIds(centerIds).stream()
-                            .map(this::convertToDTO)
-                            .collect(Collectors.toList());
-                })
-                .orElse(List.of());
+        if (code == null || code.trim().isEmpty()) {
+            throw new IllegalArgumentException("Owner code cannot be null or empty");
+        }
+        try {
+            return ownerRepository.findByOwnerCode(code)
+                    .map(owner -> {
+                        List<UUID> centerIds = serviceCenterRepository.findByOwner_UserId(owner.getUserId())
+                                .stream()
+                                .map(com.fixzone.fixzon_backend.model.ServiceCenter::getCenterId)
+                                .collect(Collectors.toList());
+                        if (centerIds.isEmpty()) return List.<CustomerDTO>of();
+                        return customerRepository.findCustomersByCenterIds(centerIds).stream()
+                                .map(this::convertToDTO)
+                                .collect(Collectors.toList());
+                    })
+                    .orElse(List.of());
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving customers by owner code: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve customers by owner code", e);
+        }
     }
 
     private CustomerDTO convertToDTO(Customer customer) {

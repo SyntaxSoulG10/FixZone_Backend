@@ -5,7 +5,7 @@ import com.fixzone.fixzon_backend.model.Invoice;
 import com.fixzone.fixzon_backend.repository.InvoiceRepository;
 import org.springframework.stereotype.Service;
 import java.util.List;
-import java.util.Objects;
+
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -19,63 +19,133 @@ public class InvoiceService {
     }
 
     public List<InvoiceDTO> getAllInvoices() {
-        // Transformation to DTO secures hidden columns from HTTP exposure.
-        return invoiceRepository.findAll().stream()
-                .map(this::transformToDataTransferObject)
-                .collect(Collectors.toList());
+        try {
+            // Transformation to DTO secures hidden columns from HTTP exposure.
+            return invoiceRepository.findAll().stream()
+                    .map(this::transformToDataTransferObject)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving invoices: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve invoices", e);
+        }
     }
 
     public InvoiceDTO getInvoiceById(UUID id) {
-        Objects.requireNonNull(id, "ID must not be null");
-        return invoiceRepository.findById(id)
-                .map(this::transformToDataTransferObject)
-                .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
+        if (id == null) {
+            throw new IllegalArgumentException("ID must not be null");
+        }
+        try {
+            return invoiceRepository.findById(id)
+                    .map(this::transformToDataTransferObject)
+                    .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving invoice by ID: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve invoice by ID", e);
+        }
     }
 
     public InvoiceDTO getInvoiceByBooking(UUID bookingId) {
-        return invoiceRepository.findByBookingId(bookingId)
-                .map(this::transformToDataTransferObject)
-                .orElseThrow(() -> new RuntimeException("Invoice not found for booking: " + bookingId));
+        if (bookingId == null) {
+            throw new IllegalArgumentException("Booking ID must not be null");
+        }
+        try {
+            return invoiceRepository.findByBookingId(bookingId)
+                    .map(this::transformToDataTransferObject)
+                    .orElseThrow(() -> new RuntimeException("Invoice not found for booking: " + bookingId));
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving invoice by booking ID: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve invoice by booking ID", e);
+        }
     }
 
     public List<InvoiceDTO> getInvoicesByCenter(UUID centerId) {
-        return invoiceRepository.findByCenterId(centerId).stream()
-                .map(this::transformToDataTransferObject)
-                .collect(Collectors.toList());
+        if (centerId == null) {
+            throw new IllegalArgumentException("Center ID must not be null");
+        }
+        try {
+            return invoiceRepository.findByCenterId(centerId).stream()
+                    .map(this::transformToDataTransferObject)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving invoices by center: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve invoices by center", e);
+        }
     }
 
     public List<InvoiceDTO> getInvoicesByCustomer(UUID customerId) {
-        return invoiceRepository.findByIssuedToCustomerId(customerId).stream()
-                .map(this::transformToDataTransferObject)
-                .collect(Collectors.toList());
+        if (customerId == null) {
+            throw new IllegalArgumentException("Customer ID must not be null");
+        }
+        try {
+            return invoiceRepository.findByIssuedToCustomerId(customerId).stream()
+                    .map(this::transformToDataTransferObject)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving invoices by customer: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve invoices by customer", e);
+        }
     }
 
     public List<InvoiceDTO> getInvoicesByStatus(String status) {
-        return invoiceRepository.findByStatus(status).stream()
-                .map(this::transformToDataTransferObject)
-                .collect(Collectors.toList());
+        if (status == null || status.trim().isEmpty()) {
+            throw new IllegalArgumentException("Status must not be null or empty");
+        }
+        try {
+            return invoiceRepository.findByStatus(status).stream()
+                    .map(this::transformToDataTransferObject)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving invoices by status: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve invoices by status", e);
+        }
     }
 
     public List<InvoiceDTO> getInvoicesByCompanyCode(String companyCode) {
-        return invoiceRepository.findByCompanyCode(companyCode).stream()
-                .map(this::transformToDataTransferObject)
-                .collect(Collectors.toList());
+        if (companyCode == null || companyCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Company code must not be null or empty");
+        }
+        try {
+            return invoiceRepository.findByCompanyCode(companyCode).stream()
+                    .map(this::transformToDataTransferObject)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Database error while retrieving invoices by company code: " + e.getMessage());
+            throw new RuntimeException("Failed to retrieve invoices by company code", e);
+        }
     }
 
     public InvoiceDTO createInvoice(InvoiceDTO dto) {
-        Invoice invoice = transformToDatabaseEntity(dto);
-        if (invoice.getInvoiceId() == null) {
-            invoice.setInvoiceId(UUID.randomUUID());
+        if (dto == null) {
+            throw new IllegalArgumentException("Invoice data must not be null");
         }
-        return transformToDataTransferObject(invoiceRepository.save(invoice));
+        try {
+            Invoice invoice = transformToDatabaseEntity(dto);
+            if (invoice.getInvoiceId() == null) {
+                invoice.setInvoiceId(UUID.randomUUID());
+            }
+            return transformToDataTransferObject(invoiceRepository.save(invoice));
+        } catch (Exception e) {
+            System.err.println("Database error while creating invoice: " + e.getMessage());
+            throw new RuntimeException("Failed to create invoice", e);
+        }
     }
 
     public InvoiceDTO updateInvoice(UUID id, InvoiceDTO dto) {
-        Objects.requireNonNull(id, "ID must not be null");
-        Invoice existing = invoiceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
+        if (id == null) {
+            throw new IllegalArgumentException("ID must not be null");
+        }
+        if (dto == null) {
+            throw new IllegalArgumentException("Invoice data must not be null");
+        }
+        
+        try {
+            Invoice existing = invoiceRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
 
-        if (dto != null) {
             existing.setCompanyCode(dto.getCompanyCode());
             existing.setCenterId(dto.getCenterId());
             existing.setBookingId(dto.getBookingId());
@@ -88,20 +158,39 @@ public class InvoiceService {
             existing.setIssuedAt(dto.getIssuedAt());
             existing.setDueAt(dto.getDueAt());
             existing.setUpdatedBy(dto.getUpdatedBy());
-        }
 
-        Invoice saved = invoiceRepository.save(existing);
-        return transformToDataTransferObject(Objects.requireNonNull(saved));
+            Invoice saved = invoiceRepository.save(existing);
+            return transformToDataTransferObject(saved);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Database error while updating invoice: " + e.getMessage());
+            throw new RuntimeException("Failed to update invoice", e);
+        }
     }
 
     public void deleteInvoice(UUID id) {
-        Objects.requireNonNull(id, "ID must not be null");
-        invoiceRepository.deleteById(id);
+        if (id == null) {
+            throw new IllegalArgumentException("ID must not be null");
+        }
+        try {
+            if (!invoiceRepository.existsById(id)) {
+                throw new IllegalStateException("Invoice not found with id: " + id);
+            }
+            invoiceRepository.deleteById(id);
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            System.err.println("Database error while deleting invoice: " + e.getMessage());
+            throw new RuntimeException("Failed to delete invoice", e);
+        }
     }
 
     // Direct constructor mapping for reliable type transfer mapping.
     private InvoiceDTO transformToDataTransferObject(Invoice invoice) {
-        Objects.requireNonNull(invoice, "Invoice must not be null");
+        if (invoice == null) {
+            throw new IllegalArgumentException("Invoice must not be null");
+        }
         return new InvoiceDTO(
                 invoice.getInvoiceId(),
                 invoice.getCompanyCode(),
