@@ -41,6 +41,12 @@ public class AuthService {
 
     public AuthResponseDTO login(AuthRequestDTO request) {
         log.info("Attempting login for email: {}", request.getEmail());
+        
+        if (request.getPassword() == null || request.getPassword().length() < 8) {
+            log.error("Login failed: Invalid password format for email {}", request.getEmail());
+            throw new RuntimeException("Invalid email or password");
+        }
+
         User user = authRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> {
                     log.error("Login failed: User not found for email {}", request.getEmail());
@@ -70,6 +76,18 @@ public class AuthService {
 
     public AuthResponseDTO registerCustomer(RegisterCustomerDTO request) {
         log.info("Attempting to register customer with email: {}", request.getEmail());
+
+        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
+        if (request.getEmail() == null || !request.getEmail().matches(emailRegex)) {
+            log.error("Registration failed: Invalid email format: {}", request.getEmail());
+            throw new RuntimeException("Invalid email format");
+        }
+
+        if (request.getPassword() == null || request.getPassword().length() < 8) {
+            log.error("Registration failed: Password too short for email: {}", request.getEmail());
+            throw new RuntimeException("Password must be at least 8 characters");
+        }
+
         if (authRepository.findByEmail(request.getEmail()).isPresent()) {
             log.error("Registration failed: Email {} already taken", request.getEmail());
             throw new RuntimeException("Email is already taken");
@@ -116,6 +134,18 @@ public class AuthService {
 
     public AuthResponseDTO registerOwner(RegisterOwnerDTO request) {
         log.info("Attempting to register owner with email: {}", request.getEmail());
+
+        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
+        if (request.getEmail() == null || !request.getEmail().matches(emailRegex)) {
+            log.error("Registration failed: Invalid email format: {}", request.getEmail());
+            throw new RuntimeException("Invalid email format");
+        }
+
+        if (request.getPassword() == null || request.getPassword().length() < 8) {
+            log.error("Registration failed: Password too short for email: {}", request.getEmail());
+            throw new RuntimeException("Password must be at least 8 characters");
+        }
+
         if (authRepository.findByEmail(request.getEmail()).isPresent()) {
             log.error("Registration failed: Email {} already taken", request.getEmail());
             throw new RuntimeException("Email is already taken");
