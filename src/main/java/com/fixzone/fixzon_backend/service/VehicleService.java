@@ -3,12 +3,16 @@ package com.fixzone.fixzon_backend.service;
 import com.fixzone.fixzon_backend.DTO.VehicleDTO;
 import com.fixzone.fixzon_backend.model.Vehicle;
 import com.fixzone.fixzon_backend.repository.VehicleRepository;
+import com.fixzone.fixzon_backend.repository.BookingRepository;
+import com.fixzone.fixzon_backend.enums.BookingStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -18,6 +22,9 @@ public class VehicleService {
 
     @Autowired
     private VehicleRepository vehicleRepository;
+
+    @Autowired
+    private BookingRepository bookingRepository;
 
     public List<VehicleDTO> getVehiclesByCustomerId(UUID customerId) {
         return vehicleRepository.findByCustomerId(customerId).stream()
@@ -39,6 +46,21 @@ public class VehicleService {
     }
 
     public VehicleDTO updateVehicle(UUID vehicleId, VehicleDTO dto) {
+        // Define statuses that block editing
+        Collection<BookingStatus> activeStatuses = Arrays.asList(
+                BookingStatus.PENDING,
+                BookingStatus.PENDING_PAYMENT,
+                BookingStatus.CONFIRMED,
+                BookingStatus.IN_PROGRESS
+        );
+
+        // Check if any active bookings exist for this vehicle
+        boolean hasActiveBookings = bookingRepository.existsByVehicleIdAndStatusIn(vehicleId, activeStatuses);
+
+        if (hasActiveBookings) {
+            throw new RuntimeException("Cannot edit vehicle details with active or pending bookings. Please complete or cancel your bookings first.");
+        }
+
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found"));
         if (dto.getBrand() != null) vehicle.setBrand(dto.getBrand());
@@ -51,6 +73,21 @@ public class VehicleService {
     }
 
     public void deleteVehicle(UUID vehicleId) {
+        // Define statuses that block deletion
+        Collection<BookingStatus> activeStatuses = Arrays.asList(
+                BookingStatus.PENDING,
+                BookingStatus.PENDING_PAYMENT,
+                BookingStatus.CONFIRMED,
+                BookingStatus.IN_PROGRESS
+        );
+
+        // Check if any active bookings exist for this vehicle
+        boolean hasActiveBookings = bookingRepository.existsByVehicleIdAndStatusIn(vehicleId, activeStatuses);
+
+        if (hasActiveBookings) {
+            throw new RuntimeException("Cannot delete vehicle with active or pending bookings. Please complete or cancel your bookings first.");
+        }
+
         vehicleRepository.deleteById(vehicleId);
     }
 
