@@ -140,7 +140,7 @@ public class ServiceCenterService {
 
     /**
      * PERSISTENCE: Creates a new service center branch.
-     * We automatically assign a unique UUID if none is provided.
+     * Automatically assigns a unique UUID if none is provided.
      */
     public ServiceCenterDTO createServiceCenter(ServiceCenterDTO dto) {
         ServiceCenter center = mapDtoToEntity(dto);
@@ -152,9 +152,8 @@ public class ServiceCenterService {
 
     /**
      * UPDATE LOGIC: Modifies an existing service center.
-     * We favor explicit field setting over generic copy to maintain fine-grained
-     * control
-     * over which data is allowed to change.
+     * Uses explicit field setting over generic copy to maintain fine-grained
+     * control over which data is allowed to change.
      */
     public ServiceCenterDTO updateServiceCenter(UUID id, ServiceCenterDTO dto) {
         Objects.requireNonNull(id, "Target ID for update cannot be null");

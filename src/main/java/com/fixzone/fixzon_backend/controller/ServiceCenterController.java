@@ -16,7 +16,7 @@ import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 @CrossOrigin("*")
 public class ServiceCenterController {
 
-    // Using constructor injection strictly enforces the presence of dependencies at instantiation
+    // Constructor injection strictly enforces dependency presence at instantiation.
     private final ServiceCenterService serviceCenterService;
     private final OwnerService ownerService;
 

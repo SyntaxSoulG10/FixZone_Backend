@@ -32,8 +32,7 @@ public class ManagerService {
     private final EmailService emailService;
 
     /**
-     * Constructor Injection: We favor constructor over field injection to ensure 
-     * immutability and easier unit testing with mock objects.
+     * Constructor Injection: Ensures immutability and easier unit testing with mock objects.
      */
     public ManagerService(
             ManagerRepository managerRepository, 
@@ -50,7 +49,7 @@ public class ManagerService {
 
     /**
      * RETRIEVAL LOGIC: Scopes managers to a specific company owner.
-     * We perform a multi-step lookup: Owner -> Service Centers -> Managers.
+     * Performs a multi-step lookup: Owner -> Service Centers -> Managers.
      */
     public List<ManagerDTO> getManagersByOwnerCode(String code) {
         return ownerRepository.findByOwnerCode(code)
@@ -104,7 +103,7 @@ public class ManagerService {
             manager.setManagerCode("MGR-" + manager.getUserId().toString().substring(0, 8).toUpperCase());
         }
 
-        // SECURITY: We never store raw passwords. Hashing prevents leaks if the DB is compromised.
+        // SECURITY: Never store raw passwords. Hashing prevents leaks if the DB is compromised.
         String rawPassword = (managerDTO.getPasswordHash() != null && !managerDTO.getPasswordHash().isEmpty()) 
                 ? managerDTO.getPasswordHash() : "Manager123!";
         manager.setPasswordHash(passwordEncoder.encode(rawPassword));
@@ -124,7 +123,7 @@ public class ManagerService {
 
     /**
      * UPDATE LOGIC: Performs a partial update to preserve existing data.
-     * We explicitly check each field to avoid overriding data with null values.
+     * Explicitly checks each field to avoid overriding data with null values.
      */
     public ManagerDTO updateManager(UUID id, ManagerDTO dto) {
         Objects.requireNonNull(id, "Target ID for update cannot be null");

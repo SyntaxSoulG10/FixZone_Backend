@@ -11,19 +11,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 import java.util.UUID;
 
-// We use a dedicated controller to decouple the HTTP routing logic from the business operations.
-// This ensures that the frontend communicates with a clean, standardized API surface.
+// Dedicated controller to decouple HTTP routing from business operations.
 @RestController
 @RequestMapping("/api/owners")
-@CrossOrigin(origins = "*") // Allows API requests from the frontend regardless of port differences during
-                            // development
+@CrossOrigin(origins = "*") // Enables Cross-Origin Resource Sharing for API requests
 public class OwnerController {
 
     private final OwnerService ownerService;
 
-    // We inject the service via the constructor instead of field injection.
-    // This makes the controller easier to unit test because we can pass mock
-    // services directly.
+    // Constructor injection for dependency management to improve testability.
     public OwnerController(OwnerService ownerService) {
         this.ownerService = ownerService;
     }
@@ -31,7 +27,7 @@ public class OwnerController {
     @GetMapping("/current")
     public ResponseEntity<OwnerDTO> fetchCurrentOwner() {
         try {
-            // Get the current authenticated user's email from the SecurityContext
+            // Retrieve current authenticated user's email from SecurityContext
             String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
             
             OwnerDTO retrievedOwner = ownerService.retrieveOwnerByEmail(email);
@@ -47,7 +43,7 @@ public class OwnerController {
     @GetMapping
     public ResponseEntity<List<OwnerDTO>> fetchAllCompanyOwners() {
         try {
-            // We wrap the list in a ResponseEntity to provide semantic HTTP status codes.
+            // Wraps response in ResponseEntity to provide proper HTTP status
             List<OwnerDTO> ownerList = ownerService.retrieveAllOwners();
             return ResponseEntity.ok(ownerList);
         } catch (Exception e) {
@@ -60,8 +56,7 @@ public class OwnerController {
         try {
             OwnerDTO retrievedOwner = ownerService.retrieveOwnerById(ownerId);
 
-            // Return a 404 Not Found if the requested owner doesn't exist, preventing blank
-            // responses.
+            // Handles non-existent owner requests with 404 Not Found
             if (retrievedOwner == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
@@ -75,8 +70,7 @@ public class OwnerController {
     @PostMapping
     public ResponseEntity<OwnerDTO> registerNewOwner(@jakarta.validation.Valid @RequestBody OwnerDTO newOwnerData) {
         try {
-            // Registration is a disruptive action, so we return 201 Created to signify
-            // successful creation.
+            // Returns 201 Created upon successful registration
             OwnerDTO createdOwner = ownerService.registerOwner(newOwnerData);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdOwner);
         } catch (Exception e) {
@@ -90,8 +84,7 @@ public class OwnerController {
         try {
             OwnerDTO modifiedOwner = ownerService.modifyOwner(ownerId, updatedOwnerData);
 
-            // Similar to the fetch method, we must handle the case where the target ID is
-            // invalid.
+            // Returns 404 Not Found if the updated owner does not exist
             if (modifiedOwner == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
@@ -106,8 +99,7 @@ public class OwnerController {
     public ResponseEntity<Void> removeOwnerRecord(@PathVariable UUID ownerId) {
         try {
             ownerService.removeOwner(ownerId);
-            // We return 204 No Content because the deletion leaves no entity to return in
-            // the response body.
+            // Returns 204 No Content for successful deletion
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             throw new RuntimeException("Deletion failed: " + e.getMessage());

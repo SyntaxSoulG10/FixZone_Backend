@@ -4,7 +4,7 @@ import com.fixzone.fixzon_backend.DTO.CustomerDTO;
 import com.fixzone.fixzon_backend.model.Customer;
 import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.stereotype.Service;
 
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
@@ -16,14 +16,17 @@ import java.util.stream.Collectors;
 @Service
 public class CustomerService {
 
-    @Autowired
-    private CustomerRepository customerRepository;
+    private final CustomerRepository customerRepository;
+    private final ServiceCenterRepository serviceCenterRepository;
+    private final OwnerRepository ownerRepository;
 
-    @Autowired
-    private ServiceCenterRepository serviceCenterRepository;
-
-    @Autowired
-    private OwnerRepository ownerRepository;
+    public CustomerService(CustomerRepository customerRepository, 
+                           ServiceCenterRepository serviceCenterRepository, 
+                           OwnerRepository ownerRepository) {
+        this.customerRepository = customerRepository;
+        this.serviceCenterRepository = serviceCenterRepository;
+        this.ownerRepository = ownerRepository;
+    }
 
     public List<CustomerDTO> getAllCustomers() {
         return customerRepository.findAll().stream()

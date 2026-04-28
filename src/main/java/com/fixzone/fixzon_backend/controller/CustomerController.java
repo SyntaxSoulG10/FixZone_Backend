@@ -2,7 +2,7 @@ package com.fixzone.fixzon_backend.controller;
 
 import com.fixzone.fixzon_backend.DTO.CustomerDTO;
 import com.fixzone.fixzon_backend.service.CustomerService;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -21,11 +21,13 @@ import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 @CrossOrigin("*")
 public class CustomerController {
 
-    @Autowired
-    private CustomerService customerService;
+    private final CustomerService customerService;
+    private final OwnerService ownerService;
 
-    @Autowired
-    private OwnerService ownerService;
+    public CustomerController(CustomerService customerService, OwnerService ownerService) {
+        this.customerService = customerService;
+        this.ownerService = ownerService;
+    }
 
     @GetMapping
     public ResponseEntity<List<CustomerDTO>> getAllCustomers() {

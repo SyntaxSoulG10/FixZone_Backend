@@ -12,7 +12,7 @@ import java.util.UUID;
 @CrossOrigin("*")
 public class InvoiceController {
 
-    // Utilize explicit constructor injection to resolve immutable service boundaries cleanly
+    // Explicit constructor injection to resolve immutable service boundaries cleanly.
     private final InvoiceService invoiceService;
 
     public InvoiceController(InvoiceService invoiceService) {

@@ -2,7 +2,7 @@ package com.fixzone.fixzon_backend.controller;
 
 import com.fixzone.fixzon_backend.DTO.AnalyticsDTO;
 import com.fixzone.fixzon_backend.service.AnalyticsService;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,11 +15,13 @@ import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 @CrossOrigin(origins = "*")
 public class AnalyticsController {
 
-    @Autowired
-    private AnalyticsService analyticsService;
+    private final AnalyticsService analyticsService;
+    private final OwnerService ownerService;
 
-    @Autowired
-    private OwnerService ownerService;
+    public AnalyticsController(AnalyticsService analyticsService, OwnerService ownerService) {
+        this.analyticsService = analyticsService;
+        this.ownerService = ownerService;
+    }
 
     @GetMapping("/company/{companyCode}")
     public ResponseEntity<AnalyticsDTO> getCompanyAnalytics(

@@ -17,8 +17,7 @@ import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 @CrossOrigin(origins = "*")
 public class ManagerController {
 
-    // Enforcing immutability via constructor-based dependency injection
-    // This is superior to @Autowired fields because it makes the controller testable without Spring Context reflection
+    // Constructor-based dependency injection for immutability and testability.
     private final ManagerService managerService;
     private final OwnerService ownerService;
 
@@ -53,7 +52,7 @@ public class ManagerController {
     @GetMapping("/{id}")
     public ResponseEntity<ManagerDTO> getManagerById(@PathVariable UUID id) {
         ManagerDTO manager = managerService.getManagerById(id);
-        // Explicit explicit HTTP 404 Not Found returns gracefully if no data exists
+        // Returns HTTP 404 Not Found gracefully if no data exists.
         return manager != null ? ResponseEntity.ok(manager) : ResponseEntity.notFound().build();
     }
 

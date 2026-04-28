@@ -12,7 +12,7 @@ import java.util.UUID;
 @CrossOrigin("*")
 public class PaymentRecordController {
 
-    // Construct injection over field injection guarantees dependencies are met securely
+    // Constructor injection guarantees dependencies are met securely.
     private final PaymentRecordService paymentRecordService;
 
     public PaymentRecordController(PaymentRecordService paymentRecordService) {

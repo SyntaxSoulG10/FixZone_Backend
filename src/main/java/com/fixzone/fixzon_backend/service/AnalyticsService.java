@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 /**
  * OPTIMIZED SERVICE: AnalyticsService
  * Refactored to eliminate N+1 query problems and minimize stream passes.
- * We now pre-load reference data (Centers, Packages) to ensure O(1) lookups
+ * Pre-loads reference data (Centers, Packages) to ensure O(1) lookups
  * during aggregation.
  */
 @Service
@@ -71,7 +71,7 @@ public class AnalyticsService {
         LocalDateTime endRange = parseEndDate(endDateStr);
 
         // 2. PRE-FETCH REFERENCE DATA (Optimization: Avoid N+1)
-        // We load centers and packages into maps for instant lookup later.
+        // Loads centers and packages into maps for instant lookup later.
         Map<UUID, ServiceCenter> centersMap = ownerRepository.findByOwnerCode(companyCode)
                 .map(owner -> serviceCenterRepository.findByOwner_UserId(owner.getUserId()))
                 .orElse(List.of())
@@ -80,7 +80,7 @@ public class AnalyticsService {
         Set<UUID> targetIds = filterCenterId != null ? Set.of(filterCenterId) : centersMap.keySet();
         
         // 3. BULK DATA FETCHING (Optimization: Filter at DB level)
-        // We now fetch only what's necessary for the calculation using targetIds.
+        // Fetches only what's necessary for the calculation using targetIds.
         List<Invoice> finalInvoices = invoiceRepository.findByCenterIdInAndIssuedAtBetween(
                 targetIds, startRange != null ? startRange : LocalDateTime.now().minusMonths(6), 
                 endRange != null ? endRange : LocalDateTime.now().plusDays(1));
@@ -200,8 +200,8 @@ public class AnalyticsService {
 
     /**
      * CALCULATE GROWTH TRENDS
-     * Why: We calculate current month vs previous month performance to give 
-     * owners a sense of business momentum. We use BigDecimal for financial 
+     * Why: Calculates current month vs previous month performance to give 
+     * owners a sense of business momentum. Uses BigDecimal for financial 
      * calculations to avoid floating-point precision errors (Magic Numbers/Rounding).
      */
     private AnalyticsDTO.GrowthStats getGrowthTrends(List<Invoice> invoiceList, List<Booking> bookingList, long pendingJobsCount) {
@@ -251,7 +251,7 @@ public class AnalyticsService {
 
     /**
      * AGGREGATE REVENUE FOR CHARTS
-     * Why: We group invoices by time (Day/Month) so the UI can render 
+     * Why: Groups invoices by time (Day/Month) so the UI can render 
      * historical trend lines. Using TreeMap ensures the results stay sorted by date.
      */
     private List<AnalyticsDTO.MonthlyDataDTO> getRevenueChartData(List<Invoice> invoiceList, List<PaymentRecord> paymentList, String groupingPeriod) {

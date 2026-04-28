@@ -19,8 +19,7 @@ public class InvoiceService {
     }
 
     public List<InvoiceDTO> getAllInvoices() {
-        // Encapsulating database entities via transformations secures hidden columns
-        // from HTTP exposure
+        // Transformation to DTO secures hidden columns from HTTP exposure.
         return invoiceRepository.findAll().stream()
                 .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
@@ -100,7 +99,7 @@ public class InvoiceService {
         invoiceRepository.deleteById(id);
     }
 
-    // Direct constructor mapping enforces strict type transfer mapping reliably
+    // Direct constructor mapping for reliable type transfer mapping.
     private InvoiceDTO transformToDataTransferObject(Invoice invoice) {
         Objects.requireNonNull(invoice, "Invoice must not be null");
         return new InvoiceDTO(
