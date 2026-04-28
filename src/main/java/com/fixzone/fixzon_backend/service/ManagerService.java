@@ -1,6 +1,7 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.DTO.ManagerDTO;
+import com.fixzone.fixzon_backend.config.AppConstants;
 import com.fixzone.fixzon_backend.model.Manager;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.repository.ManagerRepository;
@@ -95,17 +96,17 @@ public class ManagerService {
             manager.setUserId(UUID.randomUUID());
         }
         
-        manager.setRole("ROLE_SERVICE_MANAGER");
-        manager.setStatus(manager.getStatus() != null ? manager.getStatus() : "Active");
+        manager.setRole(AppConstants.ROLE_SERVICE_MANAGER);
+        manager.setStatus(manager.getStatus() != null ? manager.getStatus() : AppConstants.STATUS_ACTIVE);
         
         // UNIQUE IDENTIFIER: Create a human-readable manager code for internal tracking
         if (manager.getManagerCode() == null || manager.getManagerCode().isEmpty()) {
-            manager.setManagerCode("MGR-" + manager.getUserId().toString().substring(0, 8).toUpperCase());
+            manager.setManagerCode(AppConstants.MANAGER_PREFIX + manager.getUserId().toString().substring(0, 8).toUpperCase());
         }
 
         // SECURITY: Never store raw passwords. Hashing prevents leaks if the DB is compromised.
         String rawPassword = (managerDTO.getPasswordHash() != null && !managerDTO.getPasswordHash().isEmpty()) 
-                ? managerDTO.getPasswordHash() : "Manager123!";
+                ? managerDTO.getPasswordHash() : AppConstants.DEFAULT_PASSWORD;
         manager.setPasswordHash(passwordEncoder.encode(rawPassword));
         
         Manager savedManager = managerRepository.save(manager);

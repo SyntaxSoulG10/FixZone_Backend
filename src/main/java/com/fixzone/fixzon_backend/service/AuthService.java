@@ -7,6 +7,7 @@ import com.fixzone.fixzon_backend.repository.AuthRepository;
 import com.fixzone.fixzon_backend.config.JwtUtil;
 import com.fixzone.fixzon_backend.DTO.RegisterCustomerDTO;
 import com.fixzone.fixzon_backend.DTO.RegisterOwnerDTO;
+import com.fixzone.fixzon_backend.config.AppConstants;
 import com.fixzone.fixzon_backend.enums.Role;
 import com.fixzone.fixzon_backend.model.Customer;
 import com.fixzone.fixzon_backend.model.Owner;
@@ -71,8 +72,8 @@ public class AuthService {
         customer.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         customer.setRole(Role.ROLE_CUSTOMER.name());
         customer.setEmailVerified(false);
-        customer.setStatus("Active");
-        customer.setCustomerCode("CUST-" + System.currentTimeMillis());
+        customer.setStatus(AppConstants.STATUS_ACTIVE);
+        customer.setCustomerCode(AppConstants.CUSTOMER_PREFIX + System.currentTimeMillis());
 
         customerRepository.save(customer);
 
@@ -99,8 +100,8 @@ public class AuthService {
         owner.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         owner.setRole(Role.ROLE_COMPANY_OWNER.name());
         owner.setEmailVerified(false);
-        owner.setStatus("Active");
-        owner.setOwnerCode("OWN-" + System.currentTimeMillis());
+        owner.setStatus(AppConstants.STATUS_ACTIVE);
+        owner.setOwnerCode(AppConstants.OWNER_PREFIX + System.currentTimeMillis());
         owner.setCompanyName(request.getCompanyName());
         owner.setCompanyNumber(request.getCompanyNumber());
 

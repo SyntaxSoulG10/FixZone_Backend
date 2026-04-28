@@ -1,6 +1,7 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.DTO.AnalyticsDTO;
+import com.fixzone.fixzon_backend.config.AppConstants;
 import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.model.*;
 import com.fixzone.fixzon_backend.repository.*;
@@ -96,7 +97,7 @@ public class AnalyticsService {
 
         // 5. CALCULATE AGGREGATES
         BigDecimal totalRevenue = finalInvoices.stream()
-                .filter(i -> "PAID".equalsIgnoreCase(i.getStatus()))
+                .filter(i -> AppConstants.STATUS_PAID.equalsIgnoreCase(i.getStatus()))
                 .map(Invoice::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
 
         long totalJobs = finalBookings.size();
@@ -142,7 +143,7 @@ public class AnalyticsService {
                     ServiceCenter c = centersMap.get(id);
                     if (c == null) return null;
                     long jobs = finalBookings.stream().filter(b -> b.getCenterId().equals(id)).count();
-                    BigDecimal rev = finalInvoices.stream().filter(i -> i.getCenterId().equals(id) && "PAID".equalsIgnoreCase(i.getStatus())).map(Invoice::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+                    BigDecimal rev = finalInvoices.stream().filter(i -> i.getCenterId().equals(id) && AppConstants.STATUS_PAID.equalsIgnoreCase(i.getStatus())).map(Invoice::getTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
                     return new AnalyticsDTO.CenterPerformanceDTO(id.toString(), c.getName(), c.getName().substring(0,1), "#EA580C", (int)jobs, rev);
                 })
                 .filter(Objects::nonNull).sorted((a,b) -> b.getRevenue().compareTo(a.getRevenue()))
@@ -184,7 +185,7 @@ public class AnalyticsService {
                 totalRevenue, trends.getRevenueChange(), totalJobs, trends.getJobsChange(),
                 pendingJobs, trends.getPendingChange(), avgVal, trends.getAverageValueChange(),
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("hh:mm a")),
-                sumPayments(allPayments, "CARD", "ONLINE"), sumPayments(allPayments, "CASH"),
+                sumPayments(allPayments, AppConstants.PAYMENT_METHOD_CARD, AppConstants.PAYMENT_METHOD_ONLINE), sumPayments(allPayments, AppConstants.PAYMENT_METHOD_CASH),
                 revenueChart, customerGrowth, serviceMix, centerRankings, recentTransactions
         );
     }
@@ -211,13 +212,13 @@ public class AnalyticsService {
 
         // Filter and sum current month revenue
         BigDecimal currentMonthRevenue = invoiceList.stream()
-                .filter(invoice -> "PAID".equalsIgnoreCase(invoice.getStatus()) && !invoice.getIssuedAt().isBefore(currentMonthStart))
+                .filter(invoice -> AppConstants.STATUS_PAID.equalsIgnoreCase(invoice.getStatus()) && !invoice.getIssuedAt().isBefore(currentMonthStart))
                 .map(Invoice::getTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Filter and sum previous month revenue for comparison
         BigDecimal previousMonthRevenue = invoiceList.stream()
-                .filter(invoice -> "PAID".equalsIgnoreCase(invoice.getStatus()) && !invoice.getIssuedAt().isBefore(previousMonthStart) && invoice.getIssuedAt().isBefore(currentMonthStart))
+                .filter(invoice -> AppConstants.STATUS_PAID.equalsIgnoreCase(invoice.getStatus()) && !invoice.getIssuedAt().isBefore(previousMonthStart) && invoice.getIssuedAt().isBefore(currentMonthStart))
                 .map(Invoice::getTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
@@ -244,7 +245,7 @@ public class AnalyticsService {
         return new AnalyticsDTO.GrowthStats(
                 revenueTrend, 
                 jobsTrend,
-                "+5.0%", // Hardcoded expectation for pending jobs for now
+                AppConstants.DEFAULT_PENDING_EXPECTATION, // Hardcoded expectation for pending jobs for now
                 calculatePercentageChange(currentAverageValue, previousAverageValue)
         );
     }
@@ -257,11 +258,11 @@ public class AnalyticsService {
     private List<AnalyticsDTO.MonthlyDataDTO> getRevenueChartData(List<Invoice> invoiceList, List<PaymentRecord> paymentList, String groupingPeriod) {
         // Group payments by time key for easy lookup
         Map<Integer, List<PaymentRecord>> paymentsByTime = paymentList.stream()
-                .filter(p -> "SUCCESS".equalsIgnoreCase(p.getStatus()))
+                .filter(p -> AppConstants.STATUS_SUCCESS.equalsIgnoreCase(p.getStatus()))
                 .collect(Collectors.groupingBy(p -> generateTimeKey(p.getCreatedAt(), groupingPeriod)));
 
         return invoiceList.stream()
-                .filter(invoice -> "PAID".equalsIgnoreCase(invoice.getStatus()))
+                .filter(invoice -> AppConstants.STATUS_PAID.equalsIgnoreCase(invoice.getStatus()))
                 .collect(Collectors.groupingBy(invoice -> generateTimeKey(invoice.getIssuedAt(), groupingPeriod), TreeMap::new, Collectors.toList()))
                 .entrySet().stream()
                 .map(entry -> {
@@ -272,8 +273,8 @@ public class AnalyticsService {
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
                     
                     List<PaymentRecord> periodPayments = paymentsByTime.getOrDefault(timeKey, List.of());
-                    BigDecimal cardAmount = sumPayments(periodPayments, "CARD", "ONLINE");
-                    BigDecimal cashAmount = sumPayments(periodPayments, "CASH");
+                    BigDecimal cardAmount = sumPayments(periodPayments, AppConstants.PAYMENT_METHOD_CARD, AppConstants.PAYMENT_METHOD_ONLINE);
+                    BigDecimal cashAmount = sumPayments(periodPayments, AppConstants.PAYMENT_METHOD_CASH);
                             
                     return new AnalyticsDTO.MonthlyDataDTO(
                             label, 
@@ -285,22 +286,22 @@ public class AnalyticsService {
     }
 
     private int generateTimeKey(LocalDateTime dateTime, String periodType) {
-        if ("daily".equalsIgnoreCase(periodType)) {
+        if (AppConstants.PERIOD_DAILY.equalsIgnoreCase(periodType)) {
             return dateTime.getYear() * 10000 + dateTime.getMonthValue() * 100 + dateTime.getDayOfMonth();
         }
-        if ("yearly".equalsIgnoreCase(periodType)) {
+        if (AppConstants.PERIOD_YEARLY.equalsIgnoreCase(periodType)) {
             return dateTime.getYear();
         }
         return dateTime.getYear() * 100 + dateTime.getMonthValue();
     }
 
     private String formatTimelineLabel(int key, String periodType) {
-        if ("daily".equalsIgnoreCase(periodType)) {
+        if (AppConstants.PERIOD_DAILY.equalsIgnoreCase(periodType)) {
             int day = key % 100;
             int month = (key % 10000) / 100;
             return day + " " + java.time.Month.of(month).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
         }
-        if ("yearly".equalsIgnoreCase(periodType)) {
+        if (AppConstants.PERIOD_YEARLY.equalsIgnoreCase(periodType)) {
             return String.valueOf(key);
         }
         int month = key % 100;
