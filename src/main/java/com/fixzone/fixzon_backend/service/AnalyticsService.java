@@ -72,10 +72,16 @@ public class AnalyticsService {
 
         // 2. PRE-FETCH REFERENCE DATA (Optimization: Avoid N+1)
         // We load centers and packages into maps for instant lookup later.
-        Map<UUID, ServiceCenter> centersMap = ownerRepository.findByOwnerCode(companyCode)
-                .map(owner -> serviceCenterRepository.findByOwner_UserId(owner.getUserId()))
-                .orElse(List.of())
-                .stream().collect(Collectors.toMap(ServiceCenter::getCenterId, Function.identity()));
+        Map<UUID, ServiceCenter> centersMap;
+        if ("SYSTEM".equalsIgnoreCase(companyCode)) {
+            centersMap = serviceCenterRepository.findAll().stream()
+                    .collect(Collectors.toMap(ServiceCenter::getCenterId, Function.identity()));
+        } else {
+            centersMap = ownerRepository.findByOwnerCode(companyCode)
+                    .map(owner -> serviceCenterRepository.findByOwner_UserId(owner.getUserId()))
+                    .orElse(List.of())
+                    .stream().collect(Collectors.toMap(ServiceCenter::getCenterId, Function.identity()));
+        }
 
         Set<UUID> targetIds = filterCenterId != null ? Set.of(filterCenterId) : centersMap.keySet();
         

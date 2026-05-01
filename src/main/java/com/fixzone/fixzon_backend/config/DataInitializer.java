@@ -86,6 +86,7 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("Existing data found, ensuring Mock Charlie and Raja Motors exist...");
             ensureMockCharlie();
             ensureRajaMotors();
+            ensureMockManager();
             return;
         }
 

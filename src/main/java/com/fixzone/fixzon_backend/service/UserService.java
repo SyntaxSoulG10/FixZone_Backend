@@ -22,6 +22,12 @@ public class UserService {
         return userRepository.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
+    public UserDTO getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .map(this::convertToDTO)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
     private UserDTO convertToDTO(User user) {
         if (user == null) return null;
         UserDTO dto = new UserDTO();

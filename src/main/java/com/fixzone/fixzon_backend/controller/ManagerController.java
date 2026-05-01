@@ -33,12 +33,22 @@ public class ManagerController {
     }
 
     @GetMapping("/current")
-    public ResponseEntity<List<ManagerDTO>> getCurrentOwnerManagers() {
+    public ResponseEntity<?> getCurrentOwnerManagers() {
         try {
-            // Get the current authenticated user's email from the SecurityContext
-            String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String email = (String) auth.getPrincipal();
             
-            // Retrieve the owner to get their ownerCode
+            boolean isManager = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE_MANAGER"));
+
+            if (isManager) {
+                // If the user is a manager, return their own profile
+                ManagerDTO manager = managerService.getManagerByEmail(email);
+                if (manager == null) return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).build();
+                return ResponseEntity.ok(manager);
+            }
+            
+            // Otherwise, it's an owner trying to get all their managers
             OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
             if (owner == null) {
                 return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).build();
