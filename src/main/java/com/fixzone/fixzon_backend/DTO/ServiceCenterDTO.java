@@ -39,9 +39,15 @@ public class ServiceCenterDTO {
     private String updatedBy;
     private String[] supportedVehicleBrands;
     private String status;
+
+    @NotBlank(message = "Business registration document is required")
     private String businessRegUrl;
+
     private String taxIdUrl;
+
+    @NotBlank(message = "NIC/Identity document is required")
     private String nicUrl;
+
     private String rejectionReason;
     private java.util.List<ServicePackageDTO> servicePackages;
     private BigDecimal revenue;
