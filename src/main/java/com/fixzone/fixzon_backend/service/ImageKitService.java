@@ -9,6 +9,9 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Base64;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
 
 /**
@@ -18,6 +21,7 @@ import org.springframework.core.ParameterizedTypeReference;
  */
 @Service
 public class ImageKitService {
+    private static final Logger log = LoggerFactory.getLogger(ImageKitService.class);
 
     @Value("${imagekit.public-key}")
     private String publicKey;
@@ -89,19 +93,19 @@ public class ImageKitService {
             Map<String, Object> responseBody = response.getBody();
             if (response.getStatusCode() == HttpStatus.OK && responseBody != null) {
                 String url = (String) responseBody.get("url");
-                System.out.println("****************************************************************");
-                System.out.println("[IMAGEKIT SUCCESS] -> " + url);
-                System.out.println("****************************************************************");
+                log.info("****************************************************************");
+                log.info("[IMAGEKIT SUCCESS] -> {}", url);
+                log.info("****************************************************************");
                 return url;
             }
             
             throw new RuntimeException("ImageKit API returned error: " + response.getStatusCode());
             
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
-            System.err.println("ImageKit HTTP Error (" + e.getStatusCode() + "): " + e.getResponseBodyAsString());
+            log.error("ImageKit HTTP Error ({}): {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
             throw new RuntimeException("ImageKit Upload Error: " + e.getResponseBodyAsString());
         } catch (Exception e) {
-            System.err.println("CRITICAL ERROR: ImageKit Upload Failed: " + e.getMessage());
+            log.error("CRITICAL ERROR: ImageKit Upload Failed: {}", e.getMessage(), e);
             throw new RuntimeException("ImageKit Upload Error: " + e.getMessage());
         }
     }

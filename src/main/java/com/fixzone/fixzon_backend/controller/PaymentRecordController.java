@@ -57,31 +57,19 @@ public class PaymentRecordController {
 
     @PostMapping
     public ResponseEntity<PaymentRecordDTO> createPayment(@jakarta.validation.Valid @RequestBody PaymentRecordDTO dto) {
-        try {
-            return ResponseEntity.status(201).body(paymentRecordService.createPayment(dto));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create payment record: " + e.getMessage());
-        }
+        return ResponseEntity.status(201).body(paymentRecordService.createPayment(dto));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<PaymentRecordDTO> updatePayment(@PathVariable UUID id,
             @jakarta.validation.Valid @RequestBody PaymentRecordDTO dto) {
-        try {
-            PaymentRecordDTO updatedPayment = paymentRecordService.updatePayment(id, dto);
-            return updatedPayment != null ? ResponseEntity.ok(updatedPayment) : ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update payment record: " + e.getMessage());
-        }
+        PaymentRecordDTO updatedPayment = paymentRecordService.updatePayment(id, dto);
+        return updatedPayment != null ? ResponseEntity.ok(updatedPayment) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePayment(@PathVariable UUID id) {
-        try {
-            paymentRecordService.deletePayment(id);
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to delete payment record: " + e.getMessage());
-        }
+        paymentRecordService.deletePayment(id);
+        return ResponseEntity.noContent().build();
     }
 }

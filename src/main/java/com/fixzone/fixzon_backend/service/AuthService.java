@@ -13,7 +13,6 @@ import com.fixzone.fixzon_backend.model.Customer;
 import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -23,20 +22,23 @@ import java.util.UUID;
 @Service
 public class AuthService {
 
-    @Autowired
-    private AuthRepository authRepository;
+    private final AuthRepository authRepository;
+    private final CustomerRepository customerRepository;
+    private final OwnerRepository ownerRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
 
-    @Autowired
-    private CustomerRepository customerRepository;
-
-    @Autowired
-    private OwnerRepository ownerRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private JwtUtil jwtUtil;
+    public AuthService(AuthRepository authRepository,
+                       CustomerRepository customerRepository,
+                       OwnerRepository ownerRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtUtil jwtUtil) {
+        this.authRepository = authRepository;
+        this.customerRepository = customerRepository;
+        this.ownerRepository = ownerRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
+    }
 
     public AuthResponseDTO login(AuthRequestDTO request) {
         User user = authRepository.findByEmail(request.getEmail())

@@ -3,6 +3,8 @@ package com.fixzone.fixzon_backend.service;
 import com.fixzone.fixzon_backend.DTO.CustomerDTO;
 import com.fixzone.fixzon_backend.model.Customer;
 import com.fixzone.fixzon_backend.repository.CustomerRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class CustomerService {
+    private static final Logger log = LoggerFactory.getLogger(CustomerService.class);
 
     private final CustomerRepository customerRepository;
     private final ServiceCenterRepository serviceCenterRepository;
@@ -29,14 +32,9 @@ public class CustomerService {
     }
 
     public List<CustomerDTO> getAllCustomers() {
-        try {
-            return customerRepository.findAll().stream()
-                    .map(this::convertToDTO)
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            System.err.println("Database error while retrieving customers: " + e.getMessage());
-            throw new RuntimeException("Failed to retrieve customers", e);
-        }
+        return customerRepository.findAll().stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 
     public List<CustomerDTO> getCustomersByOwnerCode(String code) {
@@ -57,7 +55,7 @@ public class CustomerService {
                     })
                     .orElse(List.of());
         } catch (Exception e) {
-            System.err.println("Database error while retrieving customers by owner code: " + e.getMessage());
+            log.error("Database error while retrieving customers by owner code: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to retrieve customers by owner code", e);
         }
     }

@@ -31,20 +31,16 @@ public class ServiceCenterController {
 
     @GetMapping("/current")
     public ResponseEntity<List<ServiceCenterDTO>> getCurrentOwnerCenters() {
-        try {
-            // Get the current authenticated user's email from the SecurityContext
-            String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            
-            // Retrieve the owner to get their ownerCode
-            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
-            if (owner == null) {
-                return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).build();
-            }
+        // Get the current authenticated user's email from the SecurityContext
+        String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-            return ResponseEntity.ok(serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode()));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch current centers: " + e.getMessage());
+        // Retrieve the owner to get their ownerCode
+        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+        if (owner == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).build();
         }
+
+        return ResponseEntity.ok(serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode()));
     }
 
     @GetMapping("/{id}")
@@ -55,36 +51,24 @@ public class ServiceCenterController {
 
     @PostMapping
     public ResponseEntity<ServiceCenterDTO> createServiceCenter(@jakarta.validation.Valid @RequestBody ServiceCenterDTO dto) {
-        try {
-            String email = SecurityContextHolder.getContext().getAuthentication().getName();
-            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
-            if (owner != null) {
-                dto.setOwnerId(owner.getUserId());
-            }
-            return ResponseEntity.status(201).body(serviceCenterService.createServiceCenter(dto));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create service center: " + e.getMessage());
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+        if (owner != null) {
+            dto.setOwnerId(owner.getUserId());
         }
+        return ResponseEntity.status(201).body(serviceCenterService.createServiceCenter(dto));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ServiceCenterDTO> updateServiceCenter(@PathVariable UUID id,
             @jakarta.validation.Valid @RequestBody ServiceCenterDTO dto) {
-        try {
-            ServiceCenterDTO updatedCenter = serviceCenterService.updateServiceCenter(id, dto);
-            return updatedCenter != null ? ResponseEntity.ok(updatedCenter) : ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update service center: " + e.getMessage());
-        }
+        ServiceCenterDTO updatedCenter = serviceCenterService.updateServiceCenter(id, dto);
+        return updatedCenter != null ? ResponseEntity.ok(updatedCenter) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteServiceCenter(@PathVariable UUID id) {
-        try {
-            serviceCenterService.deleteServiceCenter(id);
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to delete service center: " + e.getMessage());
-        }
+        serviceCenterService.deleteServiceCenter(id);
+        return ResponseEntity.noContent().build();
     }
 }

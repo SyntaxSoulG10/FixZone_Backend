@@ -4,6 +4,8 @@ import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 import com.fixzone.fixzon_backend.config.AppConstants;
 import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class OwnerService {
+    private static final Logger log = LoggerFactory.getLogger(OwnerService.class);
 
     private final OwnerRepository ownerRepository;
     private final ImageKitService imageKitService;
@@ -40,7 +43,7 @@ public class OwnerService {
                 .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
         } catch (Exception e) {
-            System.err.println("Database error while retrieving owners: " + e.getMessage());
+            log.error("Database error while retrieving owners: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to retrieve all owners", e);
         }
     }
@@ -54,7 +57,7 @@ public class OwnerService {
                 .map(this::transformToDataTransferObject)
                 .orElse(null);
         } catch (Exception e) {
-            System.err.println("Database error while retrieving owner by ID: " + e.getMessage());
+            log.error("Database error while retrieving owner by ID: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to retrieve owner by ID", e);
         }
     }
@@ -68,7 +71,7 @@ public class OwnerService {
                 .map(this::transformToDataTransferObject)
                 .orElse(null);
         } catch (Exception e) {
-            System.err.println("Database error while retrieving owner by code: " + e.getMessage());
+            log.error("Database error while retrieving owner by code: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to retrieve owner by code", e);
         }
     }
@@ -82,7 +85,7 @@ public class OwnerService {
                 .map(this::transformToDataTransferObject)
                 .orElse(null);
         } catch (Exception e) {
-            System.err.println("Database error while retrieving owner by email: " + e.getMessage());
+            log.error("Database error while retrieving owner by email: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to retrieve owner by email", e);
         }
     }
@@ -117,7 +120,7 @@ public class OwnerService {
         } catch (IllegalStateException e) {
             throw e; // Rethrow expected state exceptions
         } catch (Exception e) {
-            System.err.println("Database error during owner registration: " + e.getMessage());
+            log.error("Database error during owner registration: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to register new owner", e);
         }
     }
@@ -168,10 +171,10 @@ public class OwnerService {
                 }
                 
                 if (updatedOwnerData.getBannerImageUrl() != null && !updatedOwnerData.getBannerImageUrl().equals(existingOwner.getBannerImageUrl())) {
-                    System.out.println("[OWNER] Detected change in Banner Image. Length: " + updatedOwnerData.getBannerImageUrl().length());
+                    log.info("[OWNER] Detected change in Banner Image. Length: {}", updatedOwnerData.getBannerImageUrl().length());
                     String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getBannerImageUrl(), AppConstants.OWNER_BANNER_PREFIX + existingOwner.getUserId());
                     existingOwner.setBannerImageUrl(uploadedUrl);
-                    System.out.println("[OWNER] Banner updated to: " + uploadedUrl);
+                    log.info("[OWNER] Banner updated to: {}", uploadedUrl);
                 }
                 
                 // Updates inherited user properties
@@ -186,10 +189,10 @@ public class OwnerService {
                 }
                 
                 if (updatedOwnerData.getProfilePictureUrl() != null && !updatedOwnerData.getProfilePictureUrl().equals(existingOwner.getProfilePictureUrl())) {
-                    System.out.println("[OWNER] Detected change in Profile Picture. Length: " + updatedOwnerData.getProfilePictureUrl().length());
+                    log.info("[OWNER] Detected change in Profile Picture. Length: {}", updatedOwnerData.getProfilePictureUrl().length());
                     String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getProfilePictureUrl(), AppConstants.OWNER_PROFILE_PREFIX + existingOwner.getUserId());
                     existingOwner.setProfilePictureUrl(uploadedUrl);
-                    System.out.println("[OWNER] Profile picture updated to: " + uploadedUrl);
+                    log.info("[OWNER] Profile picture updated to: {}", uploadedUrl);
                 }
                 
                 if (updatedOwnerData.getStatus() != null) {
@@ -203,7 +206,7 @@ public class OwnerService {
             throw e; // Rethrow validation exceptions
         } catch (Exception e) {
             // Logs critical errors during modification
-            System.err.println("CRITICAL ERROR during owner modification: " + e.getMessage());
+            log.error("CRITICAL ERROR during owner modification: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to update owner details", e);
         }
     }
@@ -220,7 +223,7 @@ public class OwnerService {
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
-            System.err.println("Database error during owner deletion: " + e.getMessage());
+            log.error("Database error during owner deletion: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to delete owner", e);
         }
     }

@@ -7,6 +7,8 @@ import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.repository.ManagerRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +28,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class ManagerService {
+    private static final Logger log = LoggerFactory.getLogger(ManagerService.class);
 
     private final ManagerRepository managerRepository;
     private final ServiceCenterRepository serviceCenterRepository;
@@ -78,7 +81,7 @@ public class ManagerService {
                     })
                     .orElse(List.of());
         } catch (Exception e) {
-            System.err.println("Database error while retrieving managers by owner code: " + e.getMessage());
+            log.error("Database error while retrieving managers by owner code: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to retrieve managers by owner code", e);
         }
     }
@@ -89,7 +92,7 @@ public class ManagerService {
                     .map(this::mapEntityToDto)
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            System.err.println("Database error while retrieving all managers: " + e.getMessage());
+            log.error("Database error while retrieving all managers: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to retrieve all managers", e);
         }
     }
@@ -103,7 +106,7 @@ public class ManagerService {
                     .map(this::mapEntityToDto)
                     .orElse(null);
         } catch (Exception e) {
-            System.err.println("Database error while retrieving manager by ID: " + e.getMessage());
+            log.error("Database error while retrieving manager by ID: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to retrieve manager by ID", e);
         }
     }
@@ -160,7 +163,7 @@ public class ManagerService {
             response.setSendInvite(shouldSendInvite);
             return response;
         } catch (Exception e) {
-            System.err.println("Database error while creating manager: " + e.getMessage());
+            log.error("Database error while creating manager: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to create manager", e);
         }
     }
@@ -195,7 +198,7 @@ public class ManagerService {
                 return mapEntityToDto(managerRepository.save(existing));
             }).orElse(null);
         } catch (Exception e) {
-            System.err.println("Database error while updating manager: " + e.getMessage());
+            log.error("Database error while updating manager: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to update manager", e);
         }
     }
@@ -212,7 +215,7 @@ public class ManagerService {
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
-            System.err.println("Database error while deleting manager: " + e.getMessage());
+            log.error("Database error while deleting manager: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to delete manager", e);
         }
     }

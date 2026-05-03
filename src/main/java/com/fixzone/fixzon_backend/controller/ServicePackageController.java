@@ -41,30 +41,18 @@ public class ServicePackageController {
 
     @PostMapping
     public ResponseEntity<ServicePackageDTO> createPackage(@jakarta.validation.Valid @RequestBody ServicePackageDTO dto) {
-        try {
-            return ResponseEntity.status(201).body(service.createPackage(dto));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create service package: " + e.getMessage());
-        }
+        return ResponseEntity.status(201).body(service.createPackage(dto));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ServicePackageDTO> updatePackage(@PathVariable UUID id, @jakarta.validation.Valid @RequestBody ServicePackageDTO dto) {
-        try {
-            ServicePackageDTO updated = service.updatePackage(id, dto);
-            return updated != null ? ResponseEntity.ok(updated) : ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update service package: " + e.getMessage());
-        }
+        ServicePackageDTO updated = service.updatePackage(id, dto);
+        return updated != null ? ResponseEntity.ok(updated) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePackage(@PathVariable UUID id) {
-        try {
-            service.deletePackage(id);
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to delete service package: " + e.getMessage());
-        }
+        service.deletePackage(id);
+        return ResponseEntity.noContent().build();
     }
 }

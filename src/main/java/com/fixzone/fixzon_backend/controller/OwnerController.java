@@ -29,18 +29,14 @@ public class OwnerController {
      */
     @GetMapping("/current")
     public ResponseEntity<OwnerDTO> fetchCurrentOwner() {
-        try {
-            // Retrieve current authenticated user's email from SecurityContext
-            String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            
-            OwnerDTO retrievedOwner = ownerService.retrieveOwnerByEmail(email);
-            if (retrievedOwner == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            return ResponseEntity.ok(retrievedOwner);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch current owner: " + e.getMessage());
+        // Retrieve current authenticated user's email from SecurityContext
+        String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        OwnerDTO retrievedOwner = ownerService.retrieveOwnerByEmail(email);
+        if (retrievedOwner == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
+        return ResponseEntity.ok(retrievedOwner);
     }
 
     /**
@@ -49,67 +45,47 @@ public class OwnerController {
      */
     @GetMapping
     public ResponseEntity<List<OwnerDTO>> fetchAllCompanyOwners() {
-        try {
-            // Wraps response in ResponseEntity to provide proper HTTP status
-            List<OwnerDTO> ownerList = ownerService.retrieveAllOwners();
-            return ResponseEntity.ok(ownerList);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch owners: " + e.getMessage());
-        }
+        // Wraps response in ResponseEntity to provide proper HTTP status
+        List<OwnerDTO> ownerList = ownerService.retrieveAllOwners();
+        return ResponseEntity.ok(ownerList);
     }
 
     @GetMapping("/{ownerId}")
     public ResponseEntity<OwnerDTO> fetchOwnerDetails(@PathVariable UUID ownerId) {
-        try {
-            OwnerDTO retrievedOwner = ownerService.retrieveOwnerById(ownerId);
+        OwnerDTO retrievedOwner = ownerService.retrieveOwnerById(ownerId);
 
-            // Handles non-existent owner requests with 404 Not Found
-            if (retrievedOwner == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-
-            return ResponseEntity.ok(retrievedOwner);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch owner details: " + e.getMessage());
+        // Handles non-existent owner requests with 404 Not Found
+        if (retrievedOwner == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
+
+        return ResponseEntity.ok(retrievedOwner);
     }
 
     @PostMapping
     public ResponseEntity<OwnerDTO> registerNewOwner(@jakarta.validation.Valid @RequestBody OwnerDTO newOwnerData) {
-        try {
-            // Returns 201 Created upon successful registration
-            OwnerDTO createdOwner = ownerService.registerOwner(newOwnerData);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdOwner);
-        } catch (Exception e) {
-            throw new RuntimeException("Registration failed: " + e.getMessage());
-        }
+        // Returns 201 Created upon successful registration
+        OwnerDTO createdOwner = ownerService.registerOwner(newOwnerData);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdOwner);
     }
 
     @PutMapping("/{ownerId}")
     public ResponseEntity<OwnerDTO> modifyOwnerDetails(@PathVariable UUID ownerId,
             @jakarta.validation.Valid @RequestBody OwnerDTO updatedOwnerData) {
-        try {
-            OwnerDTO modifiedOwner = ownerService.modifyOwner(ownerId, updatedOwnerData);
+        OwnerDTO modifiedOwner = ownerService.modifyOwner(ownerId, updatedOwnerData);
 
-            // Returns 404 Not Found if the updated owner does not exist
-            if (modifiedOwner == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-
-            return ResponseEntity.ok(modifiedOwner);
-        } catch (Exception e) {
-            throw new RuntimeException("Update failed: " + e.getMessage());
+        // Returns 404 Not Found if the updated owner does not exist
+        if (modifiedOwner == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
+
+        return ResponseEntity.ok(modifiedOwner);
     }
 
     @DeleteMapping("/{ownerId}")
     public ResponseEntity<Void> removeOwnerRecord(@PathVariable UUID ownerId) {
-        try {
-            ownerService.removeOwner(ownerId);
-            // Returns 204 No Content for successful deletion
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            throw new RuntimeException("Deletion failed: " + e.getMessage());
-        }
+        ownerService.removeOwner(ownerId);
+        // Returns 204 No Content for successful deletion
+        return ResponseEntity.noContent().build();
     }
 }

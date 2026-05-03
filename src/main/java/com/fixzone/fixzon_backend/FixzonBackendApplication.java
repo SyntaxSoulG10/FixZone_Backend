@@ -4,6 +4,8 @@ import com.fixzone.fixzon_backend.config.StripeConfig;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import io.github.cdimascio.dotenv.Dotenv;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.boot.CommandLineRunner;
@@ -11,6 +13,7 @@ import org.springframework.boot.CommandLineRunner;
 @SpringBootApplication
 @EnableConfigurationProperties(StripeConfig.class)
 public class FixzonBackendApplication {
+    private static final Logger log = LoggerFactory.getLogger(FixzonBackendApplication.class);
 
     public static void main(String[] args) {
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
@@ -33,7 +36,7 @@ public class FixzonBackendApplication {
                 "status VARCHAR(50) NOT NULL, " +
                 "created_at TIMESTAMP" +
             ")");
-            System.out.println("Payments table verified/created successfully!");
+            log.info("Payments table verified/created successfully!");
         };
     }
 }
