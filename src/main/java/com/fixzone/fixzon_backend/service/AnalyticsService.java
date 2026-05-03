@@ -15,6 +15,8 @@ import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.fixzone.fixzon_backend.repository.PaymentRecordRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -35,6 +37,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class AnalyticsService {
+        private static final Logger log = LoggerFactory.getLogger(AnalyticsService.class);
 
         private final InvoiceRepository invoiceRepository;
         private final BookingRepository bookingRepository;
@@ -201,7 +204,7 @@ public class AnalyticsService {
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
-            System.err.println("Error generating analytics: " + e.getMessage());
+            log.error("Error generating analytics: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to generate analytics dashboard data", e);
         }
     }

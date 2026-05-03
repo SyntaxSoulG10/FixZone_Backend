@@ -16,6 +16,8 @@ import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.RefundCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,7 @@ import java.util.UUID;
 
 @Service
 public class PaymentService {
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
     @Value("${stripe.secret-key}")
     private String stripeApiKey;
@@ -129,14 +132,14 @@ public class PaymentService {
 
             if (bookingOpt.isPresent()) {
                 Booking booking = bookingOpt.get();
-                System.out.println(">>> LINKING STRIPE SESSION TO BOOKING: " + booking.getBookingId());
+                log.info(">>> LINKING STRIPE SESSION TO BOOKING: {}", booking.getBookingId());
                 booking.setGatewaySessionId(session.getId());
                 booking.setBookingFee(BigDecimal.valueOf(payment.getAmount()));
                 bookingRepository.save(booking);
             }
             return session.getUrl();
         } catch (StripeException e) {
-            System.err.println("STRIPE ERROR: " + e.getMessage());
+            log.error("STRIPE ERROR: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -201,7 +204,7 @@ public class PaymentService {
                 }
             }
         } catch (StripeException e) {
-            System.err.println("SUCCESS VERIFICATION ERROR: " + e.getMessage());
+            log.error("SUCCESS VERIFICATION ERROR: {}", e.getMessage(), e);
         }
         return false;
     }
@@ -225,7 +228,7 @@ public class PaymentService {
             Refund.create(params);
             return true;
         } catch (StripeException e) {
-            System.err.println("REFUND ERROR: " + e.getMessage());
+            log.error("REFUND ERROR: {}", e.getMessage(), e);
             return false;
         }
     }

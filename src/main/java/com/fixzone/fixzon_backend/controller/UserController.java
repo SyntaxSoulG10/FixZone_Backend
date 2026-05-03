@@ -21,11 +21,7 @@ public class UserController {
 
     @GetMapping
     public ResponseEntity<List<UserDTO>> getAllUsers() {
-        try {
-            return ResponseEntity.ok(userService.getAllUsers());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch users: " + e.getMessage());
-        }
+        return ResponseEntity.ok(userService.getAllUsers());
     }
 
     @GetMapping("/me")
@@ -33,11 +29,7 @@ public class UserController {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).build();
         }
-        try {
-            String email = authentication.getName();
-            return ResponseEntity.ok(userService.getUserByEmail(email));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
+        String email = authentication.getName();
+        return ResponseEntity.ok(userService.getUserByEmail(email));
     }
 }

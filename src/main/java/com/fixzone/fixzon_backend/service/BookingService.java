@@ -8,6 +8,8 @@ import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class BookingService {
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
 
     private final BookingRepository bookingRepository;
     private final ServiceCenterRepository serviceCenterRepository;
@@ -95,17 +98,17 @@ public class BookingService {
         // Rule: Must be at least 3 days before the original booking date
         long daysBetween = ChronoUnit.DAYS.between(LocalDate.now(), booking.getBookingDate());
         if (daysBetween < AppConstants.RESCHEDULE_MIN_DAYS_LEFT) {
-            System.err.println(">>> RESCHEDULE DENIED: Only " + daysBetween + " days left.");
+            log.warn(">>> RESCHEDULE DENIED: Only {} days left.", daysBetween);
             throw new RuntimeException("Cannot reschedule within 3 days of booking date");
         }
 
         // Check if the new slot is available
         if (isSlotTaken(booking.getCenterId(), newDate, newTime)) {
-            System.err.println(">>> RESCHEDULE DENIED: Slot already taken at " + newTime);
+            log.warn(">>> RESCHEDULE DENIED: Slot already taken at {}", newTime);
             throw new RuntimeException("The selected slot is no longer available");
         }
 
-        System.out.println(">>> RESCHEDULE APPROVED: Moving to " + newDate + " at " + newTime);
+        log.info(">>> RESCHEDULE APPROVED: Moving to {} at {}", newDate, newTime);
         booking.setBookingDate(newDate);
         booking.setBookingTime(newTime);
         booking.setRescheduleCount((booking.getRescheduleCount() == null ? 0 : booking.getRescheduleCount()) + 1);
@@ -132,18 +135,18 @@ public class BookingService {
             BigDecimal penalty = fee.multiply(new BigDecimal(AppConstants.PENALTY_PERCENT_5));
             booking.setCancellationPenalty(penalty);
             penaltyPercent = 5.0;
-            System.out.println(">>> APPLYING 5% PENALTY: " + penalty);
+            log.info(">>> APPLYING 5% PENALTY: {}", penalty);
         } else {
             booking.setCancellationPenalty(BigDecimal.ZERO);
-            System.out.println(">>> NO PENALTY APPLIED (More than 3 days)");
+            log.info(">>> NO PENALTY APPLIED (More than 3 days)");
         }
 
         // Trigger Stripe Refund
         if (booking.getGatewaySessionId() != null && booking.getBookingFeePaid()) {
-            System.out.println(">>> TRIGGERING STRIPE REFUND FOR SESSION: " + booking.getGatewaySessionId());
+            log.info(">>> TRIGGERING STRIPE REFUND FOR SESSION: {}", booking.getGatewaySessionId());
             boolean refundSuccess = paymentService.refundPayment(booking.getGatewaySessionId(), penaltyPercent);
             if (!refundSuccess) {
-                System.err.println(">>> STRIPE REFUND FAILED! Check Stripe Dashboard.");
+                log.error(">>> STRIPE REFUND FAILED! Check Stripe Dashboard.");
             }
         }
 

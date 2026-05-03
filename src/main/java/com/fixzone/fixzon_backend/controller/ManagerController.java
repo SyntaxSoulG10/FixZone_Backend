@@ -48,35 +48,28 @@ public class ManagerController {
      */
     @GetMapping("/current")
     public ResponseEntity<?> getCurrentOwnerManagers() {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            String email = getCurrentUserEmail();
-            log.info("Fetching context for user: {}", email);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = getCurrentUserEmail();
+        log.info("Fetching context for user: {}", email);
 
-            boolean isManager = auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE_MANAGER"));
+        boolean isManager = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE_MANAGER"));
 
-            if (isManager) {
-                // If the user is a manager, return their own profile
-                ManagerDTO manager = managerService.getManagerByEmail(email);
-                if (manager == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-                return ResponseEntity.ok(manager);
-            }
-
-            // Otherwise, it's an owner trying to get all their managers
-            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
-            if (owner == null) {
-                log.warn("Owner not found for email: {}", email);
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Owner not found");
-            }
-
-            return ResponseEntity.ok(managerService.getManagersByOwnerCode(owner.getOwnerCode()));
-        } catch (ResponseStatusException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to fetch current managers", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to fetch current managers", e);
+        if (isManager) {
+            // If the user is a manager, return their own profile
+            ManagerDTO manager = managerService.getManagerByEmail(email);
+            if (manager == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            return ResponseEntity.ok(manager);
         }
+
+        // Otherwise, it's an owner trying to get all their managers
+        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+        if (owner == null) {
+            log.warn("Owner not found for email: {}", email);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Owner not found");
+        }
+
+        return ResponseEntity.ok(managerService.getManagersByOwnerCode(owner.getOwnerCode()));
     }
 
     @GetMapping("/{id}")
@@ -96,37 +89,27 @@ public class ManagerController {
      */
     @PostMapping
     public ResponseEntity<ManagerDTO> createManager(@Valid @RequestBody ManagerDTO managerDTO) {
-        try {
-            log.info("Creating new manager: {}", managerDTO.getEmail());
-            ManagerDTO newManager = managerService.createManager(managerDTO);
-            
-            URI location = ServletUriComponentsBuilder
-                    .fromCurrentRequest()
-                    .path("/{id}")
-                    .buildAndExpand(newManager.getUserId())
-                    .toUri();
-            
-            return ResponseEntity.created(location).body(newManager);
-        } catch (Exception e) {
-            log.error("Failed to create manager", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create manager", e);
-        }
+        log.info("Creating new manager: {}", managerDTO.getEmail());
+        ManagerDTO newManager = managerService.createManager(managerDTO);
+
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(newManager.getUserId())
+                .toUri();
+
+        return ResponseEntity.created(location).body(newManager);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ManagerDTO> updateManager(@PathVariable UUID id, @Valid @RequestBody ManagerDTO managerDTO) {
-        try {
-            log.info("Updating manager ID: {}", id);
-            ManagerDTO updatedManager = managerService.updateManager(id, managerDTO);
-            if (updatedManager == null) {
-                log.warn("Manager not found for update with ID: {}", id);
-                return ResponseEntity.notFound().build();
-            }
-            return ResponseEntity.ok(updatedManager);
-        } catch (Exception e) {
-            log.error("Failed to update manager ID: {}", id, e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update manager", e);
+        log.info("Updating manager ID: {}", id);
+        ManagerDTO updatedManager = managerService.updateManager(id, managerDTO);
+        if (updatedManager == null) {
+            log.warn("Manager not found for update with ID: {}", id);
+            return ResponseEntity.notFound().build();
         }
+        return ResponseEntity.ok(updatedManager);
     }
 
     @DeleteMapping("/{id}")
@@ -138,9 +121,6 @@ public class ManagerController {
         } catch (IllegalStateException e) {
             log.warn("Manager not found for deletion with ID: {}", id);
             return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            log.error("Failed to delete manager ID: {}", id, e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete manager", e);
         }
     }
 

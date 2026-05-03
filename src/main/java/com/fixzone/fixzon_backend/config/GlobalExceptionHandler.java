@@ -57,7 +57,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException ex) {
-        log.error("Response status exception: {} - {}", ex.getStatusCode(), ex.getReason());
+        log.error("Response status exception: {} - {}", ex.getStatusCode(), ex.getReason(), ex);
         ErrorResponse error = new ErrorResponse(
                 ex.getStatusCode().value(),
                 ex.getReason(),

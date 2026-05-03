@@ -33,11 +33,7 @@ public class CustomerController {
      */
     @GetMapping
     public ResponseEntity<List<CustomerDTO>> getAllCustomers() {
-        try {
-            return ResponseEntity.ok(customerService.getAllCustomers());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch customers: " + e.getMessage());
-        }
+        return ResponseEntity.ok(customerService.getAllCustomers());
     }
 
     /**
@@ -46,19 +42,15 @@ public class CustomerController {
      */
     @GetMapping("/current")
     public ResponseEntity<List<CustomerDTO>> getCurrentOwnerCustomers() {
-        try {
-            // Get the current authenticated user's email from the SecurityContext
-            String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            
-            // Retrieve the owner to get their ownerCode
-            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
-            if (owner == null) {
-                return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).build();
-            }
+        // Get the current authenticated user's email from the SecurityContext
+        String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-            return ResponseEntity.ok(customerService.getCustomersByOwnerCode(owner.getOwnerCode()));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch current customers: " + e.getMessage());
+        // Retrieve the owner to get their ownerCode
+        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+        if (owner == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).build();
         }
+
+        return ResponseEntity.ok(customerService.getCustomersByOwnerCode(owner.getOwnerCode()));
     }
 }

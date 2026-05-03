@@ -17,32 +17,20 @@ public class AuthController {
     private AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequestDTO authRequestDTO) {
-        try {
-            AuthResponseDTO response = authService.login(authRequestDTO);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
-        }
+    public ResponseEntity<AuthResponseDTO> login(@RequestBody AuthRequestDTO authRequestDTO) {
+        AuthResponseDTO response = authService.login(authRequestDTO);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/register/customer")
     public ResponseEntity<AuthResponseDTO> registerCustomer(@RequestBody RegisterCustomerDTO request) {
-        try {
-            AuthResponseDTO response = authService.registerCustomer(request);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(null);
-        }
+        AuthResponseDTO response = authService.registerCustomer(request);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/register/owner")
     public ResponseEntity<AuthResponseDTO> registerOwner(@RequestBody RegisterOwnerDTO request) {
-        try {
-            AuthResponseDTO response = authService.registerOwner(request);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(null);
-        }
+        AuthResponseDTO response = authService.registerOwner(request);
+        return ResponseEntity.ok(response);
     }
 }

@@ -28,20 +28,12 @@ public class BookingController {
 
     @GetMapping
     public ResponseEntity<List<BookingResponseDTO>> getAllBookings() {
-        try {
-            return ResponseEntity.ok(bookingService.getAllBookings());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch bookings: " + e.getMessage());
-        }
+        return ResponseEntity.ok(bookingService.getAllBookings());
     }
     
     @GetMapping("/{id}")
     public ResponseEntity<BookingResponseDTO> getBookingById(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(bookingService.getBookingById(id));
-        } catch (Exception e) {
-            throw new RuntimeException("Booking not found: " + e.getMessage());
-        }
+        return ResponseEntity.ok(bookingService.getBookingById(id));
     }
     
     @GetMapping("/center/{centerId}")
@@ -61,12 +53,8 @@ public class BookingController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBooking(@PathVariable UUID id) {
-        try {
-            bookingService.deleteBooking(id);
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to delete booking: " + e.getMessage());
-        }
+        bookingService.deleteBooking(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/mechanic/{mechanicId}")
@@ -105,11 +93,7 @@ public class BookingController {
      */
     @PostMapping
     public ResponseEntity<BookingResponseDTO> createBooking(@jakarta.validation.Valid @RequestBody BookingRequestDTO request) {
-        try {
-            return ResponseEntity.status(201).body(bookingService.createBooking(request));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create booking: " + e.getMessage());
-        }
+        return ResponseEntity.status(201).body(bookingService.createBooking(request));
     }
 
     /**
