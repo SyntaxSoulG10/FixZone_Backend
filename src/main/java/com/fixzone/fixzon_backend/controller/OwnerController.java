@@ -14,7 +14,6 @@ import java.util.UUID;
 // Dedicated controller to decouple HTTP routing from business operations.
 @RestController
 @RequestMapping("/api/owners")
-@CrossOrigin(origins = "*") // Enables Cross-Origin Resource Sharing for API requests
 public class OwnerController {
 
     private final OwnerService ownerService;
@@ -24,6 +23,10 @@ public class OwnerController {
         this.ownerService = ownerService;
     }
 
+    /**
+     * Retrieves the profile data for the currently authenticated owner.
+     * This is used to populate the owner dashboard with company-specific details (e.g., company name).
+     */
     @GetMapping("/current")
     public ResponseEntity<OwnerDTO> fetchCurrentOwner() {
         try {
@@ -40,6 +43,10 @@ public class OwnerController {
         }
     }
 
+    /**
+     * Aggregates all registered company owners for system-wide management.
+     * Allows Super Admins to monitor business registration and platform growth.
+     */
     @GetMapping
     public ResponseEntity<List<OwnerDTO>> fetchAllCompanyOwners() {
         try {

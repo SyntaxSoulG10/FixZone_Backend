@@ -1,5 +1,7 @@
 package com.fixzone.fixzon_backend.DTO;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import java.util.UUID;
@@ -9,9 +11,12 @@ import java.util.UUID;
 public class ManagerDTO extends UserDTO {
     private String managerCode;
     
-    @jakarta.validation.constraints.NotNull(message = "Managed center ID is required")
+    @NotNull(message = "Managed center ID is required")
     private UUID managedCenterId;
     
-    private String passwordHash; // Keep for creation/updates if needed
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String passwordHash; // Keep for creation/updates but exclude from responses
+    
     private Boolean sendInvite;
 }
+

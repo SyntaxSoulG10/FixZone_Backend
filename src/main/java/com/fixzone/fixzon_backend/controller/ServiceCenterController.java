@@ -13,7 +13,6 @@ import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 
 @RestController
 @RequestMapping("/api/service-centers")
-@CrossOrigin("*")
 public class ServiceCenterController {
 
     // Constructor injection strictly enforces dependency presence at instantiation.

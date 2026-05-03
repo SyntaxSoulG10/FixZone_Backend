@@ -3,7 +3,6 @@ package com.fixzone.fixzon_backend.controller;
 import com.fixzone.fixzon_backend.DTO.CustomerDTO;
 import com.fixzone.fixzon_backend.service.CustomerService;
 
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import org.springframework.http.ResponseEntity;
@@ -18,7 +17,6 @@ import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 
 @RestController
 @RequestMapping("/api/customers")
-@CrossOrigin("*")
 public class CustomerController {
 
     private final CustomerService customerService;
@@ -29,6 +27,10 @@ public class CustomerController {
         this.ownerService = ownerService;
     }
 
+    /**
+     * Provides a list of all registered customers across the platform.
+     * Intended for high-level administrative overviews and cross-tenant auditing by Super Admins.
+     */
     @GetMapping
     public ResponseEntity<List<CustomerDTO>> getAllCustomers() {
         try {
@@ -38,6 +40,10 @@ public class CustomerController {
         }
     }
 
+    /**
+     * Filters and returns only the customers belonging to the authenticated business owner's centers.
+     * This implements multi-tenant data isolation, ensuring owners only interact with their own client base.
+     */
     @GetMapping("/current")
     public ResponseEntity<List<CustomerDTO>> getCurrentOwnerCustomers() {
         try {

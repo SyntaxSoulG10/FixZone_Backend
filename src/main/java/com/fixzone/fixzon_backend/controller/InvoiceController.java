@@ -9,7 +9,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/invoices")
-@CrossOrigin("*")
 public class InvoiceController {
 
     // Explicit constructor injection to resolve immutable service boundaries cleanly.

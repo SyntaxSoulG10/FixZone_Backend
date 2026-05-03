@@ -15,7 +15,6 @@ import java.util.UUID;
  
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "*") // Allow frontend to connect
 public class AdminController {
  
     private final AdminService adminService;

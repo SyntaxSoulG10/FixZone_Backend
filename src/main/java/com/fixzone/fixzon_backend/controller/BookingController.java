@@ -14,7 +14,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/bookings")
-@CrossOrigin("*")
 public class BookingController {
 
     private final BookingService bookingService;

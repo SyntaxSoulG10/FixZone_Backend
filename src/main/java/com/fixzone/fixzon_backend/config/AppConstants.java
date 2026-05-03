@@ -27,7 +27,6 @@ public final class AppConstants {
     public static final String MANAGER_PREFIX = "MGR-";
     public static final String CUSTOMER_PREFIX = "CUST-";
     public static final String OWNER_PREFIX = "OWN-";
-    public static final String DEFAULT_PASSWORD = "Manager123!";
     
     public static final String DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
     public static final String PENALTY_PERCENT_5 = "0.05";

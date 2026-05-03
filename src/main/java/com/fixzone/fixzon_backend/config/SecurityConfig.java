@@ -23,6 +23,19 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Configures the main security pipeline for the application.
+     * We use a stateless JWT-based approach to support scaling across multiple backend instances
+     * and to avoid the overhead of server-side sessions.
+     * 
+     * Security Rationale:
+     * 1. Statelessness: By using JWTs, the server does not need to store session state,
+     *    enabling horizontal scalability in cloud environments.
+     * 2. Granular Access Control: Uses RBAC (Role-Based Access Control) to restrict
+     *    API endpoints based on assigned user authorities.
+     * 3. CORS Policy: Explicitly defined to allow communication only from verified
+     *    frontend origins, preventing unauthorized cross-origin requests.
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -42,12 +55,24 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Defines the Cross-Origin Resource Sharing policy for the entire API.
+     * We explicitly whitelist local development origins to allow the Next.js frontend
+     * to communicate with this Spring Boot server without being blocked by browser security.
+     */
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        configuration.setAllowedOrigins(java.util.List.of("http://localhost:3000"));
-        configuration.setAllowedMethods(java.util.Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(java.util.List.of("*"));
+        // Allow common local development origins
+        configuration.setAllowedOrigins(java.util.List.of(
+                "http://localhost:3000",
+                "http://127.0.0.1:3000"
+        ));
+        configuration.setAllowedMethods(java.util.Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
+        configuration.setExposedHeaders(java.util.List.of("Authorization"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L); // 1 hour cache for preflight requests
 
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

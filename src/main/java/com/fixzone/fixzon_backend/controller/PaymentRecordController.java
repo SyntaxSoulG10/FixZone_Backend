@@ -9,7 +9,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/payment-records")
-@CrossOrigin("*")
 public class PaymentRecordController {
 
     // Constructor injection guarantees dependencies are met securely.

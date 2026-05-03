@@ -12,7 +12,6 @@ import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 
 @RestController
 @RequestMapping("/api/analytics")
-@CrossOrigin(origins = "*")
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;

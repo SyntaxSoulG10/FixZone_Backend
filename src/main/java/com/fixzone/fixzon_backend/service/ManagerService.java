@@ -8,6 +8,7 @@ import com.fixzone.fixzon_backend.repository.ManagerRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +32,9 @@ public class ManagerService {
     private final OwnerRepository ownerRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    
+    @Value("${app.manager.default-password}")
+    private String defaultPassword;
 
     /**
      * Constructor Injection: Ensures immutability and easier unit testing with mock objects.
@@ -134,7 +138,7 @@ public class ManagerService {
 
             // SECURITY: Never store raw passwords. Hashing prevents leaks if the DB is compromised.
             String rawPassword = (managerDTO.getPasswordHash() != null && !managerDTO.getPasswordHash().isEmpty()) 
-                    ? managerDTO.getPasswordHash() : AppConstants.DEFAULT_PASSWORD;
+                    ? managerDTO.getPasswordHash() : defaultPassword;
             manager.setPasswordHash(passwordEncoder.encode(rawPassword));
             
             Manager savedManager = managerRepository.save(manager);

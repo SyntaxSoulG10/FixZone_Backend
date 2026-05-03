@@ -9,7 +9,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/service-packages")
-@CrossOrigin("*")
 public class ServicePackageController {
 
     private final ServicePackageService service;
