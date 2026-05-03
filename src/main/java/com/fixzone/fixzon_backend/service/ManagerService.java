@@ -108,6 +108,13 @@ public class ManagerService {
         }
     }
 
+    public ManagerDTO getManagerByEmail(String email) {
+        Objects.requireNonNull(email, "Email cannot be null");
+        return managerRepository.findByEmail(email)
+                .map(this::mapEntityToDto)
+                .orElse(null);
+    }
+
     /**
      * CREATION WORKFLOW: Initializes a new manager account.
      * Enforces default values, hashes passwords, and optionally sends an invitation.

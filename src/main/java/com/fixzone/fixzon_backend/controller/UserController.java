@@ -27,4 +27,17 @@ public class UserController {
             throw new RuntimeException("Failed to fetch users: " + e.getMessage());
         }
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserDTO> getCurrentUser(org.springframework.security.core.Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).build();
+        }
+        try {
+            String email = authentication.getName();
+            return ResponseEntity.ok(userService.getUserByEmail(email));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
 }

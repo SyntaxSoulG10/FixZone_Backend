@@ -44,8 +44,18 @@ public class AnalyticsController {
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false, defaultValue = "monthly") String period) {
         try {
+            org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            
+            boolean isSuperAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN"));
+
+            if (isSuperAdmin) {
+                AnalyticsDTO analyticsData = analyticsService.getCompanyAnalytics("SYSTEM", centerId, startDate, endDate, period);
+                return ResponseEntity.ok(analyticsData);
+            }
+
             // Get the current authenticated user's email from the SecurityContext
-            String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            String email = (String) auth.getPrincipal();
             
             // Retrieve the owner to get their ownerCode
             OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);

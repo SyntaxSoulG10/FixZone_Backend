@@ -47,11 +47,23 @@ public class ManagerController {
      * Used by business owners to manage their local staff without visibility into other companies.
      */
     @GetMapping("/current")
-    public ResponseEntity<List<ManagerDTO>> getCurrentOwnerManagers() {
+    public ResponseEntity<?> getCurrentOwnerManagers() {
         try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             String email = getCurrentUserEmail();
-            log.info("Fetching managers for owner: {}", email);
-            
+            log.info("Fetching context for user: {}", email);
+
+            boolean isManager = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE_MANAGER"));
+
+            if (isManager) {
+                // If the user is a manager, return their own profile
+                ManagerDTO manager = managerService.getManagerByEmail(email);
+                if (manager == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+                return ResponseEntity.ok(manager);
+            }
+
+            // Otherwise, it's an owner trying to get all their managers
             OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
             if (owner == null) {
                 log.warn("Owner not found for email: {}", email);
