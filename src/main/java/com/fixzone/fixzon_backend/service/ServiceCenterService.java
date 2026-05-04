@@ -19,25 +19,31 @@ import java.util.stream.Collectors;
 
 import com.fixzone.fixzon_backend.model.ServicePackage;
 
-/**
- * SERVICE LAYER: ServiceCenterService
- * This service manages the operational lifecycle of service center branches.
- * It handles resource mapping, owner association, and calculates real-time
- * metrics like revenue and capacity for the dashboard.
- */
+
 @Service
 public class ServiceCenterService {
 
+    
     private final ServiceCenterRepository serviceCenterRepository;
+    
+    
     private final UserRepository userRepository;
+    
+    
     private final ServicePackageRepository servicePackageRepository;
+    
+    
     private final OwnerRepository ownerRepository;
+    
+    
     private final InvoiceRepository invoiceRepository;
+    
+   
     private final ManagerRepository managerRepository;
 
     /**
-     * Dependency Injection via Constructor: Ensures all required repositories
-     * are provided at startup, preventing NullPointerExceptions during runtime.
+     * Constructor-based dependency injection
+     * Ensures all required repositories are provided at startup to prevent NPE at runtime
      */
     public ServiceCenterService(
             ServiceCenterRepository serviceCenterRepository,
@@ -54,10 +60,7 @@ public class ServiceCenterService {
         this.managerRepository = managerRepository;
     }
 
-    /**
-     * RETRIEVAL: Fetches all active service centers.
-     * Optimized with bulk mapping to avoid N+1 query issues.
-     */
+    // Retrieves all active service centers with enriched data (revenue, managers, packages)
     public List<ServiceCenterDTO> getAllServiceCenters() {
         try {
             List<ServiceCenter> centers = serviceCenterRepository.findByIsActive(true);
@@ -68,6 +71,7 @@ public class ServiceCenterService {
         }
     }
 
+    // Retrieves a service center by ID with full details
     public ServiceCenterDTO getServiceCenterById(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("Service Center ID cannot be null");
@@ -84,10 +88,7 @@ public class ServiceCenterService {
         }
     }
 
-    /**
-     * SCOPED RETRIEVAL: Returns centers belonging to a specific company owner.
-     * Uses optimized bulk mapping for high performance.
-     */
+    // Retrieves all service centers owned by a specific company
     public List<ServiceCenterDTO> getServiceCentersByOwnerCode(String code) {
         if (code == null || code.trim().isEmpty()) {
             throw new IllegalArgumentException("Owner code cannot be null or empty");
@@ -105,17 +106,13 @@ public class ServiceCenterService {
         }
     }
 
-    /**
-     * BULK MAPPING: Processes a list of entities in a single pass.
-     * This avoids multiple database trips per entity (N+1 problem).
-     */
+    // Bulk mapping with optimized queries to avoid N+1 problem
     private List<ServiceCenterDTO> mapEntitiesToDtos(List<ServiceCenter> centers) {
         if (centers.isEmpty())
             return List.of();
 
         List<UUID> centerIds = centers.stream().map(ServiceCenter::getCenterId).collect(Collectors.toList());
 
-        // BULK FETCH: Get all related data at once
         Map<UUID, BigDecimal> revenueMap = invoiceRepository.sumTotalByCenterIdIn(centerIds).stream()
                 .collect(Collectors.toMap(row -> (UUID) row[0], row -> (BigDecimal) row[1], (a, b) -> a));
 
@@ -134,7 +131,6 @@ public class ServiceCenterService {
                 dto.setOwnerId(center.getOwner().getUserId());
             }
 
-            // Map packages
             List<ServicePackageDTO> packageDtos = packagesMap.getOrDefault(center.getCenterId(), List.of()).stream()
                     .map(pkg -> {
                         ServicePackageDTO pkgDto = new ServicePackageDTO();
@@ -144,16 +140,13 @@ public class ServiceCenterService {
                     }).collect(Collectors.toList());
             dto.setServicePackages(packageDtos);
 
-            // Map revenue
             dto.setRevenue(revenueMap.getOrDefault(center.getCenterId(), BigDecimal.ZERO));
 
-            // Map manager
             List<Manager> managers = managersMap.getOrDefault(center.getCenterId(), List.of());
             if (!managers.isEmpty()) {
                 dto.setManagerName(managers.get(0).getFullName());
             }
 
-            // Capacity Estimation
             dto.setMechanicsCount(AppConstants.BASE_MECHANICS_COUNT + (center.getName().length() % AppConstants.MECHANICS_VARIANCE_MODULO));
             dto.setCurrentCapacity(AppConstants.BASE_CAPACITY + (center.getName().length() % AppConstants.CAPACITY_VARIANCE_MODULO));
 
@@ -161,10 +154,7 @@ public class ServiceCenterService {
         }).collect(Collectors.toList());
     }
 
-    /**
-     * PERSISTENCE: Creates a new service center branch.
-     * Automatically assigns a unique UUID if none is provided.
-     */
+    // Creates a new service center (auto-generates UUID if needed)
     public ServiceCenterDTO createServiceCenter(ServiceCenterDTO dto) {
         if (dto == null) {
             throw new IllegalArgumentException("Service Center data cannot be null");
@@ -181,11 +171,7 @@ public class ServiceCenterService {
         }
     }
 
-    /**
-     * UPDATE LOGIC: Modifies an existing service center.
-     * Uses explicit field setting over generic copy to maintain fine-grained
-     * control over which data is allowed to change.
-     */
+    // Updates an existing service center
     public ServiceCenterDTO updateServiceCenter(UUID id, ServiceCenterDTO dto) {
         if (id == null) {
             throw new IllegalArgumentException("Target ID for update cannot be null");
@@ -216,6 +202,7 @@ public class ServiceCenterService {
         }
     }
 
+    // Deletes a service center with cascading cleanup
     public void deleteServiceCenter(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("ID for deletion cannot be null");
@@ -225,22 +212,18 @@ public class ServiceCenterService {
             if (!serviceCenterRepository.existsById(id)) {
                 throw new IllegalStateException("Service center not found with id: " + id);
             }
-            // CASCADING CLEANUP: Remove or nullify all associations before deleting the center
-            // 1. Delete associated service packages
+            
+            // Delete associated packages, clear manager associations, delete invoices
             List<ServicePackage> packages = servicePackageRepository.findByServiceCenter_CenterId(id);
             servicePackageRepository.deleteAll(packages);
             
-            // 2. Clear managers' center association (or delete them if they only belong to this center)
             List<Manager> managers = managerRepository.findByManagedCenterId(id);
             for (Manager manager : managers) {
                 manager.setManagedCenterId(null);
                 managerRepository.save(manager);
             }
             
-            // 3. Delete invoices and payment records linked to this center
             invoiceRepository.deleteAll(invoiceRepository.findByCenterId(id));
-            
-            // 4. Finally delete the center itself
             serviceCenterRepository.deleteById(id);
         } catch (IllegalStateException e) {
             throw e;
@@ -250,11 +233,7 @@ public class ServiceCenterService {
         }
     }
 
-    /**
-     * MAPPING LOGIC (Entity to DTO):
-     * This complex mapping enriches the center data with dynamic metrics
-     * (revenue, managers, and service packages) for a rich UI experience.
-     */
+    // Converts entity to DTO with enriched data (packages, revenue, manager)
     private ServiceCenterDTO mapEntityToDto(ServiceCenter center) {
         if (center == null)
             return null;
@@ -266,7 +245,6 @@ public class ServiceCenterService {
             dto.setOwnerId(center.getOwner().getUserId());
         }
 
-        // AGGREGATION: Pull related service packages and enrich their metadata
         List<ServicePackageDTO> packages = servicePackageRepository
                 .findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId())
                 .stream()
@@ -279,28 +257,23 @@ public class ServiceCenterService {
                 .collect(Collectors.toList());
         dto.setServicePackages(packages);
 
-        // METRICS: Calculate real revenue from issued invoices
+        // Step 4: Calculate real revenue from issued invoices at this center
         BigDecimal revenue = invoiceRepository.sumTotalByCenterId(center.getCenterId());
         dto.setRevenue(revenue != null ? revenue : BigDecimal.ZERO);
 
-        // MANAGER ASSOCIATION: Identify the lead manager for this branch
+        // Step 5: Identify and map the lead manager for this branch
         List<Manager> managers = managerRepository.findByManagedCenterId(center.getCenterId());
         if (!managers.isEmpty()) {
             dto.setManagerName(managers.get(0).getFullName());
         }
 
-        // CAPACITY ESTIMATION: These provide realistic placeholders for operational
-        // load metrics
         dto.setMechanicsCount(AppConstants.BASE_MECHANICS_COUNT + (center.getName().length() % AppConstants.MECHANICS_VARIANCE_MODULO));
         dto.setCurrentCapacity(AppConstants.BASE_CAPACITY + (center.getName().length() % AppConstants.CAPACITY_VARIANCE_MODULO));
 
         return dto;
     }
 
-    /**
-     * MAPPING LOGIC (DTO to Entity):
-     * Ensures the entity is correctly linked to the User (Owner) in the database.
-     */
+    // Converts DTO to entity with owner relationship mapping
     private ServiceCenter mapDtoToEntity(ServiceCenterDTO dto) {
         ServiceCenter center = new ServiceCenter();
         center.setCenterId(dto.getCenterId());

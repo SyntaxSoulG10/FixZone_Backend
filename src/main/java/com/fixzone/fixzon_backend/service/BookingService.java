@@ -25,11 +25,19 @@ import java.util.stream.Collectors;
 @Service
 public class BookingService {
 
+    // Repository for booking database operations
     private final BookingRepository bookingRepository;
+    
+    // Repository for service center information
     private final ServiceCenterRepository serviceCenterRepository;
+    
+    // Repository for service package information
     private final ServicePackageRepository servicePackageRepository;
+    
+    // Service for handling payment operations
     private final PaymentService paymentService;
 
+    // Constructor-based dependency injection
     public BookingService(BookingRepository bookingRepository,
             ServiceCenterRepository serviceCenterRepository,
             ServicePackageRepository servicePackageRepository,
@@ -40,6 +48,7 @@ public class BookingService {
         this.paymentService = paymentService;
     }
 
+    // Retrieves all bookings
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getAllBookings() {
         return bookingRepository.findAll().stream()
@@ -47,6 +56,7 @@ public class BookingService {
                 .collect(Collectors.toList());
     }
 
+    // Retrieves a booking by ID
     @Transactional(readOnly = true)
     public BookingResponseDTO getBookingById(UUID id) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
@@ -54,6 +64,7 @@ public class BookingService {
         return mapToResponseDTO(Objects.requireNonNull(booking));
     }
 
+    // Retrieves all bookings for a specific customer
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getBookingsByCustomer(UUID customerId) {
         return bookingRepository.findByCustomerId(Objects.requireNonNull(customerId, "Customer ID must not be null"))
@@ -62,17 +73,16 @@ public class BookingService {
                 .collect(Collectors.toList());
     }
 
+    // Creates a new booking with initial PENDING_PAYMENT status
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO request) {
         Booking booking = new Booking();
         BeanUtils.copyProperties(Objects.requireNonNull(request, "Request must not be null"), booking);
         
-        // Ensure IDs are set
         if (booking.getBookingId() == null) {
             booking.setBookingId(UUID.randomUUID());
         }
         
-        // Use a default tenant ID if not provided (for multi-tenant support)
         if (booking.getTenantId() == null) {
             booking.setTenantId(UUID.fromString(AppConstants.DEFAULT_TENANT_ID));
         }
@@ -83,6 +93,7 @@ public class BookingService {
     }
 
 
+    // Reschedules booking (enforces 3-day minimum before booking date)
     @Transactional
     public BookingResponseDTO rescheduleBooking(UUID id, LocalDate newDate, LocalTime newTime) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
@@ -92,14 +103,12 @@ public class BookingService {
             throw new RuntimeException("Cannot reschedule a cancelled or completed booking");
         }
 
-        // Rule: Must be at least 3 days before the original booking date
         long daysBetween = ChronoUnit.DAYS.between(LocalDate.now(), booking.getBookingDate());
         if (daysBetween < AppConstants.RESCHEDULE_MIN_DAYS_LEFT) {
             System.err.println(">>> RESCHEDULE DENIED: Only " + daysBetween + " days left.");
             throw new RuntimeException("Cannot reschedule within 3 days of booking date");
         }
 
-        // Check if the new slot is available
         if (isSlotTaken(booking.getCenterId(), newDate, newTime)) {
             System.err.println(">>> RESCHEDULE DENIED: Slot already taken at " + newTime);
             throw new RuntimeException("The selected slot is no longer available");
@@ -113,6 +122,7 @@ public class BookingService {
         return mapToResponseDTO(bookingRepository.save(booking));
     }
 
+    // Cancels booking (applies 5% penalty if within 3 days, triggers Stripe refund)
     @Transactional
     public BookingResponseDTO cancelBooking(UUID id) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
@@ -122,10 +132,8 @@ public class BookingService {
             throw new RuntimeException("Booking is already cancelled");
         }
 
-        // Check how many days left
         long daysBetween = ChronoUnit.DAYS.between(LocalDate.now(), booking.getBookingDate());
         
-        // Apply 5% penalty if within 3 days
         double penaltyPercent = 0.0;
         if (daysBetween < AppConstants.RESCHEDULE_MIN_DAYS_LEFT) {
             BigDecimal fee = booking.getBookingFee() != null ? booking.getBookingFee() : BigDecimal.ZERO;
@@ -138,7 +146,6 @@ public class BookingService {
             System.out.println(">>> NO PENALTY APPLIED (More than 3 days)");
         }
 
-        // Trigger Stripe Refund
         if (booking.getGatewaySessionId() != null && booking.getBookingFeePaid()) {
             System.out.println(">>> TRIGGERING STRIPE REFUND FOR SESSION: " + booking.getGatewaySessionId());
             boolean refundSuccess = paymentService.refundPayment(booking.getGatewaySessionId(), penaltyPercent);
@@ -154,6 +161,7 @@ public class BookingService {
         return mapToResponseDTO(bookingRepository.save(booking));
     }
 
+    // Retrieves all bookings for a service center
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getBookingsByCenter(UUID centerId) {
         return bookingRepository.findByCenterId(Objects.requireNonNull(centerId, "Center ID must not be null")).stream()
@@ -161,6 +169,7 @@ public class BookingService {
                 .collect(Collectors.toList());
     }
 
+    // Retrieves bookings by status (returns empty list if invalid status)
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getBookingsByStatus(String status) {
         try {
@@ -173,6 +182,7 @@ public class BookingService {
         }
     }
 
+    // Retrieves bookings assigned to a specific mechanic
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getBookingsByMechanic(UUID mechanicId) {
         return bookingRepository
@@ -181,15 +191,16 @@ public class BookingService {
                 .collect(Collectors.toList());
     }
 
+    // Checks if time slot is already booked at service center
     @Transactional(readOnly = true)
     public boolean isSlotTaken(UUID centerId, LocalDate date, LocalTime time) {
         return bookingRepository.existsActiveSlot(Objects.requireNonNull(centerId, "Center ID must not be null"), date,
                 time, java.time.LocalDateTime.now());
     }
 
+    // Retrieves available hourly slots (08:00-18:00) excluding booked times
     @Transactional(readOnly = true)
     public List<String> getAvailableSlots(UUID centerId, LocalDate date) {
-        // Standard hours: 08:00 to 18:00 (hourly ranges)
         List<String> allSlots = List.of(
             "08:00-09:00", "09:00-10:00", "10:00-11:00", "11:00-12:00", 
             "12:00-13:00", "13:00-14:00", "14:00-15:00", "15:00-16:00", 
@@ -204,11 +215,13 @@ public class BookingService {
                 .collect(Collectors.toList());
     }
 
+    // Deletes booking from database
     @Transactional
     public void deleteBooking(UUID id) {
         bookingRepository.deleteById(Objects.requireNonNull(id, "ID must not be null"));
     }
 
+    // Transitions booking to COMPLETED status
     @Transactional
     public BookingResponseDTO completeBooking(UUID id) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
@@ -217,6 +230,7 @@ public class BookingService {
         return mapToResponseDTO(Objects.requireNonNull(bookingRepository.save(booking)));
     }
 
+    // Transitions booking to IN_PROGRESS status (service started)
     @Transactional
     public BookingResponseDTO startService(UUID id) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
@@ -225,19 +239,18 @@ public class BookingService {
         return mapToResponseDTO(Objects.requireNonNull(bookingRepository.save(booking)));
     }
 
+    // Completes payment and marks booking as CONFIRMED (records Stripe session ID)
     @Transactional
     public BookingResponseDTO completePayment(UUID id, String gatewaySessionId) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
-        
-        // Update booking with payment info
         booking.setGatewaySessionId(gatewaySessionId);
         booking.setBookingFeePaid(true);
-        booking.setStatus(BookingStatus.CONFIRMED); // Transitions to Upcoming
-        
+        booking.setStatus(BookingStatus.CONFIRMED);
         return mapToResponseDTO(Objects.requireNonNull(bookingRepository.save(booking)));
     }
 
+    // Converts entity to DTO with enriched center and package names
     private BookingResponseDTO mapToResponseDTO(@org.springframework.lang.NonNull Booking booking) {
         Objects.requireNonNull(booking, "Booking must not be null");
         BookingResponseDTO dto = new BookingResponseDTO();

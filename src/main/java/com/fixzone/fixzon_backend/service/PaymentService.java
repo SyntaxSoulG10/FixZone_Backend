@@ -27,14 +27,23 @@ import java.util.UUID;
 @Service
 public class PaymentService {
 
+    // Stripe API key injected from application properties for payment processing
     @Value("${stripe.secret-key}")
     private String stripeApiKey;
 
+    // Repository for payment record operations
     private final PaymentRepository paymentRepository;
+    
+    // Repository for service package information (pricing, details)
     private final ServicePackageRepository servicePackageRepository;
+    
+    // Repository for booking operations
     private final BookingRepository bookingRepository;
+    
+    // Repository for user/authentication information
     private final AuthRepository authRepository;
 
+    // Constructor-based dependency injection
     public PaymentService(PaymentRepository paymentRepository,
                           ServicePackageRepository servicePackageRepository,
                           BookingRepository bookingRepository,
@@ -45,6 +54,7 @@ public class PaymentService {
         this.authRepository = authRepository;
     }
 
+    // Initializes payment with 40% initial payment at booking time
     public Payment initPayment(InitPaymentRequest request, String bookingId, String customerEmail) {
         if (request.getServicePackageId() == null) throw new RuntimeException("Service Package ID is missing");
         
@@ -53,14 +63,14 @@ public class PaymentService {
                 .orElseThrow(() -> new RuntimeException("Service package not found"));
 
         double totalAmount = servicePackage.getBasePrice().doubleValue();
-        double initialAmount = totalAmount * 0.4; // 40% initial payment
+        double initialAmount = totalAmount * 0.4;
 
         Payment payment = new Payment();
         if (bookingId != null && !bookingId.isEmpty()) {
             try {
                 payment.setBookingId(Long.parseLong(bookingId));
             } catch (NumberFormatException e) {
-                // If it's a UUID string, it will be handled by the Detail Matcher during session creation
+                // If bookingId is UUID string, it will be matched during session creation
             }
         }
         payment.setServicePackageId(packageId);
@@ -71,7 +81,6 @@ public class PaymentService {
         payment.setAmount(initialAmount);
         payment.setStatus(PaymentStatus.PENDING);
 
-        // Set real customer ID if email is provided
         if (customerEmail != null) {
             authRepository.findByEmail(customerEmail).ifPresent(user -> {
                 payment.setCustomerId(user.getUserId());
@@ -81,6 +90,7 @@ public class PaymentService {
         return paymentRepository.save(payment);
     }
 
+    // Creates Stripe checkout session (returns payment URL)
     public String createStripeSession(Long paymentId) throws StripeException {
         Stripe.apiKey = stripeApiKey;
 
@@ -108,28 +118,21 @@ public class PaymentService {
             payment.setGatewaySessionId(session.getId());
             paymentRepository.save(payment);
 
-            // Robust Search: Find the booking by ID or by matching service details
             Optional<Booking> bookingOpt = bookingRepository.findAll().stream()
                     .filter(b -> {
                         if (b.getBookingId() == null) return false;
-                        
-                        // 1. Try matching by Booking ID
                         String bId = b.getBookingId().toString();
                         String pId = payment.getBookingId() != null ? payment.getBookingId().toString() : "";
                         if (bId.equalsIgnoreCase(pId)) return true;
-
-                        // 2. Fallback: Match by Service Package + Vehicle + Date
                         boolean packageMatch = b.getPackageId() != null && b.getPackageId().equals(payment.getServicePackageId());
                         boolean vehicleMatch = b.getVehicleId() != null && b.getVehicleId().equals(payment.getVehicleId());
                         boolean dateMatch = b.getBookingDate() != null && b.getBookingDate().toString().equals(payment.getDate());
-                        
                         return packageMatch && vehicleMatch && dateMatch;
                     })
                     .findFirst();
 
             if (bookingOpt.isPresent()) {
                 Booking booking = bookingOpt.get();
-                System.out.println(">>> LINKING STRIPE SESSION TO BOOKING: " + booking.getBookingId());
                 booking.setGatewaySessionId(session.getId());
                 booking.setBookingFee(BigDecimal.valueOf(payment.getAmount()));
                 bookingRepository.save(booking);
@@ -141,11 +144,13 @@ public class PaymentService {
         }
     }
 
+    // Handles successful payment - updates payment and booking to CONFIRMED
     @Transactional
     public boolean handleSuccess(String sessionId) {
         Stripe.apiKey = stripeApiKey;
         try {
             Session session = Session.retrieve(sessionId);
+            
             if ("paid".equalsIgnoreCase(session.getPaymentStatus())) {
                 Optional<Payment> paymentOpt = paymentRepository.findAll().stream()
                         .filter(p -> sessionId.equals(p.getGatewaySessionId()))
@@ -153,10 +158,9 @@ public class PaymentService {
 
                 if (paymentOpt.isPresent()) {
                     Payment payment = paymentOpt.get();
-                    payment.setStatus(PaymentStatus.PAID); // Fixed: Changed SUCCESSFUL to PAID
+                    payment.setStatus(PaymentStatus.PAID);
                     paymentRepository.save(payment);
 
-                    // Update Booking (Find existing or create new)
                     Optional<Booking> bookingOpt = bookingRepository.findAll().stream()
                             .filter(b -> sessionId.equals(b.getGatewaySessionId()))
                             .findFirst();
@@ -165,24 +169,18 @@ public class PaymentService {
                     if (bookingOpt.isPresent()) {
                         booking = bookingOpt.get();
                     } else {
-                        // Create NEW Booking from Payment details
                         booking = new Booking();
                         booking.setBookingId(UUID.randomUUID());
-                        
-                        // Use real customer ID from payment record
                         if (payment.getCustomerId() != null) {
                             booking.setCustomerId(payment.getCustomerId());
                         } else {
                             throw new RuntimeException("Cannot create booking: Customer ID is missing from payment record");
                         }
-                        
                         booking.setTenantId(payment.getTenantId());
                         booking.setCenterId(payment.getCenterId());
                         booking.setVehicleId(payment.getVehicleId());
                         booking.setPackageId(payment.getServicePackageId());
                         booking.setBookingDate(java.time.LocalDate.parse(payment.getDate()));
-                        
-                        // Fix: Parse only the START time from a range like "18:00-19:00"
                         String timeStr = payment.getTimeSlot();
                         if (timeStr != null && timeStr.contains("-")) {
                             timeStr = timeStr.split("-")[0].trim();
@@ -206,13 +204,14 @@ public class PaymentService {
         return false;
     }
 
+    // Processes refund with penalty deduction if within cancellation window
     public boolean refundPayment(String gatewaySessionId, double penaltyPercentage) {
         Stripe.apiKey = stripeApiKey;
         try {
             Session session = Session.retrieve(gatewaySessionId);
             String paymentIntentId = session.getPaymentIntent();
-
             long refundAmount = session.getAmountTotal();
+            
             if (penaltyPercentage > 0) {
                 refundAmount = (long) (refundAmount * (1 - (penaltyPercentage / 100)));
             }
@@ -230,6 +229,7 @@ public class PaymentService {
         }
     }
 
+    // Retrieves payment status for a booking
     public Payment getPaymentStatus(Long bookingId) {
         return paymentRepository.findAll().stream()
                 .filter(p -> p.getBookingId() != null && p.getBookingId().equals(bookingId))
@@ -237,6 +237,7 @@ public class PaymentService {
                 .orElse(null);
     }
 
+    // Re-initiates payment processing for rescheduled booking
     public String reschedulePayment(Long bookingId) throws StripeException {
         Payment payment = getPaymentStatus(bookingId);
         if (payment == null) {
