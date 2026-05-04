@@ -9,7 +9,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Base64;
 import java.util.Map;
-import java.util.UUID;
 import org.springframework.core.ParameterizedTypeReference;
 
 /**
