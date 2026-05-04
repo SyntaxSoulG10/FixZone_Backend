@@ -175,6 +175,12 @@ public class PaymentService {
                         booking.setBookingTime(java.time.LocalTime.parse(timeStr));
                         booking.setGatewaySessionId(sessionId);
                         booking.setBookingFee(BigDecimal.valueOf(payment.getAmount()));
+                        
+                        // Set estimated cost from package
+                        servicePackageRepository.findById(payment.getServicePackageId()).ifPresent(pkg -> {
+                            booking.setEstimatedCost(pkg.getBasePrice());
+                        });
+
                         booking.setCenterId(payment.getCenterId());
                         booking.setTenantId(payment.getTenantId() != null ? payment.getTenantId() : UUID.randomUUID());
                     }

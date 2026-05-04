@@ -58,6 +58,9 @@ public class ServicePackage {
     @Column(name = "updated_by", length = 100)
     private String updatedBy;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @PrePersist
     protected void onCreate() {
         if (packageId == null) {

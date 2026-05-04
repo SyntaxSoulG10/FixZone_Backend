@@ -7,6 +7,7 @@ import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
+import com.fixzone.fixzon_backend.repository.VehicleRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,15 +29,18 @@ public class BookingService {
     private final ServiceCenterRepository serviceCenterRepository;
     private final ServicePackageRepository servicePackageRepository;
     private final PaymentService paymentService;
+    private final VehicleRepository vehicleRepository;
 
     public BookingService(BookingRepository bookingRepository,
             ServiceCenterRepository serviceCenterRepository,
             ServicePackageRepository servicePackageRepository,
-            PaymentService paymentService) {
+            PaymentService paymentService,
+            VehicleRepository vehicleRepository) {
         this.bookingRepository = bookingRepository;
         this.serviceCenterRepository = serviceCenterRepository;
         this.servicePackageRepository = servicePackageRepository;
         this.paymentService = paymentService;
+        this.vehicleRepository = vehicleRepository;
     }
 
     @Transactional(readOnly = true)
@@ -63,9 +67,23 @@ public class BookingService {
 
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO request) {
+        // Safety Check: Prevent double-booking or booking a soft-locked slot
+        if (isSlotTaken(request.getCenterId(), request.getBookingDate(), request.getBookingTime())) {
+            throw new RuntimeException("Sorry, this slot is no longer available. Please choose another time.");
+        }
+
         Booking booking = new Booking();
         BeanUtils.copyProperties(Objects.requireNonNull(request, "Request must not be null"), booking);
         
+        // Fetch package to get price and set estimated cost
+        servicePackageRepository.findById(request.getPackageId()).ifPresent(pkg -> {
+            booking.setEstimatedCost(pkg.getBasePrice());
+            // Set booking fee as 10% of base price if not already set
+            if (pkg.getBasePrice() != null && booking.getBookingFee() == null) {
+                booking.setBookingFee(pkg.getBasePrice().multiply(new BigDecimal("0.10")));
+            }
+        });
+
         // Ensure IDs are set
         if (booking.getBookingId() == null) {
             booking.setBookingId(UUID.randomUUID());
@@ -188,7 +206,21 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<String> getAvailableSlots(UUID centerId, LocalDate date) {
-        // Standard hours: 08:00 to 18:00 (hourly)
+        // 1. Check if the center is closed on this date (Leave Dates)
+        var centerOpt = serviceCenterRepository.findById(centerId);
+        if (centerOpt.isPresent()) {
+            String[] leaveDates = centerOpt.get().getLeaveDates();
+            if (leaveDates != null) {
+                String dateStr = date.toString(); // "YYYY-MM-DD"
+                for (String leaveDate : leaveDates) {
+                    if (dateStr.equals(leaveDate)) {
+                        return List.of(); // Center is closed, no slots available
+                    }
+                }
+            }
+        }
+
+        // 2. Standard hours: 08:00 to 18:00 (hourly)
         List<String> allSlots = List.of("08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00");
         
         return allSlots.stream()
@@ -205,8 +237,20 @@ public class BookingService {
     public BookingResponseDTO completeBooking(UUID id) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
+        
         booking.setStatus(BookingStatus.COMPLETED);
-        return mapToResponseDTO(Objects.requireNonNull(bookingRepository.save(booking)));
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // SYNC: Update the Vehicle's last service date in the DB
+        if (booking.getVehicleId() != null) {
+            vehicleRepository.findById(booking.getVehicleId()).ifPresent(vehicle -> {
+                System.out.println(">>> SYNCING VEHICLE: Setting last service date to " + booking.getBookingDate());
+                vehicle.setLastServiceDate(booking.getBookingDate().toString());
+                vehicleRepository.save(vehicle);
+            });
+        }
+
+        return mapToResponseDTO(Objects.requireNonNull(savedBooking));
     }
 
     @Transactional
@@ -238,6 +282,15 @@ public class BookingService {
                 .ifPresent(c -> dto.setServiceCenterName(c.getName()));
         servicePackageRepository.findById(Objects.requireNonNull(booking.getPackageId(), "Package ID must not be null"))
                 .ifPresent(p -> dto.setPackageName(p.getName()));
+        
+        // Fetch vehicle details for the UI
+        if (booking.getVehicleId() != null) {
+            vehicleRepository.findById(booking.getVehicleId()).ifPresent(v -> {
+                dto.setVehiclePlateNumber(v.getPlateNumber());
+                dto.setVehicleModel(v.getModel());
+            });
+        }
+        
         return dto;
     }
 }

@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface VehicleRepository extends JpaRepository<Vehicle, UUID> {
     List<Vehicle> findByCustomerId(UUID customerId);
+    boolean existsByPlateNumber(String plateNumber);
 }

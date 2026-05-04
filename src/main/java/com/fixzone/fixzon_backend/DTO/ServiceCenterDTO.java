@@ -48,4 +48,5 @@ public class ServiceCenterDTO {
     private BigDecimal revenue;
     private Integer mechanicsCount;
     private Integer currentCapacity;
+    private String[] leaveDates;
 }

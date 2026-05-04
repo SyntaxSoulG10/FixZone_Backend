@@ -81,6 +81,10 @@ public class ServiceCenter {
     @OneToMany(mappedBy = "serviceCenter", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ServicePackage> servicePackages;
 
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "leave_dates", columnDefinition = "text[]")
+    private String[] leaveDates;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

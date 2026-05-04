@@ -33,6 +33,9 @@ public class VehicleService {
     }
 
     public VehicleDTO createVehicle(VehicleDTO dto) {
+        if (vehicleRepository.existsByPlateNumber(dto.getPlateNumber())) {
+            throw new RuntimeException("A vehicle with plate number " + dto.getPlateNumber() + " is already registered.");
+        }
         Vehicle vehicle = new Vehicle();
         vehicle.setId(UUID.randomUUID());
         vehicle.setCustomerId(dto.getCustomerId());
@@ -66,7 +69,12 @@ public class VehicleService {
         if (dto.getBrand() != null) vehicle.setBrand(dto.getBrand());
         if (dto.getModel() != null) vehicle.setModel(dto.getModel());
         if (dto.getVehicleType() != null) vehicle.setVehicleType(dto.getVehicleType());
-        if (dto.getPlateNumber() != null) vehicle.setPlateNumber(dto.getPlateNumber());
+        if (dto.getPlateNumber() != null && !dto.getPlateNumber().equalsIgnoreCase(vehicle.getPlateNumber())) {
+            if (vehicleRepository.existsByPlateNumber(dto.getPlateNumber())) {
+                throw new RuntimeException("A vehicle with plate number " + dto.getPlateNumber() + " is already registered.");
+            }
+            vehicle.setPlateNumber(dto.getPlateNumber());
+        }
         if (dto.getImageUrl() != null) vehicle.setImageUrl(dto.getImageUrl());
         if (dto.getLastServiceDate() != null) vehicle.setLastServiceDate(dto.getLastServiceDate());
         return convertToDTO(vehicleRepository.save(vehicle));
