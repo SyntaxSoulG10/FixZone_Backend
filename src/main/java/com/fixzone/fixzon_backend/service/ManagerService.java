@@ -7,6 +7,7 @@ import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.repository.ManagerRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
+import com.fixzone.fixzon_backend.repository.UserRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,6 +31,7 @@ public class ManagerService {
     private final ManagerRepository managerRepository;
     private final ServiceCenterRepository serviceCenterRepository;
     private final OwnerRepository ownerRepository;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     
@@ -43,11 +45,13 @@ public class ManagerService {
             ManagerRepository managerRepository, 
             ServiceCenterRepository serviceCenterRepository,
             OwnerRepository ownerRepository,
+            UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             EmailService emailService) {
         this.managerRepository = managerRepository;
         this.serviceCenterRepository = serviceCenterRepository;
         this.ownerRepository = ownerRepository;
+        this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
     }
@@ -120,6 +124,16 @@ public class ManagerService {
             throw new IllegalArgumentException("Manager email is required");
         }
         
+        // UNIQUE EMAIL CHECK: Prevent duplicate accounts across the entire platform
+        if (userRepository.existsByEmail(managerDTO.getEmail())) {
+            throw new RuntimeException("Email '" + managerDTO.getEmail() + "' is already in use by another account");
+        }
+
+        // CENTER EXISTENCE CHECK: Ensure the manager is assigned to a valid location
+        if (managerDTO.getManagedCenterId() == null || !serviceCenterRepository.existsById(managerDTO.getManagedCenterId())) {
+            throw new RuntimeException("A valid service center must be assigned to the manager");
+        }
+        
         try {
             Manager manager = mapDtoToEntity(managerDTO);
             
@@ -130,6 +144,7 @@ public class ManagerService {
             
             manager.setRole(AppConstants.ROLE_SERVICE_MANAGER);
             manager.setStatus(manager.getStatus() != null ? manager.getStatus() : AppConstants.STATUS_ACTIVE);
+            manager.setCreatedAt(LocalDateTime.now());
             
             // UNIQUE IDENTIFIER: Create a human-readable manager code for internal tracking
             if (manager.getManagerCode() == null || manager.getManagerCode().isEmpty()) {
@@ -139,6 +154,11 @@ public class ManagerService {
             // SECURITY: Never store raw passwords. Hashing prevents leaks if the DB is compromised.
             String rawPassword = (managerDTO.getPasswordHash() != null && !managerDTO.getPasswordHash().isEmpty()) 
                     ? managerDTO.getPasswordHash() : defaultPassword;
+            
+            if (rawPassword == null || rawPassword.isEmpty()) {
+                throw new RuntimeException("No default password configured and none provided");
+            }
+            
             manager.setPasswordHash(passwordEncoder.encode(rawPassword));
             
             Manager savedManager = managerRepository.save(manager);
@@ -152,9 +172,11 @@ public class ManagerService {
             ManagerDTO response = mapEntityToDto(savedManager);
             response.setSendInvite(shouldSendInvite);
             return response;
+        } catch (RuntimeException e) {
+            throw e; // Relaunch business logic exceptions
         } catch (Exception e) {
-            System.err.println("Database error while creating manager: " + e.getMessage());
-            throw new RuntimeException("Failed to create manager", e);
+            System.err.println("Critical error while creating manager: " + e.getMessage());
+            throw new RuntimeException("Failed to onboard manager due to a system error. Please contact support.", e);
         }
     }
 

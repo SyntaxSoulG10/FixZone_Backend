@@ -95,9 +95,14 @@ public class ManagerController {
                     .toUri();
             
             return ResponseEntity.created(location).body(newManager);
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            log.warn("Business logic failure during manager creation: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         } catch (Exception e) {
-            log.error("Failed to create manager", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create manager", e);
+            log.error("Unexpected failure during manager creation", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred while creating the manager");
         }
     }
 
