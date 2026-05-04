@@ -37,13 +37,16 @@ public class ImageKitService {
      * @return The permanent URL of the uploaded image
      */
     public String uploadImage(String imageData, String fileName) {
+
+        //input validation and optimization
+
         if (imageData == null || imageData.isEmpty()) {
-            return null;
+            return null; //No image provided
         }
 
         // If it's already an external URL (not Base64), just return it
         if (imageData.startsWith("http") && !imageData.contains(";base64,")) {
-            return imageData;
+            return imageData; //Already hosted elsewhere
         }
 
         try {
@@ -62,15 +65,20 @@ public class ImageKitService {
             String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
             headers.set("Authorization", "Basic " + encodedAuth);
 
-            // 3. Prepare Multipart Body
+            // 3. Detect file extension
             String extension = ".jpg";
             String lowerData = imageData.toLowerCase();
             if (lowerData.contains("image/png")) extension = ".png";
             else if (lowerData.contains("image/webp")) extension = ".webp";
             else if (lowerData.contains("image/gif")) extension = ".gif";
             
+
+
+            //generate unique file name
             String finalFileName = fileName + "-" + System.currentTimeMillis() + extension;
             
+
+            //Build Multipart form body
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("file", base64Data);
             body.add("fileName", finalFileName);
@@ -86,6 +94,9 @@ public class ImageKitService {
                 new ParameterizedTypeReference<Map<String, Object>>() {}
             );
             
+
+
+            //Process response
             Map<String, Object> responseBody = response.getBody();
             if (response.getStatusCode() == HttpStatus.OK && responseBody != null) {
                 String url = (String) responseBody.get("url");
