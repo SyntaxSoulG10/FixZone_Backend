@@ -31,6 +31,13 @@ public class SuperAdminService {
                 .orElse(null);
     }
 
+    public SuperAdminDTO getSuperAdminByEmail(String email) {
+        Objects.requireNonNull(email, "Email must not be null");
+        return superAdminRepository.findByEmail(email)
+                .map(this::convertToDTO)
+                .orElse(null);
+    }
+
     public SuperAdminDTO createSuperAdmin(SuperAdminDTO superAdminDTO) {
         SuperAdmin superAdmin = convertToEntity(superAdminDTO);
         if (superAdmin.getUserId() == null) {
