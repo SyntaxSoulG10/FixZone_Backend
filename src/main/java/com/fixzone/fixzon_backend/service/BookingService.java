@@ -105,8 +105,10 @@ public class BookingService {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
-            throw new RuntimeException("Cannot reschedule a cancelled or completed booking");
+        if (booking.getStatus() == BookingStatus.CANCELLED || 
+            booking.getStatus() == BookingStatus.COMPLETED || 
+            booking.getStatus() == BookingStatus.IN_PROGRESS) {
+            throw new RuntimeException("Cannot reschedule a cancelled, completed, or in-progress booking");
         }
 
         // Rule: Must be at least 3 days before the original booking date
@@ -145,11 +147,11 @@ public class BookingService {
         // Apply 5% penalty if within 3 days
         double penaltyPercent = 0.0;
         if (daysBetween < 3) {
-            BigDecimal fee = booking.getBookingFee() != null ? booking.getBookingFee() : BigDecimal.ZERO;
-            BigDecimal penalty = fee.multiply(new BigDecimal("0.05"));
+            BigDecimal baseAmount = booking.getEstimatedCost() != null ? booking.getEstimatedCost() : BigDecimal.ZERO;
+            BigDecimal penalty = baseAmount.multiply(new BigDecimal("0.05"));
             booking.setCancellationPenalty(penalty);
             penaltyPercent = 5.0;
-            System.out.println(">>> APPLYING 5% PENALTY: " + penalty);
+            System.out.println(">>> APPLYING 5% PENALTY (on Estimated Cost): " + penalty);
         } else {
             booking.setCancellationPenalty(BigDecimal.ZERO);
             System.out.println(">>> NO PENALTY APPLIED (More than 3 days)");
