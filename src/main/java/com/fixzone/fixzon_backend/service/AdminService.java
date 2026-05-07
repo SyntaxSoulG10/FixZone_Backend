@@ -246,6 +246,13 @@ public class AdminService {
         Objects.requireNonNull(sub, "Subscription must not be null");
         SubscriptionDTO dto = new SubscriptionDTO();
         BeanUtils.copyProperties(sub, dto);
+        
+        // Map plan details if available
+        if (sub.getPlan() != null) {
+            dto.setPlanType(sub.getPlan().getName());
+            dto.setPlan(sub.getPlan());
+        }
+
         if (sub.getOwner() != null) {
             dto.setOwnerId(sub.getOwner().getUserId());
             dto.setOwnerName(sub.getOwner().getFullName());

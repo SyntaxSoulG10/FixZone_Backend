@@ -1,5 +1,6 @@
 package com.fixzone.fixzon_backend.DTO;
 
+import com.fixzone.fixzon_backend.model.SubscriptionPlan;
 import lombok.Data;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -15,4 +16,5 @@ public class SubscriptionDTO {
     private UUID ownerId;
     private String ownerName;
     private String companyName;
+    private SubscriptionPlan plan;
 }
