@@ -128,6 +128,18 @@ public class DataInitializer implements CommandLineRunner {
         }
         ownerRepository.saveAll(owners);
 
+        // Seed Subscriptions for the newly created owners
+        for (Owner owner : owners) {
+            Subscription sub = new Subscription();
+            sub.setOwner(owner);
+            sub.setStartDate(java.time.LocalDate.now().minusDays(30));
+            sub.setEndDate(java.time.LocalDate.now().plusDays(335));
+            sub.setPlanType(Math.random() > 0.5 ? "PREMIUM" : "BASIC");
+            sub.setStatus("ACTIVE");
+            sub.setBillingHistory("Initial subscription activated on " + sub.getStartDate() + " via system seeding.");
+            subscriptionRepository.save(sub);
+        }
+
         for (int i = 0; i < owners.size(); i++) {
             Owner owner = owners.get(i);
             UUID scId = UUID.fromString("11111111-1111-1111-1111-11111111111" + (i + 1));
