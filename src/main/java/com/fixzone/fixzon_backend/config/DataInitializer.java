@@ -26,6 +26,7 @@ public class DataInitializer implements CommandLineRunner {
     private final PaymentRecordRepository paymentRecordRepository;
     private final NotificationRepository notificationRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionPlanRepository planRepository;
     private final AnalyticsRepository analyticsRepository;
     private final BookingHistoryRepository bookingHistoryRepository;
     private final PaymentRepository paymentRepository;
@@ -45,6 +46,7 @@ public class DataInitializer implements CommandLineRunner {
             ServicePackageRepository servicePackageRepository, BookingRepository bookingRepository,
             InvoiceRepository invoiceRepository, PaymentRecordRepository paymentRecordRepository,
             NotificationRepository notificationRepository, SubscriptionRepository subscriptionRepository,
+            SubscriptionPlanRepository planRepository,
             AnalyticsRepository analyticsRepository, BookingHistoryRepository bookingHistoryRepository,
             PaymentRepository paymentRepository, PasswordEncoder passwordEncoder, 
             DataSource dataSource) {
@@ -60,6 +62,7 @@ public class DataInitializer implements CommandLineRunner {
         this.paymentRecordRepository = paymentRecordRepository;
         this.notificationRepository = notificationRepository;
         this.subscriptionRepository = subscriptionRepository;
+        this.planRepository = planRepository;
         this.analyticsRepository = analyticsRepository;
         this.bookingHistoryRepository = bookingHistoryRepository;
         this.paymentRepository = paymentRepository;
@@ -92,6 +95,7 @@ public class DataInitializer implements CommandLineRunner {
 
         analyticsRepository.deleteAll();
         subscriptionRepository.deleteAll();
+        planRepository.deleteAll();
         notificationRepository.deleteAll();
         paymentRecordRepository.deleteAll();
         paymentRepository.deleteAll();
@@ -128,13 +132,21 @@ public class DataInitializer implements CommandLineRunner {
         }
         ownerRepository.saveAll(owners);
 
+        // First, seed some Subscription Plans
+        SubscriptionPlan basicPlan = new SubscriptionPlan(UUID.randomUUID(), "Basic", new BigDecimal("5000"), "Basic Plan", 1, true, 
+            java.util.List.of("Basic Service Center Profile", "Up to 5 Managers"), false);
+        SubscriptionPlan premiumPlan = new SubscriptionPlan(UUID.randomUUID(), "Premium", new BigDecimal("35000"), "Premium Plan", 1, true, 
+            java.util.List.of("Multiple Locations", "API Access"), false);
+        planRepository.save(basicPlan);
+        planRepository.save(premiumPlan);
+
         // Seed Subscriptions for the newly created owners
         for (Owner owner : owners) {
             Subscription sub = new Subscription();
             sub.setOwner(owner);
             sub.setStartDate(java.time.LocalDate.now().minusDays(30));
             sub.setEndDate(java.time.LocalDate.now().plusDays(335));
-            sub.setPlanType(Math.random() > 0.5 ? "PREMIUM" : "BASIC");
+            sub.setPlan(Math.random() > 0.5 ? premiumPlan : basicPlan);
             sub.setStatus("ACTIVE");
             sub.setBillingHistory("Initial subscription activated on " + sub.getStartDate() + " via system seeding.");
             subscriptionRepository.save(sub);
