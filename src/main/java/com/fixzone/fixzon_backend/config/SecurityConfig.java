@@ -44,8 +44,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/customers/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "CUSTOMER")
                         .requestMatchers("/api/admin/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/super-admins/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/customers/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "CUSTOMER")
                         .requestMatchers("/api/analytics/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_OWNER")
                         .requestMatchers("/api/owners/**").hasAnyAuthority("ROLE_COMPANY_OWNER", "OWNER")
                         .requestMatchers("/api/managers/**").hasAnyAuthority("ROLE_SERVICE_MANAGER", "ROLE_COMPANY_OWNER", "MANAGER")

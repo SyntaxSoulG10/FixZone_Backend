@@ -148,22 +148,34 @@ public class AdminService {
     // --- Subscription Management ---
 
     public List<SubscriptionDTO> getSubscriptions(String status) {
-        List<Subscription> subs = (status == null || status.equalsIgnoreCase("ALL"))
-                ? subscriptionRepository.findAllByOrderByStartDateDesc()
-                : subscriptionRepository.findByStatus(status.toUpperCase());
+        try {
+            List<Subscription> subs = (status == null || status.equalsIgnoreCase("ALL"))
+                    ? subscriptionRepository.findAllByOrderByStartDateDesc()
+                    : subscriptionRepository.findByStatus(status.toUpperCase());
 
-        // Optimize: Bulk fetch owners to get company names
-        List<UUID> ownerIds = subs.stream()
-                .map(s -> s.getOwner() != null ? s.getOwner().getUserId() : null)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+            // Optimize: Bulk fetch owners to get company names
+            List<UUID> ownerIds = subs.stream()
+                    .map(s -> s.getOwner() != null ? s.getOwner().getUserId() : null)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
 
-        Map<UUID, String> companyNames = ownerRepository.findAllById(ownerIds).stream()
-                .collect(Collectors.toMap(Owner::getUserId, Owner::getCompanyName, (a, b) -> a));
+            Map<UUID, String> companyNames = new HashMap<>();
+            if (!ownerIds.isEmpty()) {
+                ownerRepository.findAllById(ownerIds).forEach(o -> {
+                    if (o != null) {
+                        companyNames.put(o.getUserId(), o.getCompanyName() != null ? o.getCompanyName() : "N/A");
+                    }
+                });
+            }
 
-        return subs.stream()
-                .map(s -> convertToDTO(s, companyNames))
-                .collect(Collectors.toList());
+            return subs.stream()
+                    .map(s -> convertToDTO(s, companyNames))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("CRITICAL ERROR in getSubscriptions Service: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     public SubscriptionDTO getSubscriptionById(UUID id) {
@@ -233,6 +245,13 @@ public class AdminService {
         Objects.requireNonNull(sub, "Subscription must not be null");
         SubscriptionDTO dto = new SubscriptionDTO();
         BeanUtils.copyProperties(sub, dto);
+        
+        // Map plan details if available
+        if (sub.getPlan() != null) {
+            dto.setPlanType(sub.getPlan().getName());
+            dto.setPlan(sub.getPlan());
+        }
+
         if (sub.getOwner() != null) {
             dto.setOwnerId(sub.getOwner().getUserId());
             dto.setOwnerName(sub.getOwner().getFullName());

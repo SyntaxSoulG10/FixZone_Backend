@@ -18,7 +18,10 @@ public class Subscription {
     @Column(nullable = false)
     private LocalDate endDate;
 
-    private String planType; // BASIC, PREMIUM, etc.
+    @ManyToOne
+    @JoinColumn(name = "plan_id")
+    private SubscriptionPlan plan;
+
     private String status;   // ACTIVE, EXPIRED, CANCELLED
     
     @Column(columnDefinition = "TEXT")
@@ -44,8 +47,8 @@ public class Subscription {
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
     public LocalDate getEndDate() { return endDate; }
     public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
-    public String getPlanType() { return planType; }
-    public void setPlanType(String planType) { this.planType = planType; }
+    public SubscriptionPlan getPlan() { return plan; }
+    public void setPlan(SubscriptionPlan plan) { this.plan = plan; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getBillingHistory() { return billingHistory; }

@@ -16,6 +16,13 @@ public class SuperAdminController {
     @Autowired
     private SuperAdminService superAdminService;
 
+    @GetMapping("/me")
+    public ResponseEntity<SuperAdminDTO> getCurrentAdmin(org.springframework.security.core.Authentication authentication) {
+        String email = (String) authentication.getPrincipal(); 
+        SuperAdminDTO admin = superAdminService.getSuperAdminByEmail(email);
+        return admin != null ? ResponseEntity.ok(admin) : ResponseEntity.notFound().build();
+    }
+
     @GetMapping
     public List<SuperAdminDTO> getAllSuperAdmins() {
         return superAdminService.getAllSuperAdmins();
