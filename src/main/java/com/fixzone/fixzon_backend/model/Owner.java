@@ -30,10 +30,19 @@ public class Owner extends User {
     @Column(name = "banner_image_url", columnDefinition = "TEXT")
     private String bannerImageUrl;
 
+    @Column(name = "facebook_url", length = 255)
+    private String facebookUrl;
+
+    @Column(name = "twitter_url", length = 255)
+    private String twitterUrl;
+
+    @Column(name = "instagram_url", length = 255)
+    private String instagramUrl;
+
     public Owner(UUID userId, String fullName, String email, String phone, String passwordHash, String role,
             Boolean emailVerified, LocalDateTime lastLoginAt, LocalDateTime createdAt, String createdBy,
             LocalDateTime updatedAt, String updatedBy, String profilePictureUrl, String ownerCode, String companyName, String companyEmail,
-            String companyNumber, String bannerImageUrl) {
+            String companyNumber, String bannerImageUrl, String facebookUrl, String twitterUrl, String instagramUrl) {
         super(userId, fullName, email, phone, passwordHash, role, emailVerified, lastLoginAt, createdAt, createdBy,
                 updatedAt, updatedBy, "Active", profilePictureUrl);
         this.ownerCode = ownerCode;
@@ -41,6 +50,9 @@ public class Owner extends User {
         this.companyEmail = companyEmail;
         this.companyNumber = companyNumber;
         this.bannerImageUrl = bannerImageUrl;
+        this.facebookUrl = facebookUrl;
+        this.twitterUrl = twitterUrl;
+        this.instagramUrl = instagramUrl;
     }
 
 }

@@ -5,13 +5,12 @@ import com.fixzone.fixzon_backend.model.Invoice;
 import com.fixzone.fixzon_backend.repository.InvoiceRepository;
 import org.springframework.stereotype.Service;
 import java.util.List;
-import java.util.Objects;
+
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 public class InvoiceService {
-
     private final InvoiceRepository invoiceRepository;
 
     public InvoiceService(InvoiceRepository invoiceRepository) {
@@ -19,51 +18,70 @@ public class InvoiceService {
     }
 
     public List<InvoiceDTO> getAllInvoices() {
-        // Encapsulating database entities via transformations secures hidden columns
-        // from HTTP exposure
+        // Transformation to DTO secures hidden columns from HTTP exposure.
         return invoiceRepository.findAll().stream()
                 .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public InvoiceDTO getInvoiceById(UUID id) {
-        Objects.requireNonNull(id, "ID must not be null");
+        if (id == null) {
+            throw new IllegalArgumentException("ID must not be null");
+        }
         return invoiceRepository.findById(id)
                 .map(this::transformToDataTransferObject)
                 .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
     }
 
     public InvoiceDTO getInvoiceByBooking(UUID bookingId) {
+        if (bookingId == null) {
+            throw new IllegalArgumentException("Booking ID must not be null");
+        }
         return invoiceRepository.findByBookingId(bookingId)
                 .map(this::transformToDataTransferObject)
                 .orElseThrow(() -> new RuntimeException("Invoice not found for booking: " + bookingId));
     }
 
     public List<InvoiceDTO> getInvoicesByCenter(UUID centerId) {
+        if (centerId == null) {
+            throw new IllegalArgumentException("Center ID must not be null");
+        }
         return invoiceRepository.findByCenterId(centerId).stream()
                 .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public List<InvoiceDTO> getInvoicesByCustomer(UUID customerId) {
+        if (customerId == null) {
+            throw new IllegalArgumentException("Customer ID must not be null");
+        }
         return invoiceRepository.findByIssuedToCustomerId(customerId).stream()
                 .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public List<InvoiceDTO> getInvoicesByStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            throw new IllegalArgumentException("Status must not be null or empty");
+        }
         return invoiceRepository.findByStatus(status).stream()
                 .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public List<InvoiceDTO> getInvoicesByCompanyCode(String companyCode) {
+        if (companyCode == null || companyCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Company code must not be null or empty");
+        }
         return invoiceRepository.findByCompanyCode(companyCode).stream()
                 .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
     }
 
     public InvoiceDTO createInvoice(InvoiceDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("Invoice data must not be null");
+        }
         Invoice invoice = transformToDatabaseEntity(dto);
         if (invoice.getInvoiceId() == null) {
             invoice.setInvoiceId(UUID.randomUUID());
@@ -72,37 +90,48 @@ public class InvoiceService {
     }
 
     public InvoiceDTO updateInvoice(UUID id, InvoiceDTO dto) {
-        Objects.requireNonNull(id, "ID must not be null");
+        if (id == null) {
+            throw new IllegalArgumentException("ID must not be null");
+        }
+        if (dto == null) {
+            throw new IllegalArgumentException("Invoice data must not be null");
+        }
+        
         Invoice existing = invoiceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
 
-        if (dto != null) {
-            existing.setCompanyCode(dto.getCompanyCode());
-            existing.setCenterId(dto.getCenterId());
-            existing.setBookingId(dto.getBookingId());
-            existing.setIssuedToCustomerId(dto.getIssuedToCustomerId());
-            existing.setSubtotal(dto.getSubtotal());
-            existing.setTax(dto.getTax());
-            existing.setDiscount(dto.getDiscount());
-            existing.setTotal(dto.getTotal());
-            existing.setStatus(dto.getStatus());
-            existing.setIssuedAt(dto.getIssuedAt());
-            existing.setDueAt(dto.getDueAt());
-            existing.setUpdatedBy(dto.getUpdatedBy());
-        }
+        existing.setCompanyCode(dto.getCompanyCode());
+        existing.setCenterId(dto.getCenterId());
+        existing.setBookingId(dto.getBookingId());
+        existing.setIssuedToCustomerId(dto.getIssuedToCustomerId());
+        existing.setSubtotal(dto.getSubtotal());
+        existing.setTax(dto.getTax());
+        existing.setDiscount(dto.getDiscount());
+        existing.setTotal(dto.getTotal());
+        existing.setStatus(dto.getStatus());
+        existing.setIssuedAt(dto.getIssuedAt());
+        existing.setDueAt(dto.getDueAt());
+        existing.setUpdatedBy(dto.getUpdatedBy());
 
         Invoice saved = invoiceRepository.save(existing);
-        return transformToDataTransferObject(Objects.requireNonNull(saved));
+        return transformToDataTransferObject(saved);
     }
 
     public void deleteInvoice(UUID id) {
-        Objects.requireNonNull(id, "ID must not be null");
+        if (id == null) {
+            throw new IllegalArgumentException("ID must not be null");
+        }
+        if (!invoiceRepository.existsById(id)) {
+            throw new IllegalStateException("Invoice not found with id: " + id);
+        }
         invoiceRepository.deleteById(id);
     }
 
-    // Direct constructor mapping enforces strict type transfer mapping reliably
+    // Direct constructor mapping for reliable type transfer mapping.
     private InvoiceDTO transformToDataTransferObject(Invoice invoice) {
-        Objects.requireNonNull(invoice, "Invoice must not be null");
+        if (invoice == null) {
+            throw new IllegalArgumentException("Invoice must not be null");
+        }
         return new InvoiceDTO(
                 invoice.getInvoiceId(),
                 invoice.getCompanyCode(),

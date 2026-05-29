@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class AdminService {
-
     private final ServiceCenterRepository serviceCenterRepository;
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;

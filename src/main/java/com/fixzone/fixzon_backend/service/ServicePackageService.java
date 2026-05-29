@@ -6,7 +6,7 @@ import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import java.util.List;
-import java.util.Objects;
+
 import java.util.UUID;
 import java.util.stream.Collectors;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class ServicePackageService {
-
     private final ServicePackageRepository repository;
     private final ServiceCenterRepository centerRepository;
 
@@ -34,13 +33,29 @@ public class ServicePackageService {
 
     @Transactional(readOnly = true)
     public List<ServicePackageDTO> getPackagesByCenter(UUID centerId) {
+        if (centerId == null) {
+            throw new IllegalArgumentException("Center ID cannot be null");
+        }
         return repository.findByServiceCenter_CenterIdAndIsActiveTrue(centerId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
+    public List<ServicePackageDTO> getPackagesByOwnerEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Email cannot be null or empty");
+        }
+        return repository.findPackagesByOwnerEmail(email).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<ServicePackageDTO> getPackagesByOwnerCode(String code) {
+        if (code == null || code.trim().isEmpty()) {
+            throw new IllegalArgumentException("Owner code cannot be null or empty");
+        }
         return repository.findPackagesByOwnerCode(code).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -48,49 +63,64 @@ public class ServicePackageService {
 
     @Transactional(readOnly = true)
     public ServicePackageDTO getPackageById(UUID id) {
-        Objects.requireNonNull(id, "ID must not be null");
+        if (id == null) {
+            throw new IllegalArgumentException("ID must not be null");
+        }
         return repository.findById(id)
                 .map(this::convertToDTO)
                 .orElse(null);
     }
 
     public ServicePackageDTO createPackage(ServicePackageDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("Service Package data cannot be null");
+        }
         ServicePackage model = new ServicePackage();
-        BeanUtils.copyProperties(Objects.requireNonNull(dto), model, "packageId", "createdAt");
+        BeanUtils.copyProperties(dto, model, "packageId", "createdAt");
         
         if (dto.getCenterId() != null) {
-            model.setServiceCenter(centerRepository.findById(Objects.requireNonNull(dto.getCenterId()))
-                .orElseThrow(() -> new RuntimeException("Service Center not found")));
+            model.setServiceCenter(centerRepository.findById(dto.getCenterId())
+                .orElseThrow(() -> new RuntimeException("Service Center not found with id: " + dto.getCenterId())));
         }
         
-        ServicePackage saved = Objects.requireNonNull(repository.save(model));
+        ServicePackage saved = repository.save(model);
         return convertToDTO(saved);
     }
 
     public ServicePackageDTO updatePackage(UUID id, ServicePackageDTO dto) {
-        Objects.requireNonNull(id, "ID must not be null");
+        if (id == null) {
+            throw new IllegalArgumentException("ID must not be null");
+        }
+        if (dto == null) {
+            throw new IllegalArgumentException("Service Package data cannot be null");
+        }
         ServicePackage existing = repository.findById(id).orElse(null);
         
         if (existing != null) {
-            if (dto != null) {
-                BeanUtils.copyProperties(dto, existing, "packageId", "createdAt");
-                if (dto.getCenterId() != null) {
-                    existing.setServiceCenter(centerRepository.findById(Objects.requireNonNull(dto.getCenterId()))
-                        .orElseThrow(() -> new RuntimeException("Service Center not found")));
-                }
+            BeanUtils.copyProperties(dto, existing, "packageId", "createdAt");
+            if (dto.getCenterId() != null) {
+                existing.setServiceCenter(centerRepository.findById(dto.getCenterId())
+                    .orElseThrow(() -> new RuntimeException("Service Center not found with id: " + dto.getCenterId())));
             }
-            return convertToDTO(Objects.requireNonNull(repository.save(existing)));
+            return convertToDTO(repository.save(existing));
         }
         return null;
     }
 
     public void deletePackage(UUID id) {
-        Objects.requireNonNull(id, "ID must not be null");
+        if (id == null) {
+            throw new IllegalArgumentException("ID must not be null");
+        }
+        if (!repository.existsById(id)) {
+            throw new IllegalStateException("Service package not found with id: " + id);
+        }
         repository.deleteById(id);
     }
 
     private ServicePackageDTO convertToDTO(ServicePackage model) {
-        Objects.requireNonNull(model, "ServicePackage model must not be null");
+        if (model == null) {
+            throw new IllegalArgumentException("ServicePackage model must not be null");
+        }
         ServicePackageDTO dto = new ServicePackageDTO();
         BeanUtils.copyProperties(model, dto);
         if (model.getServiceCenter() != null) {

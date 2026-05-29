@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface OwnerRepository extends JpaRepository<Owner, UUID> {
     Optional<Owner> findByOwnerCode(String ownerCode);
+    Optional<Owner> findByEmail(String email);
 }

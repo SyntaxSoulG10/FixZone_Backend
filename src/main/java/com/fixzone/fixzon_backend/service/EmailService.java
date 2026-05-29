@@ -1,6 +1,8 @@
 package com.fixzone.fixzon_backend.service;
 
 import jakarta.mail.internet.MimeMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -8,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class EmailService {
+    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
     private final JavaMailSender mailSender;
 
@@ -23,12 +26,12 @@ public class EmailService {
 
     @jakarta.annotation.PostConstruct
     public void debugConfig() {
-        System.out.println("EMAIL SERVICE INITIALIZED");
-        System.out.println("   > SMTP Host: smtp-relay.brevo.com");
-        System.out.println("   > Login ID: " + fromEmail);
-        System.out.println("   > Sender Email: " + senderEmail);
+        log.info("EMAIL SERVICE INITIALIZED");
+        log.info("   > SMTP Host: smtp-relay.brevo.com");
+        log.info("   > Login ID: {}", fromEmail);
+        log.info("   > Sender Email: {}", senderEmail);
         if (senderEmail.contains("example.com")) {
-            System.err.println("WARNING: Sender Email is still set to placeholder! Check your .env file.");
+            log.warn("WARNING: Sender Email is still set to placeholder! Check your .env file.");
         }
     }
 
@@ -51,10 +54,9 @@ public class EmailService {
 
             helper.setText(content, true);
             mailSender.send(message);
-            System.out.println("Email SENT successfully to: " + toEmail);
+            log.info("Email SENT successfully to: {}", toEmail);
         } catch (Exception e) {
-            System.err.println("ERROR: Email failed to send!");
-            e.printStackTrace(); // This will print the exact reason (e.g. Auth failure) to your console
+            log.error("ERROR: Email failed to send to {}: {}", toEmail, e.getMessage(), e);
         }
     }
 }

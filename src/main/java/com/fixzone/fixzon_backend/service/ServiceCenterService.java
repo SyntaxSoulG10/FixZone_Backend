@@ -6,13 +6,14 @@ import com.fixzone.fixzon_backend.model.Manager;
 import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.repository.*;
+import com.fixzone.fixzon_backend.config.AppConstants;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -26,7 +27,6 @@ import com.fixzone.fixzon_backend.model.ServicePackage;
  */
 @Service
 public class ServiceCenterService {
-
     private final ServiceCenterRepository serviceCenterRepository;
     private final UserRepository userRepository;
     private final ServicePackageRepository servicePackageRepository;
@@ -63,7 +63,9 @@ public class ServiceCenterService {
     }
 
     public ServiceCenterDTO getServiceCenterById(UUID id) {
-        Objects.requireNonNull(id, "Service Center ID cannot be null");
+        if (id == null) {
+            throw new IllegalArgumentException("Service Center ID cannot be null");
+        }
         return serviceCenterRepository.findById(id)
                 .map(this::mapEntityToDto)
                 .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
@@ -74,6 +76,9 @@ public class ServiceCenterService {
      * Uses optimized bulk mapping for high performance.
      */
     public List<ServiceCenterDTO> getServiceCentersByOwnerCode(String code) {
+        if (code == null || code.trim().isEmpty()) {
+            throw new IllegalArgumentException("Owner code cannot be null or empty");
+        }
         return ownerRepository.findByOwnerCode(code)
                 .map(owner -> {
                     List<ServiceCenter> centers = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
@@ -131,8 +136,8 @@ public class ServiceCenterService {
             }
 
             // Capacity Estimation
-            dto.setMechanicsCount(5 + (center.getName().length() % 5));
-            dto.setCurrentCapacity(40 + (center.getName().length() % 30));
+            dto.setMechanicsCount(AppConstants.BASE_MECHANICS_COUNT + (center.getName().length() % AppConstants.MECHANICS_VARIANCE_MODULO));
+            dto.setCurrentCapacity(AppConstants.BASE_CAPACITY + (center.getName().length() % AppConstants.CAPACITY_VARIANCE_MODULO));
 
             return dto;
         }).collect(Collectors.toList());
@@ -140,9 +145,12 @@ public class ServiceCenterService {
 
     /**
      * PERSISTENCE: Creates a new service center branch.
-     * We automatically assign a unique UUID if none is provided.
+     * Automatically assigns a unique UUID if none is provided.
      */
     public ServiceCenterDTO createServiceCenter(ServiceCenterDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("Service Center data cannot be null");
+        }
         ServiceCenter center = mapDtoToEntity(dto);
         if (center.getCenterId() == null) {
             center.setCenterId(UUID.randomUUID());
@@ -152,12 +160,16 @@ public class ServiceCenterService {
 
     /**
      * UPDATE LOGIC: Modifies an existing service center.
-     * We favor explicit field setting over generic copy to maintain fine-grained
-     * control
-     * over which data is allowed to change.
+     * Uses explicit field setting over generic copy to maintain fine-grained
+     * control over which data is allowed to change.
      */
     public ServiceCenterDTO updateServiceCenter(UUID id, ServiceCenterDTO dto) {
-        Objects.requireNonNull(id, "Target ID for update cannot be null");
+        if (id == null) {
+            throw new IllegalArgumentException("Target ID for update cannot be null");
+        }
+        if (dto == null) {
+            throw new IllegalArgumentException("Service Center data cannot be null");
+        }
 
         ServiceCenter existing = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
@@ -175,7 +187,29 @@ public class ServiceCenterService {
     }
 
     public void deleteServiceCenter(UUID id) {
-        Objects.requireNonNull(id, "ID for deletion cannot be null");
+        if (id == null) {
+            throw new IllegalArgumentException("ID for deletion cannot be null");
+        }
+        
+        if (!serviceCenterRepository.existsById(id)) {
+            throw new IllegalStateException("Service center not found with id: " + id);
+        }
+        // CASCADING CLEANUP: Remove or nullify all associations before deleting the center
+        // 1. Delete associated service packages
+        List<ServicePackage> packages = servicePackageRepository.findByServiceCenter_CenterId(id);
+        servicePackageRepository.deleteAll(packages);
+        
+        // 2. Clear managers' center association (or delete them if they only belong to this center)
+        List<Manager> managers = managerRepository.findByManagedCenterId(id);
+        for (Manager manager : managers) {
+            manager.setManagedCenterId(null);
+            managerRepository.save(manager);
+        }
+        
+        // 3. Delete invoices and payment records linked to this center
+        invoiceRepository.deleteAll(invoiceRepository.findByCenterId(id));
+        
+        // 4. Finally delete the center itself
         serviceCenterRepository.deleteById(id);
     }
 
@@ -220,8 +254,8 @@ public class ServiceCenterService {
 
         // CAPACITY ESTIMATION: These provide realistic placeholders for operational
         // load metrics
-        dto.setMechanicsCount(5 + (center.getName().length() % 5));
-        dto.setCurrentCapacity(40 + (center.getName().length() % 30));
+        dto.setMechanicsCount(AppConstants.BASE_MECHANICS_COUNT + (center.getName().length() % AppConstants.MECHANICS_VARIANCE_MODULO));
+        dto.setCurrentCapacity(AppConstants.BASE_CAPACITY + (center.getName().length() % AppConstants.CAPACITY_VARIANCE_MODULO));
 
         return dto;
     }

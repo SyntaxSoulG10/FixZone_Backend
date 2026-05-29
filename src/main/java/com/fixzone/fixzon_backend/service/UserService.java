@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class UserService {
-
     private final UserRepository userRepository;
 
     public UserService(UserRepository userRepository) {
@@ -20,6 +19,12 @@ public class UserService {
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    public UserDTO getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .map(this::convertToDTO)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     private UserDTO convertToDTO(User user) {

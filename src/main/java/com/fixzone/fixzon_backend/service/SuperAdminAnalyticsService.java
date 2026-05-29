@@ -5,6 +5,8 @@ import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.repository.InvoiceRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.SubscriptionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class SuperAdminAnalyticsService {
+    private static final Logger log = LoggerFactory.getLogger(SuperAdminAnalyticsService.class);
 
     private final InvoiceRepository invoiceRepository;
     private final ServiceCenterRepository serviceCenterRepository;
@@ -58,7 +61,7 @@ public class SuperAdminAnalyticsService {
             long previousSubs = subscriptionRepository.countByStartDateBetween(sixtyDaysAgo.toLocalDate(), thirtyDaysAgo.toLocalDate());
             dto.setSubscriptionChange(calculateGrowth(currentSubs, previousSubs));
         } catch (Exception e) {
-            System.err.println("Error calculating stat cards: " + e.getMessage());
+            log.error("Error calculating stat cards: {}", e.getMessage(), e);
             dto.setTotalPlatformRevenue(BigDecimal.ZERO);
             dto.setRevenueChange("0%");
             dto.setSubscriptionChange("0%");
@@ -70,7 +73,7 @@ public class SuperAdminAnalyticsService {
             List<Object[]> dailyData = invoiceRepository.findDailyRevenueBetween(startOfWeek, now);
             dto.setWeeklyRevenue(formatWeeklyRevenue(dailyData));
         } catch (Exception e) {
-            System.err.println("Error calculating weekly revenue: " + e.getMessage());
+            log.error("Error calculating weekly revenue: {}", e.getMessage(), e);
             dto.setWeeklyRevenue(new ArrayList<>());
         }
 
@@ -80,7 +83,7 @@ public class SuperAdminAnalyticsService {
             List<Object[]> monthlyData = invoiceRepository.findMonthlyRevenueSince(sixMonthsAgo);
             dto.setMonthlyRevenue(formatMonthlyRevenue(monthlyData));
         } catch (Exception e) {
-            System.err.println("Error calculating monthly revenue: " + e.getMessage());
+            log.error("Error calculating monthly revenue: {}", e.getMessage(), e);
             dto.setMonthlyRevenue(new ArrayList<>());
         }
 
@@ -89,7 +92,7 @@ public class SuperAdminAnalyticsService {
             List<Object[]> topCentersData = invoiceRepository.findTopCentersByRevenue(PageRequest.of(0, 5));
             dto.setTopStations(formatTopStations(topCentersData));
         } catch (Exception e) {
-            System.err.println("Error calculating top stations: " + e.getMessage());
+            log.error("Error calculating top stations: {}", e.getMessage(), e);
             dto.setTopStations(new ArrayList<>());
         }
 
@@ -131,7 +134,7 @@ public class SuperAdminAnalyticsService {
                         int dow = ((Number) row[0]).intValue();
                         dataMap.put(dow, new BigDecimal(row[1].toString()));
                     } catch (Exception e) {
-                        System.err.println("Error parsing weekly revenue row: " + e.getMessage());
+                        log.warn("Error parsing weekly revenue row: {}", e.getMessage());
                     }
                 }
             }
@@ -168,7 +171,7 @@ public class SuperAdminAnalyticsService {
                             dataMap.put(label, new BigDecimal(row[2].toString()));
                         }
                     } catch (Exception e) {
-                        System.err.println("Error parsing monthly revenue row: " + e.getMessage());
+                        log.warn("Error parsing monthly revenue row: {}", e.getMessage());
                     }
                 }
             }
@@ -217,7 +220,7 @@ public class SuperAdminAnalyticsService {
                 String formattedRevenue = "Rs " + formatCurrency(revenue);
                 return new SuperAdminAnalyticsDTO.TopStationDTO(name, revenue, formattedRevenue);
             } catch (Exception e) {
-                System.err.println("Error parsing top station row: " + e.getMessage());
+                log.warn("Error parsing top station row: {}", e.getMessage());
                 return new SuperAdminAnalyticsDTO.TopStationDTO("Unknown", BigDecimal.ZERO, "Rs 0");
             }
         }).collect(Collectors.toList());

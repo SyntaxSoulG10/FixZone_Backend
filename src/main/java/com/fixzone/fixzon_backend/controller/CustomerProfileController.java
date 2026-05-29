@@ -13,7 +13,6 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/customer")
-@CrossOrigin("*")
 public class CustomerProfileController {
 
     @Autowired

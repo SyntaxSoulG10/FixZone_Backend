@@ -7,12 +7,12 @@ import com.fixzone.fixzon_backend.repository.AuthRepository;
 import com.fixzone.fixzon_backend.config.JwtUtil;
 import com.fixzone.fixzon_backend.DTO.RegisterCustomerDTO;
 import com.fixzone.fixzon_backend.DTO.RegisterOwnerDTO;
+import com.fixzone.fixzon_backend.config.AppConstants;
 import com.fixzone.fixzon_backend.enums.Role;
 import com.fixzone.fixzon_backend.model.Customer;
 import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -22,20 +22,23 @@ import java.util.UUID;
 @Service
 public class AuthService {
 
-    @Autowired
-    private AuthRepository authRepository;
+    private final AuthRepository authRepository;
+    private final CustomerRepository customerRepository;
+    private final OwnerRepository ownerRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
 
-    @Autowired
-    private CustomerRepository customerRepository;
-
-    @Autowired
-    private OwnerRepository ownerRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private JwtUtil jwtUtil;
+    public AuthService(AuthRepository authRepository,
+                       CustomerRepository customerRepository,
+                       OwnerRepository ownerRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtUtil jwtUtil) {
+        this.authRepository = authRepository;
+        this.customerRepository = customerRepository;
+        this.ownerRepository = ownerRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
+    }
 
     public AuthResponseDTO login(AuthRequestDTO request) {
         User user = authRepository.findByEmail(request.getEmail())
@@ -71,8 +74,8 @@ public class AuthService {
         customer.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         customer.setRole(Role.ROLE_CUSTOMER.name());
         customer.setEmailVerified(false);
-        customer.setStatus("Active");
-        customer.setCustomerCode("CUST-" + System.currentTimeMillis());
+        customer.setStatus(AppConstants.STATUS_ACTIVE);
+        customer.setCustomerCode(AppConstants.CUSTOMER_PREFIX + System.currentTimeMillis());
 
         customerRepository.save(customer);
 
@@ -99,8 +102,8 @@ public class AuthService {
         owner.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         owner.setRole(Role.ROLE_COMPANY_OWNER.name());
         owner.setEmailVerified(false);
-        owner.setStatus("Active");
-        owner.setOwnerCode("OWN-" + System.currentTimeMillis());
+        owner.setStatus(AppConstants.STATUS_ACTIVE);
+        owner.setOwnerCode(AppConstants.OWNER_PREFIX + System.currentTimeMillis());
         owner.setCompanyName(request.getCompanyName());
         owner.setCompanyNumber(request.getCompanyNumber());
 

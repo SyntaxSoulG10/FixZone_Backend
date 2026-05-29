@@ -9,10 +9,9 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/invoices")
-@CrossOrigin("*")
 public class InvoiceController {
 
-    // Utilize explicit constructor injection to resolve immutable service boundaries cleanly
+    // Explicit constructor injection to resolve immutable service boundaries cleanly.
     private final InvoiceService invoiceService;
 
     public InvoiceController(InvoiceService invoiceService) {
@@ -63,31 +62,19 @@ public class InvoiceController {
 
     @PostMapping
     public ResponseEntity<InvoiceDTO> createInvoice(@jakarta.validation.Valid @RequestBody InvoiceDTO dto) {
-        try {
-            return ResponseEntity.status(201).body(invoiceService.createInvoice(dto));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create invoice: " + e.getMessage());
-        }
+        return ResponseEntity.status(201).body(invoiceService.createInvoice(dto));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<InvoiceDTO> updateInvoice(@PathVariable UUID id,
             @jakarta.validation.Valid @RequestBody InvoiceDTO dto) {
-        try {
-            InvoiceDTO updatedInvoice = invoiceService.updateInvoice(id, dto);
-            return updatedInvoice != null ? ResponseEntity.ok(updatedInvoice) : ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update invoice: " + e.getMessage());
-        }
+        InvoiceDTO updatedInvoice = invoiceService.updateInvoice(id, dto);
+        return updatedInvoice != null ? ResponseEntity.ok(updatedInvoice) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteInvoice(@PathVariable UUID id) {
-        try {
-            invoiceService.deleteInvoice(id);
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to delete invoice: " + e.getMessage());
-        }
+        invoiceService.deleteInvoice(id);
+        return ResponseEntity.noContent().build();
     }
 }
