@@ -100,6 +100,18 @@ public class AdminController {
             @PathVariable UUID id, @RequestParam String status) {
         return ResponseEntity.ok(adminService.updateSubscriptionStatus(id, status));
     }
+
+    @PostMapping("/notifications/broadcast")
+    public ResponseEntity<Void> broadcastCustomNotification(@RequestBody Map<String, String> payload) {
+        String title = payload.get("title");
+        String message = payload.get("message");
+        String type = payload.get("type");
+        String targetRole = payload.get("targetRole");
+        String targetUrl = payload.get("targetUrl");
+
+        adminService.broadcastCustomNotification(title, message, type, targetRole, targetUrl);
+        return ResponseEntity.ok().build();
+    }
 }
 
     

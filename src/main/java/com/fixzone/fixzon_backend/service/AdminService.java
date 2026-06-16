@@ -283,4 +283,33 @@ public class AdminService {
         }
         return dto;
     }
+
+    @Transactional
+    public void broadcastCustomNotification(String title, String message, String type, String targetRole, String targetUrl) {
+        List<User> recipients;
+        if ("ALL".equalsIgnoreCase(targetRole)) {
+            recipients = userRepository.findAll();
+        } else if ("OWNER".equalsIgnoreCase(targetRole) || "ROLE_COMPANY_OWNER".equalsIgnoreCase(targetRole)) {
+            recipients = userRepository.findByRole("ROLE_COMPANY_OWNER");
+        } else if ("MANAGER".equalsIgnoreCase(targetRole) || "ROLE_SERVICE_MANAGER".equalsIgnoreCase(targetRole)) {
+            recipients = userRepository.findByRole("ROLE_SERVICE_MANAGER");
+        } else if ("CUSTOMER".equalsIgnoreCase(targetRole) || "ROLE_CUSTOMER".equalsIgnoreCase(targetRole)) {
+            recipients = userRepository.findByRole("ROLE_CUSTOMER");
+        } else {
+            recipients = List.of();
+        }
+
+        List<Notification> notes = new java.util.ArrayList<>();
+        for (User recipient : recipients) {
+            if (recipient == null) continue;
+            Notification note = new Notification();
+            note.setRecipient(recipient);
+            note.setTitle(title);
+            note.setMessage(message);
+            note.setType(type);
+            note.setTargetUrl(targetUrl);
+            notes.add(note);
+        }
+        notificationRepository.saveAll(notes);
+    }
 }
