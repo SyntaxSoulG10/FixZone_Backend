@@ -20,6 +20,7 @@ public class Notification {
     private String type; // INFO, WARNING, SUCCESS
     private boolean isRead;
     private LocalDateTime createdAt;
+    private String targetUrl;
 
     @ManyToOne
     @JoinColumn(name = "recipient_user_id")
@@ -50,4 +51,6 @@ public class Notification {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public User getRecipient() { return recipient; }
     public void setRecipient(User recipient) { this.recipient = recipient; }
+    public String getTargetUrl() { return targetUrl; }
+    public void setTargetUrl(String targetUrl) { this.targetUrl = targetUrl; }
 }

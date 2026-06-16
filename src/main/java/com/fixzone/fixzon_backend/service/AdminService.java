@@ -88,6 +88,13 @@ public class AdminService {
         ServiceCenter sc = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service Center not found"));
         sc.setStatus(status); // SUSPENDED, ACTIVE
+
+        // Notify Owner of the service center status update
+        String title = "Service Center " + (status.equalsIgnoreCase("ACTIVE") ? "Reactivated" : "Suspended");
+        String message = "Your service center '" + sc.getName() + "' status has been changed to " + status + " by the administrator.";
+        String type = status.equalsIgnoreCase("ACTIVE") ? "SUCCESS" : "WARNING";
+        createNotification(sc.getOwner(), title, message, type, "/dashboard/company-owner/centers");
+
         return convertToDTO(serviceCenterRepository.save(sc));
     }
 
@@ -101,6 +108,14 @@ public class AdminService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setStatus(status); // Active, Suspended
+
+        // Notify User about status update
+        String title = "Account " + (status.equalsIgnoreCase("Active") ? "Activated" : "Suspended");
+        String message = "Your account status has been changed to " + status + " by the administrator.";
+        String type = status.equalsIgnoreCase("Active") ? "SUCCESS" : "WARNING";
+        String dashboardUrl = user.getRole().equalsIgnoreCase("ROLE_COMPANY_OWNER") ? "/dashboard/company-owner" : "/dashboard/customer";
+        createNotification(user, title, message, type, dashboardUrl);
+
         return convertToDTO(userRepository.save(user));
     }
 
@@ -123,14 +138,23 @@ public class AdminService {
     // --- Monitoring & Notifications ---
 
     private void createNotification(User recipient, String title, String message, String type) {
+        createNotification(recipient, title, message, type, null);
+    }
+
+    private void createNotification(User recipient, String title, String message, String type, String targetUrl) {
         if (recipient == null)
             return;
-        Notification note = new Notification();
-        note.setRecipient(recipient);
-        note.setTitle(title);
-        note.setMessage(message);
-        note.setType(type);
-        notificationRepository.save(note);
+        try {
+            Notification note = new Notification();
+            note.setRecipient(recipient);
+            note.setTitle(title);
+            note.setMessage(message);
+            note.setType(type);
+            note.setTargetUrl(targetUrl);
+            notificationRepository.save(note);
+        } catch (Exception e) {
+            System.err.println("Failed to save notification: " + e.getMessage());
+        }
     }
 
     public List<NotificationDTO> getAdminNotifications() {
