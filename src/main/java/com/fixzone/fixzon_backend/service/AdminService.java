@@ -285,18 +285,24 @@ public class AdminService {
     }
 
     @Transactional
-    public void broadcastCustomNotification(String title, String message, String type, String targetRole, String targetUrl) {
+    public void broadcastCustomNotification(String title, String message, String type, String targetRole, String targetUrl, String targetUserId) {
         List<User> recipients;
-        if ("ALL".equalsIgnoreCase(targetRole)) {
-            recipients = userRepository.findAll();
-        } else if ("OWNER".equalsIgnoreCase(targetRole) || "ROLE_COMPANY_OWNER".equalsIgnoreCase(targetRole)) {
-            recipients = userRepository.findByRole("ROLE_COMPANY_OWNER");
-        } else if ("MANAGER".equalsIgnoreCase(targetRole) || "ROLE_SERVICE_MANAGER".equalsIgnoreCase(targetRole)) {
-            recipients = userRepository.findByRole("ROLE_SERVICE_MANAGER");
-        } else if ("CUSTOMER".equalsIgnoreCase(targetRole) || "ROLE_CUSTOMER".equalsIgnoreCase(targetRole)) {
-            recipients = userRepository.findByRole("ROLE_CUSTOMER");
+        if (targetUserId != null && !targetUserId.trim().isEmpty() && !"null".equalsIgnoreCase(targetUserId)) {
+            User user = userRepository.findById(UUID.fromString(targetUserId))
+                    .orElseThrow(() -> new RuntimeException("Target user not found"));
+            recipients = List.of(user);
         } else {
-            recipients = List.of();
+            if ("ALL".equalsIgnoreCase(targetRole)) {
+                recipients = userRepository.findAll();
+            } else if ("OWNER".equalsIgnoreCase(targetRole) || "ROLE_COMPANY_OWNER".equalsIgnoreCase(targetRole)) {
+                recipients = userRepository.findByRole("ROLE_COMPANY_OWNER");
+            } else if ("MANAGER".equalsIgnoreCase(targetRole) || "ROLE_SERVICE_MANAGER".equalsIgnoreCase(targetRole)) {
+                recipients = userRepository.findByRole("ROLE_SERVICE_MANAGER");
+            } else if ("CUSTOMER".equalsIgnoreCase(targetRole) || "ROLE_CUSTOMER".equalsIgnoreCase(targetRole)) {
+                recipients = userRepository.findByRole("ROLE_CUSTOMER");
+            } else {
+                recipients = List.of();
+            }
         }
 
         List<Notification> notes = new java.util.ArrayList<>();

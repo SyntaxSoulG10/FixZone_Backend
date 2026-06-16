@@ -108,8 +108,9 @@ public class AdminController {
         String type = payload.get("type");
         String targetRole = payload.get("targetRole");
         String targetUrl = payload.get("targetUrl");
+        String targetUserId = payload.get("targetUserId");
 
-        adminService.broadcastCustomNotification(title, message, type, targetRole, targetUrl);
+        adminService.broadcastCustomNotification(title, message, type, targetRole, targetUrl, targetUserId);
         return ResponseEntity.ok().build();
     }
 }
