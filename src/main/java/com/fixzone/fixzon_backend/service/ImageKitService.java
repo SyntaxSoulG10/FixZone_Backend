@@ -72,6 +72,7 @@ public class ImageKitService {
             if (lowerData.contains("image/png")) extension = ".png";
             else if (lowerData.contains("image/webp")) extension = ".webp";
             else if (lowerData.contains("image/gif")) extension = ".gif";
+            else if (lowerData.contains("application/pdf")) extension = ".pdf";
             
             String finalFileName = fileName + "-" + System.currentTimeMillis() + extension;
             
