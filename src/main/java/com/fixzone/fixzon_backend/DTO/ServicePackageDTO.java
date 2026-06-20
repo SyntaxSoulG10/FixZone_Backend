@@ -21,7 +21,6 @@ public class ServicePackageDTO {
     private String name;
 
     private String type;
-    private String vehicleType;
     
     @NotBlank(message = "Description is required")
     @jakarta.validation.constraints.Size(min = 10, message = "Description must be at least 10 characters")
@@ -40,5 +39,4 @@ public class ServicePackageDTO {
     private String createdBy;
     private LocalDateTime updatedAt;
     private String updatedBy;
-    private String imageUrl;
 }

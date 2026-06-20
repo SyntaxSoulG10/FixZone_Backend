@@ -15,7 +15,6 @@ import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.SuperAdminRepository;
 import com.fixzone.fixzon_backend.model.SuperAdmin;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +23,6 @@ import java.util.UUID;
 import java.util.List;
 
 @Service
-@Slf4j
 public class AuthService {
 
     private final AuthRepository authRepository;
@@ -52,21 +50,10 @@ public class AuthService {
     }
 
     public AuthResponseDTO login(AuthRequestDTO request) {
-        log.info("Attempting login for email: {}", request.getEmail());
-        
-        if (request.getPassword() == null || request.getPassword().length() < 8) {
-            log.error("Login failed: Invalid password format for email {}", request.getEmail());
-            throw new RuntimeException("Invalid email or password");
-        }
-
         User user = authRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> {
-                    log.error("Login failed: User not found for email {}", request.getEmail());
-                    return new RuntimeException("Invalid email or password");
-                });
+                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            log.error("Login failed: Password mismatch for email {}", request.getEmail());
             throw new RuntimeException("Invalid email or password");
         }
 
@@ -80,49 +67,19 @@ public class AuthService {
                 user.getUserId(),
                 user.getEmail(),
                 user.getRole(),
-                user.getFullName(),
-                user.getProfilePictureUrl(),
-                user.getPhone()
+                user.getFullName()
         );
     }
 
     public AuthResponseDTO registerCustomer(RegisterCustomerDTO request) {
-        log.info("Attempting to register customer with email: {}", request.getEmail());
-
-        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
-        if (request.getEmail() == null || !request.getEmail().matches(emailRegex)) {
-            log.error("Registration failed: Invalid email format: {}", request.getEmail());
-            throw new RuntimeException("Invalid email format");
-        }
-
-        if (request.getPassword() == null || request.getPassword().length() < 8) {
-            log.error("Registration failed: Password too short for email: {}", request.getEmail());
-            throw new RuntimeException("Password must be at least 8 characters");
-        }
-
         if (authRepository.findByEmail(request.getEmail()).isPresent()) {
-            log.error("Registration failed: Email {} already taken", request.getEmail());
             throw new RuntimeException("Email is already taken");
-        }
-
-        // Sri Lankan mobile number validation
-        // Expected formats: +947XXXXXXXX, 07XXXXXXXX, 7XXXXXXXX
-        String phone = request.getPhone();
-        if (phone != null && !phone.isEmpty()) {
-            // Remove spaces for validation
-            String cleanedPhone = phone.replace(" ", "");
-            String regex = "^(\\+94|0)?7[0-9]{8}$";
-            if (!cleanedPhone.matches(regex)) {
-                log.error("Registration failed: Invalid Sri Lankan phone number format: {}", phone);
-                throw new RuntimeException("Invalid Sri Lankan mobile number format");
-            }
         }
 
         Customer customer = new Customer();
         customer.setUserId(UUID.randomUUID());
         customer.setFullName(request.getFullName());
         customer.setEmail(request.getEmail());
-        customer.setPhone(request.getPhone());
         customer.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         customer.setRole(Role.ROLE_CUSTOMER.name());
         customer.setEmailVerified(false);
@@ -141,41 +98,14 @@ public class AuthService {
                 customer.getUserId(),
                 customer.getEmail(),
                 customer.getRole(),
-                customer.getFullName(),
-                customer.getProfilePictureUrl(),
-                customer.getPhone()
+                customer.getFullName()
         );
     }
 
     public AuthResponseDTO registerOwner(RegisterOwnerDTO request) {
-        log.info("Attempting to register owner with email: {}", request.getEmail());
-
-        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
-        if (request.getEmail() == null || !request.getEmail().matches(emailRegex)) {
-            log.error("Registration failed: Invalid email format: {}", request.getEmail());
-            throw new RuntimeException("Invalid email format");
-        }
-
-        if (request.getPassword() == null || request.getPassword().length() < 8) {
-            log.error("Registration failed: Password too short for email: {}", request.getEmail());
-            throw new RuntimeException("Password must be at least 8 characters");
-        }
-
         if (authRepository.findByEmail(request.getEmail()).isPresent()) {
-            log.error("Registration failed: Email {} already taken", request.getEmail());
             throw new RuntimeException("Email is already taken");
         }
-
-        // Sri Lankan mobile number validation
-       /*  String phone = request.getPhone();
-        if (phone != null && !phone.isEmpty()) {
-            String cleanedPhone = phone.replace(" ", "");
-            String regex = "^(\\+94|0)?7[0-9]{8}$";
-            if (!cleanedPhone.matches(regex)) {
-                log.error("Registration failed: Invalid Sri Lankan phone number format: {}", phone);
-                throw new RuntimeException("Invalid Sri Lankan mobile number format");
-            }
-        }*/
 
         Owner owner = new Owner();
         owner.setUserId(UUID.randomUUID());
@@ -201,9 +131,7 @@ public class AuthService {
                 owner.getUserId(),
                 owner.getEmail(),
                 owner.getRole(),
-                owner.getFullName(),
-                owner.getProfilePictureUrl(),
-                owner.getPhone()
+                owner.getFullName()
         );
     }
 

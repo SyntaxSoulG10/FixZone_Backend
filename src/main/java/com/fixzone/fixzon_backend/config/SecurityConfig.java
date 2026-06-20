@@ -74,6 +74,7 @@ public class SecurityConfig {
         configuration.setExposedHeaders(java.util.List.of("Authorization"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L); // 1 hour cache for preflight requests
+
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

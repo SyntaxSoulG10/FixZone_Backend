@@ -49,6 +49,4 @@ public class BookingResponseDTO {
     // UI Helpers
     private String serviceCenterName;
     private String packageName;
-    private String vehiclePlateNumber;
-    private String vehicleModel;
 }

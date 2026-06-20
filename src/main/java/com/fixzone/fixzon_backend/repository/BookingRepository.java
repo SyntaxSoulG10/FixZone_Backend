@@ -61,6 +61,4 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     AND b.expiresAt < :now
     """)
     List<Booking> findExpiredBookings(@Param("now") LocalDateTime now);
-
-    boolean existsByVehicleIdAndStatusIn(UUID vehicleId, Collection<BookingStatus> statuses);
 }

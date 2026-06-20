@@ -29,10 +29,7 @@ public class ServicePackage {
     private String name;
 
     @Column(name = "type", length = 100)
-    private String type;
-
-    @Column(name = "vehicle_type", length = 50)
-    private String vehicleType; // e.g. car, bike, van, lorry
+    private String type; // Can be used for comma-separated features
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
@@ -57,9 +54,6 @@ public class ServicePackage {
 
     @Column(name = "updated_by", length = 100)
     private String updatedBy;
-
-    @Column(name = "image_url", length = 500)
-    private String imageUrl;
 
     @PrePersist
     protected void onCreate() {

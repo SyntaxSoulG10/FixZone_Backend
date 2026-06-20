@@ -10,7 +10,6 @@ import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.fixzone.fixzon_backend.repository.VehicleRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,18 +32,15 @@ public class BookingService {
     private final ServiceCenterRepository serviceCenterRepository;
     private final ServicePackageRepository servicePackageRepository;
     private final PaymentService paymentService;
-    private final VehicleRepository vehicleRepository;
 
     public BookingService(BookingRepository bookingRepository,
             ServiceCenterRepository serviceCenterRepository,
             ServicePackageRepository servicePackageRepository,
-            PaymentService paymentService,
-            VehicleRepository vehicleRepository) {
+            PaymentService paymentService) {
         this.bookingRepository = bookingRepository;
         this.serviceCenterRepository = serviceCenterRepository;
         this.servicePackageRepository = servicePackageRepository;
         this.paymentService = paymentService;
-        this.vehicleRepository = vehicleRepository;
     }
 
     @Transactional(readOnly = true)
@@ -71,23 +67,9 @@ public class BookingService {
 
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO request) {
-        // Safety Check: Prevent double-booking or booking a soft-locked slot
-        if (isSlotTaken(request.getCenterId(), request.getBookingDate(), request.getBookingTime())) {
-            throw new RuntimeException("Sorry, this slot is no longer available. Please choose another time.");
-        }
-
         Booking booking = new Booking();
         BeanUtils.copyProperties(Objects.requireNonNull(request, "Request must not be null"), booking);
         
-        // Fetch package to get price and set estimated cost
-        servicePackageRepository.findById(request.getPackageId()).ifPresent(pkg -> {
-            booking.setEstimatedCost(pkg.getBasePrice());
-            // Set booking fee as 10% of base price if not already set
-            if (pkg.getBasePrice() != null && booking.getBookingFee() == null) {
-                booking.setBookingFee(pkg.getBasePrice().multiply(new BigDecimal("0.10")));
-            }
-        });
-
         // Ensure IDs are set
         if (booking.getBookingId() == null) {
             booking.setBookingId(UUID.randomUUID());
@@ -109,10 +91,8 @@ public class BookingService {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        if (booking.getStatus() == BookingStatus.CANCELLED || 
-            booking.getStatus() == BookingStatus.COMPLETED || 
-            booking.getStatus() == BookingStatus.IN_PROGRESS) {
-            throw new RuntimeException("Cannot reschedule a cancelled, completed, or in-progress booking");
+        if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
+            throw new RuntimeException("Cannot reschedule a cancelled or completed booking");
         }
 
         // Rule: Must be at least 3 days before the original booking date
@@ -236,20 +216,8 @@ public class BookingService {
     public BookingResponseDTO completeBooking(UUID id) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
-        
         booking.setStatus(BookingStatus.COMPLETED);
-        Booking savedBooking = bookingRepository.save(booking);
-
-        // SYNC: Update the Vehicle's last service date in the DB
-        if (booking.getVehicleId() != null) {
-            vehicleRepository.findById(booking.getVehicleId()).ifPresent(vehicle -> {
-                System.out.println(">>> SYNCING VEHICLE: Setting last service date to " + booking.getBookingDate());
-                vehicle.setLastServiceDate(booking.getBookingDate().toString());
-                vehicleRepository.save(vehicle);
-            });
-        }
-
-        return mapToResponseDTO(Objects.requireNonNull(savedBooking));
+        return mapToResponseDTO(Objects.requireNonNull(bookingRepository.save(booking)));
     }
 
     @Transactional
@@ -281,15 +249,6 @@ public class BookingService {
                 .ifPresent(c -> dto.setServiceCenterName(c.getName()));
         servicePackageRepository.findById(Objects.requireNonNull(booking.getPackageId(), "Package ID must not be null"))
                 .ifPresent(p -> dto.setPackageName(p.getName()));
-        
-        // Fetch vehicle details for the UI
-        if (booking.getVehicleId() != null) {
-            vehicleRepository.findById(booking.getVehicleId()).ifPresent(v -> {
-                dto.setVehiclePlateNumber(v.getPlateNumber());
-                dto.setVehicleModel(v.getModel());
-            });
-        }
-        
         return dto;
     }
 }

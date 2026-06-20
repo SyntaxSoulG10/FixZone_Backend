@@ -19,23 +19,15 @@ public class Vehicle {
     @Column(name = "customer_id", nullable = false)
     private UUID customerId;
 
-    @Column(name = "brand", nullable = false, length = 100)
+    @Column(name = "brand", nullable = false)
     private String brand;
 
-    @Column(name = "model", length = 100)
-    private String model;
-
-    @Column(name = "vehicle_type", length = 50)
-    private String vehicleType;
-
-    @Column(name = "plate_number", nullable = false, unique = true, length = 50)
+    @Column(name = "plate_number", nullable = false, unique = true)
     private String plateNumber;
 
-    @Column(name = "image_url", columnDefinition = "TEXT")
+    @Column(name = "image_url")
     private String imageUrl;
 
-    @Column(name = "last_service_date", length = 50)
-    private String lastServiceDate;
     @PrePersist
     protected void onCreate() {
         if (id == null) {
