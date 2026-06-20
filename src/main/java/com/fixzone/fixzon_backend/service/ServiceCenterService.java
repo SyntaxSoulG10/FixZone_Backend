@@ -7,6 +7,8 @@ import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.repository.*;
 import com.fixzone.fixzon_backend.config.AppConstants;
+import com.fixzone.fixzon_backend.service.NotificationService;
+import com.fixzone.fixzon_backend.model.SuperAdmin;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +35,8 @@ public class ServiceCenterService {
     private final OwnerRepository ownerRepository;
     private final InvoiceRepository invoiceRepository;
     private final ManagerRepository managerRepository;
+    private final SuperAdminRepository superAdminRepository;
+    private final NotificationService notificationService;
 
     /**
      * Dependency Injection via Constructor: Ensures all required repositories
@@ -44,13 +48,17 @@ public class ServiceCenterService {
             ServicePackageRepository servicePackageRepository,
             OwnerRepository ownerRepository,
             InvoiceRepository invoiceRepository,
-            ManagerRepository managerRepository) {
+            ManagerRepository managerRepository,
+            SuperAdminRepository superAdminRepository,
+            NotificationService notificationService) {
         this.serviceCenterRepository = serviceCenterRepository;
         this.userRepository = userRepository;
         this.servicePackageRepository = servicePackageRepository;
         this.ownerRepository = ownerRepository;
         this.invoiceRepository = invoiceRepository;
         this.managerRepository = managerRepository;
+        this.superAdminRepository = superAdminRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -155,7 +163,24 @@ public class ServiceCenterService {
         if (center.getCenterId() == null) {
             center.setCenterId(UUID.randomUUID());
         }
-        return mapEntityToDto(serviceCenterRepository.save(center));
+        
+        if (center.getStatus() == null) {
+            center.setStatus("PENDING");
+        }
+
+        ServiceCenter savedCenter = serviceCenterRepository.save(center);
+
+        // Notify all Super Admins
+        try {
+            String ownerName = savedCenter.getOwner() != null ? savedCenter.getOwner().getFullName() : "An Owner";
+            String message = "New registration: '" + savedCenter.getName() + "' has been registered by " + ownerName + " and is pending review.";
+            List<SuperAdmin> admins = superAdminRepository.findAll();
+            notificationService.broadcastNotificationSafe(admins, "New Service Center Registered", message, "INFO", "/dashboard/super-admin");
+        } catch (Exception e) {
+            System.err.println("Failed to trigger service center registration notification: " + e.getMessage());
+        }
+
+        return mapEntityToDto(savedCenter);
     }
 
     /**

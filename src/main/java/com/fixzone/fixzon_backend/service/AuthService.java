@@ -13,11 +13,15 @@ import com.fixzone.fixzon_backend.model.Customer;
 import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import com.fixzone.fixzon_backend.repository.SuperAdminRepository;
+import com.fixzone.fixzon_backend.service.NotificationService;
+import com.fixzone.fixzon_backend.model.SuperAdmin;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
 
 @Service
 public class AuthService {
@@ -25,17 +29,23 @@ public class AuthService {
     private final AuthRepository authRepository;
     private final CustomerRepository customerRepository;
     private final OwnerRepository ownerRepository;
+    private final SuperAdminRepository superAdminRepository;
+    private final NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
     public AuthService(AuthRepository authRepository,
                        CustomerRepository customerRepository,
                        OwnerRepository ownerRepository,
+                       SuperAdminRepository superAdminRepository,
+                       NotificationService notificationService,
                        PasswordEncoder passwordEncoder,
                        JwtUtil jwtUtil) {
         this.authRepository = authRepository;
         this.customerRepository = customerRepository;
         this.ownerRepository = ownerRepository;
+        this.superAdminRepository = superAdminRepository;
+        this.notificationService = notificationService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
     }
@@ -77,7 +87,10 @@ public class AuthService {
         customer.setStatus(AppConstants.STATUS_ACTIVE);
         customer.setCustomerCode(AppConstants.CUSTOMER_PREFIX + System.currentTimeMillis());
 
-        customerRepository.save(customer);
+        Customer savedCustomer = customerRepository.save(customer);
+
+        // Safe notification trigger
+        triggerSignupNotifications(savedCustomer, "Customer");
 
         String token = jwtUtil.generateToken(customer);
 
@@ -107,7 +120,10 @@ public class AuthService {
         owner.setCompanyName(request.getCompanyName());
         owner.setCompanyNumber(request.getCompanyNumber());
 
-        ownerRepository.save(owner);
+        Owner savedOwner = ownerRepository.save(owner);
+
+        // Safe notification trigger
+        triggerSignupNotifications(savedOwner, "Owner");
 
         String token = jwtUtil.generateToken(owner);
 
@@ -118,5 +134,21 @@ public class AuthService {
                 owner.getRole(),
                 owner.getFullName()
         );
+    }
+
+    private void triggerSignupNotifications(User user, String roleLabel) {
+        try {
+            String dashboardUrl = roleLabel.equalsIgnoreCase("Owner") ? "/dashboard/company-owner" : "/dashboard/customer";
+            notificationService.createNotificationSafe(user, "Welcome to FixZone!", 
+                "Hi " + user.getFullName() + ", welcome to FixZone! Your " + roleLabel.toLowerCase() + " account has been registered successfully.", 
+                "SUCCESS", dashboardUrl);
+
+            List<SuperAdmin> admins = superAdminRepository.findAll();
+            notificationService.broadcastNotificationSafe(admins, "New User Registration", 
+                "A new " + roleLabel.toLowerCase() + " has registered: " + user.getFullName() + " (" + user.getEmail() + ").", 
+                "INFO", null);
+        } catch (Exception e) {
+            System.err.println("Error triggering signup notifications: " + e.getMessage());
+        }
     }
 }

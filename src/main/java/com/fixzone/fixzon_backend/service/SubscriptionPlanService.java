@@ -1,7 +1,10 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.model.SubscriptionPlan;
+import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.SubscriptionPlanRepository;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import com.fixzone.fixzon_backend.service.NotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,9 +15,13 @@ import java.util.UUID;
 public class SubscriptionPlanService {
 
     private final SubscriptionPlanRepository planRepository;
+    private final OwnerRepository ownerRepository;
+    private final NotificationService notificationService;
 
-    public SubscriptionPlanService(SubscriptionPlanRepository planRepository) {
+    public SubscriptionPlanService(SubscriptionPlanRepository planRepository, OwnerRepository ownerRepository, NotificationService notificationService) {
         this.planRepository = planRepository;
+        this.ownerRepository = ownerRepository;
+        this.notificationService = notificationService;
     }
 
     public List<SubscriptionPlan> getAllPlans() {
@@ -31,7 +38,13 @@ public class SubscriptionPlanService {
         if (planRepository.existsByName(plan.getName())) {
             throw new RuntimeException("Plan with name " + plan.getName() + " already exists");
         }
-        return planRepository.save(plan);
+        SubscriptionPlan savedPlan = planRepository.save(plan);
+
+        // Notify all owners
+        String message = "A new subscription plan '" + savedPlan.getName() + "' is now available for Rs. " + savedPlan.getPrice() + "/mo. Click to review options.";
+        notificationService.broadcastNotificationSafe(ownerRepository.findAll(), "New Subscription Plan Available", message, "SUCCESS", "/dashboard/company-owner");
+
+        return savedPlan;
     }
 
     @Transactional
@@ -46,14 +59,24 @@ public class SubscriptionPlanService {
         plan.setFeatures(planDetails.getFeatures());
         plan.setIsPopular(planDetails.getIsPopular());
         
-        return planRepository.save(plan);
+        SubscriptionPlan savedPlan = planRepository.save(plan);
+
+        // Notify all owners
+        String message = "Subscription plan '" + savedPlan.getName() + "' has been updated (Price: Rs. " + savedPlan.getPrice() + "/mo). Click to review.";
+        notificationService.broadcastNotificationSafe(ownerRepository.findAll(), "Subscription Plan Updated", message, "INFO", "/dashboard/company-owner");
+
+        return savedPlan;
     }
 
     @Transactional
     public void deletePlan(UUID id) {
-        if (!planRepository.existsById(id)) {
-            throw new RuntimeException("Plan not found with id: " + id);
-        }
-        planRepository.deleteById(id);
+        SubscriptionPlan plan = planRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Plan not found with id: " + id));
+        String planName = plan.getName();
+        planRepository.delete(plan);
+
+        // Notify all owners
+        String message = "Subscription plan '" + planName + "' is no longer available. Click to review pricing options.";
+        notificationService.broadcastNotificationSafe(ownerRepository.findAll(), "Subscription Plan Removed", message, "WARNING", "/dashboard/company-owner");
     }
 }
