@@ -7,6 +7,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,6 +20,31 @@ public class UserService {
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    public void updateProfileImage(UUID userId, String imageUrl) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setProfilePictureUrl(imageUrl);
+        userRepository.save(user);
+    }
+
+    public void updateProfile(UUID userId, String fullName, String phone) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Sri Lankan mobile number validation
+        if (phone != null && !phone.isEmpty()) {
+            String cleanedPhone = phone.replace(" ", "");
+            String regex = "^(\\+94|0)?7[0-9]{8}$";
+            if (!cleanedPhone.matches(regex)) {
+                throw new RuntimeException("Invalid Sri Lankan mobile number format");
+            }
+        }
+
+        user.setFullName(fullName);
+        user.setPhone(phone);
+        userRepository.save(user);
     }
 
     public UserDTO getUserByEmail(String email) {

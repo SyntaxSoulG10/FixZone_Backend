@@ -42,8 +42,8 @@ public class DataInitializer implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final DataSource dataSource;
 
-    @Value("${spring.jpa.hibernate.ddl-auto:update}")
-    private String ddlAuto;
+        @Value("${spring.jpa.hibernate.ddl-auto:update}")
+        private String ddlAuto;
 
     public DataInitializer(UserRepository userRepository, OwnerRepository ownerRepository,
             CustomerRepository customerRepository, ManagerRepository managerRepository,
@@ -184,14 +184,37 @@ public class DataInitializer implements CommandLineRunner {
         for (int i = 0; i < owners.size(); i++) {
             Owner owner = owners.get(i);
             UUID scId = UUID.fromString("11111111-1111-1111-1111-11111111111" + (i + 1));
-            ServiceCenter sc = new ServiceCenter(scId, owner, owner.getCompanyName() + " HQ", "Colombo",
-                    "+9411400", "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
-                    LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, "APPROVED", null, null, null, null, null);
+            ServiceCenter sc = new ServiceCenter();
+            sc.setCenterId(scId);
+            sc.setOwner(owner);
+            sc.setName(owner.getCompanyName() + " HQ");
+            sc.setAddress("Colombo");
+            sc.setContactPhone("+9411400");
+            sc.setOpeningHours("08:00 - 18:00");
+            sc.setRating(new BigDecimal("4.5"));
+            sc.setIsActive(true);
+            sc.setCreatedAt(LocalDateTime.now());
+            sc.setCreatedBy("system");
+            sc.setUpdatedAt(LocalDateTime.now());
+            sc.setUpdatedBy("system");
+            sc.setSupportedVehicleBrands(new String[] { "Toyota", "Nissan" });
+            sc.setStatus("APPROVED");
             serviceCenterRepository.save(sc);
 
             UUID pkgId = UUID.fromString("22222222-2222-2222-2222-22222222222" + (i + 1));
-            ServicePackage p = new ServicePackage(pkgId, sc, "Full Service", "Package", "Oil & Filter", 
-                    new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system");
+            ServicePackage p = new ServicePackage();
+            p.setPackageId(pkgId);
+            p.setServiceCenter(sc);
+            p.setName("Full Service");
+            p.setType("Package");
+            p.setVehicleType("Oil & Filter");
+            p.setBasePrice(new BigDecimal("15000.00"));
+            p.setEstimatedDurationMins(120);
+            p.setIsActive(true);
+            p.setCreatedAt(LocalDateTime.now());
+            p.setCreatedBy("system");
+            p.setUpdatedAt(LocalDateTime.now());
+            p.setUpdatedBy("system");
             servicePackageRepository.save(p);
         }
 
@@ -355,23 +378,68 @@ public class DataInitializer implements CommandLineRunner {
 
         if (serviceCenterRepository.findByOwner_UserId(owner.getUserId()).size() < 3) {
             for (String loc : locations) {
-                ServiceCenter sc = new ServiceCenter(UUID.randomUUID(), owner, "Raja Motors - " + loc, loc,
-                        "+94112000" + loc.length(), "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
-                        LocalDateTime.now(), "system", new String[] {"Toyota", "Honda", "Nissan", "Suzuki"}, "APPROVED", null, null, null, null, null);
+                ServiceCenter sc = new ServiceCenter();
+                sc.setCenterId(UUID.randomUUID());
+                sc.setOwner(owner);
+                sc.setName("Raja Motors - " + loc);
+                sc.setAddress(loc);
+                sc.setContactPhone("+94112000" + loc.length());
+                sc.setOpeningHours("08:00 - 18:00");
+                sc.setRating(new BigDecimal("4.5"));
+                sc.setIsActive(true);
+                sc.setCreatedAt(LocalDateTime.now());
+                sc.setCreatedBy("system");
+                sc.setUpdatedAt(LocalDateTime.now());
+                sc.setUpdatedBy("system");
+                sc.setSupportedVehicleBrands(new String[] {"Toyota", "Honda", "Nissan", "Suzuki"});
+                sc.setStatus("APPROVED");
                 centers.add(serviceCenterRepository.save(sc));
 
                 // Add 3 distinct packages per center for variety
-                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Basic Service", "Base maintenance", 
-                        "Essential oil and filter change.", new BigDecimal("8500.00"), 60, true, 
-                        LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+                ServicePackage sp1 = new ServicePackage();
+                sp1.setPackageId(UUID.randomUUID());
+                sp1.setServiceCenter(sc);
+                sp1.setName("Basic Service");
+                sp1.setType("Base maintenance");
+                sp1.setDescription("Essential oil and filter change.");
+                sp1.setBasePrice(new BigDecimal("8500.00"));
+                sp1.setEstimatedDurationMins(60);
+                sp1.setIsActive(true);
+                sp1.setCreatedAt(LocalDateTime.now());
+                sp1.setCreatedBy("system");
+                sp1.setUpdatedAt(LocalDateTime.now());
+                sp1.setUpdatedBy("system");
+                packages.add(servicePackageRepository.save(sp1));
                 
-                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Premium Full Service", "Full maintenance package", 
-                        "Oil change, filter, brake check, engine scan.", new BigDecimal("15500.00"), 120, true, 
-                        LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+                ServicePackage sp2 = new ServicePackage();
+                sp2.setPackageId(UUID.randomUUID());
+                sp2.setServiceCenter(sc);
+                sp2.setName("Premium Full Service");
+                sp2.setType("Full maintenance package");
+                sp2.setDescription("Oil change, filter, brake check, engine scan.");
+                sp2.setBasePrice(new BigDecimal("15500.00"));
+                sp2.setEstimatedDurationMins(120);
+                sp2.setIsActive(true);
+                sp2.setCreatedAt(LocalDateTime.now());
+                sp2.setCreatedBy("system");
+                sp2.setUpdatedAt(LocalDateTime.now());
+                sp2.setUpdatedBy("system");
+                packages.add(servicePackageRepository.save(sp2));
 
-                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Interior & Exterior Detail", "Deep cleaning", 
-                        "Full body wash, vacuum, and wax.", new BigDecimal("5500.00"), 90, true, 
-                        LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+                ServicePackage sp3 = new ServicePackage();
+                sp3.setPackageId(UUID.randomUUID());
+                sp3.setServiceCenter(sc);
+                sp3.setName("Interior & Exterior Detail");
+                sp3.setType("Deep cleaning");
+                sp3.setDescription("Full body wash, vacuum, and wax.");
+                sp3.setBasePrice(new BigDecimal("5500.00"));
+                sp3.setEstimatedDurationMins(90);
+                sp3.setIsActive(true);
+                sp3.setCreatedAt(LocalDateTime.now());
+                sp3.setCreatedBy("system");
+                sp3.setUpdatedAt(LocalDateTime.now());
+                sp3.setUpdatedBy("system");
+                packages.add(servicePackageRepository.save(sp3));
 
                 String mgrImg = "https://images.unsplash.com/photo-1651684215020-f7a5b6610f23?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvZmlsZSUyMHBob3Rvc3xlbnwwfHwwfHx8MA%3D%3D";
                 
@@ -387,9 +455,20 @@ public class DataInitializer implements CommandLineRunner {
             for (ServiceCenter center : centers) {
                 List<ServicePackage> centerPackages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
                 if (centerPackages.isEmpty()) {
-                    packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), center, "Standard Service", "Base maintenance", 
-                            "Essential checks and oil service.", new BigDecimal("8500.00"), 60, true, 
-                            LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+                    ServicePackage sp = new ServicePackage();
+                    sp.setPackageId(UUID.randomUUID());
+                    sp.setServiceCenter(center);
+                    sp.setName("Standard Service");
+                    sp.setType("Base maintenance");
+                    sp.setDescription("Essential checks and oil service.");
+                    sp.setBasePrice(new BigDecimal("8500.00"));
+                    sp.setEstimatedDurationMins(60);
+                    sp.setIsActive(true);
+                    sp.setCreatedAt(LocalDateTime.now());
+                    sp.setCreatedBy("system");
+                    sp.setUpdatedAt(LocalDateTime.now());
+                    sp.setUpdatedBy("system");
+                    packages.add(servicePackageRepository.save(sp));
                 } else {
                     packages.addAll(centerPackages);
                 }
