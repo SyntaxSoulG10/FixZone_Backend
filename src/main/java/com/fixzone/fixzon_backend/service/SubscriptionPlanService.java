@@ -1,10 +1,8 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.model.SubscriptionPlan;
-import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.SubscriptionPlanRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
-import com.fixzone.fixzon_backend.service.NotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

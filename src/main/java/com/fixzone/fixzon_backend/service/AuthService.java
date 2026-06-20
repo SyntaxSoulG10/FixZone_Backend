@@ -14,7 +14,6 @@ import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.SuperAdminRepository;
-import com.fixzone.fixzon_backend.service.NotificationService;
 import com.fixzone.fixzon_backend.model.SuperAdmin;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

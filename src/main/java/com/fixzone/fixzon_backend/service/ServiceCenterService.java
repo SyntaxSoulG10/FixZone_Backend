@@ -7,7 +7,6 @@ import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.model.User;
 import com.fixzone.fixzon_backend.repository.*;
 import com.fixzone.fixzon_backend.config.AppConstants;
-import com.fixzone.fixzon_backend.service.NotificationService;
 import com.fixzone.fixzon_backend.model.SuperAdmin;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
