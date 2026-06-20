@@ -2,15 +2,18 @@ package com.fixzone.fixzon_backend.controller;
 
 import com.fixzone.fixzon_backend.DTO.AuthRequestDTO;
 import com.fixzone.fixzon_backend.DTO.AuthResponseDTO;
+import com.fixzone.fixzon_backend.DTO.ErrorResponseDTO;
 import com.fixzone.fixzon_backend.DTO.RegisterCustomerDTO;
 import com.fixzone.fixzon_backend.DTO.RegisterOwnerDTO;
 import com.fixzone.fixzon_backend.service.AuthService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
+@Slf4j
 public class AuthController {
 
     @Autowired
