@@ -197,6 +197,8 @@ public class DataInitializer implements CommandLineRunner {
 
         log.info("--- DATA SEEDING COMPLETE ---");
         
+        ensureMockCharlie();
+        ensureRajaMotors();
         ensureMockManager();
     }
 
