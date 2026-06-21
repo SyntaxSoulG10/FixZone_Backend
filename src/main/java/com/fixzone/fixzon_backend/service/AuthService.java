@@ -51,10 +51,10 @@ public class AuthService {
 
     public AuthResponseDTO login(AuthRequestDTO request) {
         User user = authRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("Invalid email or password");
+            throw new IllegalArgumentException("Invalid email or password");
         }
 
         user.setLastLoginAt(LocalDateTime.now());
@@ -73,7 +73,7 @@ public class AuthService {
 
     public AuthResponseDTO registerCustomer(RegisterCustomerDTO request) {
         if (authRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email is already taken");
+            throw new IllegalArgumentException("Email is already taken");
         }
 
         Customer customer = new Customer();
@@ -104,7 +104,7 @@ public class AuthService {
 
     public AuthResponseDTO registerOwner(RegisterOwnerDTO request) {
         if (authRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email is already taken");
+            throw new IllegalArgumentException("Email is already taken");
         }
 
         Owner owner = new Owner();
