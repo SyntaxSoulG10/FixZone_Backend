@@ -3,8 +3,9 @@ package com.fixzone.fixzon_backend.config;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
+import org.springframework.beans.factory.annotation.Value;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -15,7 +16,8 @@ import com.fixzone.fixzon_backend.model.User;
 public class JwtUtil {
 
     // You should move this secret to application.properties/dotenv
-    private final String secret = "your-256-bit-secret-your-256-bit-secret-your-256-bit-secret";
+    @Value("${jwt.secret}")
+    private String secret;
     private final long expiration = 86400000; // 1 day in milliseconds
 
     private SecretKey getSigningKey() {
