@@ -33,4 +33,21 @@ public class AuthController {
         AuthResponseDTO response = authService.registerOwner(request);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<java.util.Map<String, String>> changePassword(
+            @jakarta.validation.Valid @RequestBody com.fixzone.fixzon_backend.DTO.ChangePasswordRequestDTO request) {
+        try {
+            String email = (String) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            authService.changePassword(email, request.getCurrentPassword(), request.getNewPassword());
+            
+            java.util.Map<String, String> response = new java.util.HashMap<>();
+            response.put("message", "Password changed successfully");
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            java.util.Map<String, String> response = new java.util.HashMap<>();
+            response.put("details", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
 }

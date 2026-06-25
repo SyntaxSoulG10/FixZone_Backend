@@ -62,12 +62,36 @@ public class ServiceCenterController {
     @PutMapping("/{id}")
     public ResponseEntity<ServiceCenterDTO> updateServiceCenter(@PathVariable UUID id,
             @jakarta.validation.Valid @RequestBody ServiceCenterDTO dto) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+        
+        ServiceCenterDTO existingCenter = serviceCenterService.getServiceCenterById(id);
+        if (existingCenter == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        if (owner == null || !owner.getUserId().equals(existingCenter.getOwnerId())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Access Denied: You do not own this service center");
+        }
+        
         ServiceCenterDTO updatedCenter = serviceCenterService.updateServiceCenter(id, dto);
         return updatedCenter != null ? ResponseEntity.ok(updatedCenter) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteServiceCenter(@PathVariable UUID id) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+        
+        ServiceCenterDTO existingCenter = serviceCenterService.getServiceCenterById(id);
+        if (existingCenter == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        if (owner == null || !owner.getUserId().equals(existingCenter.getOwnerId())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Access Denied: You do not own this service center");
+        }
+
         serviceCenterService.deleteServiceCenter(id);
         return ResponseEntity.noContent().build();
     }

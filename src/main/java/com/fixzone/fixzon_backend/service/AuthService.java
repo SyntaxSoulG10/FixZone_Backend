@@ -135,6 +135,18 @@ public class AuthService {
         );
     }
 
+    public void changePassword(String email, String currentPassword, String newPassword) {
+        User user = authRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Incorrect current password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        authRepository.save(user);
+    }
+
     private void triggerSignupNotifications(User user, String roleLabel) {
         try {
             String dashboardUrl = roleLabel.equalsIgnoreCase("Owner") ? "/dashboard/company-owner" : "/dashboard/customer";
