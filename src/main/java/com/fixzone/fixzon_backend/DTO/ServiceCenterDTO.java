@@ -39,6 +39,8 @@ public class ServiceCenterDTO {
     private String updatedBy;
     private String[] supportedVehicleBrands;
     private String status;
+    private Boolean stripeConnected;
+    private String stripeConnectionMessage;
 
     @NotBlank(message = "Business registration document is required")
     private String businessRegUrl;

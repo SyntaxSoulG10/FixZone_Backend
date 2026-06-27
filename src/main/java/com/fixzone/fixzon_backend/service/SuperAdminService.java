@@ -4,7 +4,6 @@ import com.fixzone.fixzon_backend.DTO.SuperAdminDTO;
 import com.fixzone.fixzon_backend.model.SuperAdmin;
 import com.fixzone.fixzon_backend.repository.SuperAdminRepository;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,8 +14,11 @@ import java.util.stream.Collectors;
 @Service
 public class SuperAdminService {
 
-    @Autowired
-    private SuperAdminRepository superAdminRepository;
+    private final SuperAdminRepository superAdminRepository;
+
+    public SuperAdminService(SuperAdminRepository superAdminRepository) {
+        this.superAdminRepository = superAdminRepository;
+    }
 
     public List<SuperAdminDTO> getAllSuperAdmins() {
         return superAdminRepository.findAll().stream()

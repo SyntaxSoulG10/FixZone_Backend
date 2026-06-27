@@ -11,6 +11,21 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
     List<ServicePackage> findByServiceCenter_CenterIdInAndIsActiveTrue(java.util.Collection<UUID> centerIds);
     List<ServicePackage> findByIsActiveTrue();
 
+    /**
+     * Returns packages for a center that are either compatible with a specific
+     * vehicle type OR have no vehicle type restriction (null = universal).
+     */
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT sp FROM ServicePackage sp
+        WHERE sp.serviceCenter.centerId = :centerId
+        AND sp.isActive = true
+        AND (sp.vehicleType IS NULL OR sp.vehicleType = :vehicleType)
+        """)
+    List<ServicePackage> findByCenterIdAndVehicleType(
+        @org.springframework.data.repository.query.Param("centerId") UUID centerId,
+        @org.springframework.data.repository.query.Param("vehicleType") String vehicleType
+    );
+
     @org.springframework.data.jpa.repository.Query("SELECT sp FROM ServicePackage sp JOIN sp.serviceCenter sc JOIN User u ON sc.owner.userId = u.userId WHERE u.ownerCode = :ownerCode AND sp.isActive = true")
     List<ServicePackage> findPackagesByOwnerCode(@org.springframework.data.repository.query.Param("ownerCode") String ownerCode);
 

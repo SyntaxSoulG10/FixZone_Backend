@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
+@SuppressWarnings("null")
 public class ServicePackageService {
     private final ServicePackageRepository repository;
     private final ServiceCenterRepository centerRepository;
@@ -37,6 +38,21 @@ public class ServicePackageService {
             throw new IllegalArgumentException("Center ID cannot be null");
         }
         return repository.findByServiceCenter_CenterIdAndIsActiveTrue(centerId).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns packages for a center filtered by vehicle type.
+     * Packages with no vehicleType restriction are always included.
+     */
+    @Transactional(readOnly = true)
+    public List<ServicePackageDTO> getPackagesByCenterAndVehicleType(UUID centerId, String vehicleType) {
+        if (centerId == null) throw new IllegalArgumentException("Center ID cannot be null");
+        if (vehicleType == null || vehicleType.isBlank()) {
+            return getPackagesByCenter(centerId);
+        }
+        return repository.findByCenterIdAndVehicleType(centerId, vehicleType.toUpperCase()).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
