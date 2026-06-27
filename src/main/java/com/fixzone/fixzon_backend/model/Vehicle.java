@@ -25,6 +25,16 @@ public class Vehicle {
     @Column(name = "plate_number", nullable = false, unique = true)
     private String plateNumber;
 
+    /**
+     * Vehicle type used to filter compatible service packages.
+     * Expected values: "CAR", "BIKE", "VAN", "TRUCK"
+     */
+    @Column(name = "model", length = 100)
+    private String model;
+
+    @Column(name = "vehicle_type", length = 20)
+    private String vehicleType;
+
     @Column(name = "image_url")
     private String imageUrl;
 

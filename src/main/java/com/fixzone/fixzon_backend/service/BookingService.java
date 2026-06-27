@@ -6,8 +6,10 @@ import com.fixzone.fixzon_backend.config.AppConstants;
 import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
+import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
+import com.fixzone.fixzon_backend.repository.VehicleRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -20,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Comparator;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -31,16 +34,22 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final ServiceCenterRepository serviceCenterRepository;
     private final ServicePackageRepository servicePackageRepository;
+    private final VehicleRepository vehicleRepository;
     private final PaymentService paymentService;
+    private final CustomerRepository customerRepository;
 
     public BookingService(BookingRepository bookingRepository,
             ServiceCenterRepository serviceCenterRepository,
             ServicePackageRepository servicePackageRepository,
-            PaymentService paymentService) {
+            VehicleRepository vehicleRepository,
+            PaymentService paymentService,
+            CustomerRepository customerRepository) {
         this.bookingRepository = bookingRepository;
         this.serviceCenterRepository = serviceCenterRepository;
         this.servicePackageRepository = servicePackageRepository;
+        this.vehicleRepository = vehicleRepository;
         this.paymentService = paymentService;
+        this.customerRepository = customerRepository;
     }
 
     @Transactional(readOnly = true)
@@ -57,6 +66,21 @@ public class BookingService {
         return mapToResponseDTO(Objects.requireNonNull(booking));
     }
 
+    /**
+     * Returns all bookings for the currently authenticated customer.
+     * Uses the JWT principal (email) to resolve the customer ID.
+     */
+    @Transactional(readOnly = true)
+    public List<BookingResponseDTO> getBookingsForCurrentCustomer(String customerEmail) {
+        if (customerEmail == null || customerEmail.isBlank()) {
+            throw new IllegalArgumentException("Customer email must not be null");
+        }
+        com.fixzone.fixzon_backend.model.Customer customer = customerRepository
+                .findByEmail(customerEmail)
+                .orElseThrow(() -> new RuntimeException("Customer not found: " + customerEmail));
+        return getBookingsByCustomer(customer.getUserId());
+    }
+
     @Transactional(readOnly = true)
     public List<BookingResponseDTO> getBookingsByCustomer(UUID customerId) {
         return bookingRepository.findByCustomerId(Objects.requireNonNull(customerId, "Customer ID must not be null"))
@@ -66,20 +90,38 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponseDTO createBooking(BookingRequestDTO request) {
+    public BookingResponseDTO createBooking(BookingRequestDTO request, String customerEmail) {
+        // Resolve customer from JWT email — never trust customerId from the request body
+        com.fixzone.fixzon_backend.model.Customer customer = customerRepository
+                .findByEmail(customerEmail)
+                .orElseThrow(() -> new RuntimeException("Customer not found: " + customerEmail));
+
         Booking booking = new Booking();
         BeanUtils.copyProperties(Objects.requireNonNull(request, "Request must not be null"), booking);
-        
-        // Ensure IDs are set
+
+        // Always set customer from the authenticated user
+        booking.setCustomerId(customer.getUserId());
+
+        // Securely fetch centerId and tenantId from the ServicePackage
+        if (booking.getPackageId() != null) {
+            servicePackageRepository.findById(booking.getPackageId()).ifPresent(pkg -> {
+                if (pkg.getServiceCenter() != null) {
+                    booking.setCenterId(pkg.getServiceCenter().getCenterId());
+                    if (pkg.getServiceCenter().getOwner() != null) {
+                        booking.setTenantId(pkg.getServiceCenter().getOwner().getUserId());
+                    }
+                }
+            });
+        }
+
         if (booking.getBookingId() == null) {
             booking.setBookingId(UUID.randomUUID());
         }
-        
-        // Use a default tenant ID if not provided (for multi-tenant support)
+
         if (booking.getTenantId() == null) {
             booking.setTenantId(UUID.fromString(AppConstants.DEFAULT_TENANT_ID));
         }
-        
+
         booking.setStatus(BookingStatus.PENDING_PAYMENT);
         Booking saved = bookingRepository.save(booking);
         return mapToResponseDTO(saved);
@@ -185,6 +227,27 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
+    public List<BookingResponseDTO> getUpcomingBookings(UUID customerId) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+        List<Booking> bookings;
+        if (customerId != null) {
+            bookings = bookingRepository.findByCustomerIdAndStatus(customerId, com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED);
+        } else {
+            bookings = bookingRepository.findByStatus(com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED);
+        }
+
+        return bookings.stream()
+                .filter(b -> {
+                    java.time.LocalDateTime dt = java.time.LocalDateTime.of(b.getBookingDate(), b.getBookingTime());
+                    return !dt.isBefore(now);
+                })
+                .sorted(Comparator.comparing(b -> java.time.LocalDateTime.of(b.getBookingDate(), b.getBookingTime())))
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public boolean isSlotTaken(UUID centerId, LocalDate date, LocalTime time) {
         return bookingRepository.existsActiveSlot(Objects.requireNonNull(centerId, "Center ID must not be null"), date,
                 time, java.time.LocalDateTime.now());
@@ -245,10 +308,45 @@ public class BookingService {
         Objects.requireNonNull(booking, "Booking must not be null");
         BookingResponseDTO dto = new BookingResponseDTO();
         BeanUtils.copyProperties(booking, dto);
-        serviceCenterRepository.findById(Objects.requireNonNull(booking.getCenterId(), "Center ID must not be null"))
-                .ifPresent(c -> dto.setServiceCenterName(c.getName()));
-        servicePackageRepository.findById(Objects.requireNonNull(booking.getPackageId(), "Package ID must not be null"))
-                .ifPresent(p -> dto.setPackageName(p.getName()));
+        if (booking.getCenterId() != null) {
+            var scOpt = serviceCenterRepository.findById(booking.getCenterId());
+            if (scOpt.isPresent()) {
+                dto.setServiceCenterName(scOpt.get().getName());
+                dto.setCenterAddress(scOpt.get().getAddress() != null ? scOpt.get().getAddress() : "");
+            } else {
+                dto.setServiceCenterName("Unknown Service Center");
+                dto.setCenterAddress("");
+            }
+        } else {
+            dto.setServiceCenterName("Unknown Service Center");
+            dto.setCenterAddress("");
+        }
+
+        if (booking.getPackageId() != null) {
+            var pkgOpt = servicePackageRepository.findById(booking.getPackageId());
+            if (pkgOpt.isPresent()) {
+                dto.setPackageName(pkgOpt.get().getName());
+            } else {
+                dto.setPackageName("Package");
+            }
+        } else {
+            dto.setPackageName("Package");
+        }
+
+        if (booking.getVehicleId() != null) {
+            var vOpt = vehicleRepository.findById(booking.getVehicleId());
+            if (vOpt.isPresent()) {
+                var v = vOpt.get();
+                String label = (v.getBrand() != null ? v.getBrand() : "") + (v.getPlateNumber() != null ? " - " + v.getPlateNumber() : "");
+                dto.setVehicleLabel(label.isBlank() ? "Registered Vehicle" : label);
+            } else {
+                dto.setVehicleLabel("Registered Vehicle");
+            }
+        } else {
+            dto.setVehicleLabel("Registered Vehicle");
+        }
+
+        dto.setIsOnline(booking.getGatewaySessionId() != null && !booking.getGatewaySessionId().isEmpty());
         return dto;
     }
 }

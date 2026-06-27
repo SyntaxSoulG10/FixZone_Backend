@@ -30,6 +30,16 @@ public class BookingController {
     public ResponseEntity<List<BookingResponseDTO>> getAllBookings() {
         return ResponseEntity.ok(bookingService.getAllBookings());
     }
+
+    /**
+     * Returns bookings for the currently authenticated customer.
+     * This is the primary endpoint the customer dashboard should use.
+     */
+    @GetMapping("/my")
+    public ResponseEntity<List<BookingResponseDTO>> getMyBookings(
+            org.springframework.security.core.Authentication authentication) {
+        return ResponseEntity.ok(bookingService.getBookingsForCurrentCustomer(authentication.getName()));
+    }
     
     @GetMapping("/{id}")
     public ResponseEntity<BookingResponseDTO> getBookingById(@PathVariable UUID id) {
@@ -87,13 +97,23 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.getBookingsByStatus("CONFIRMED"));
     }
 
+    @GetMapping("/upcoming")
+    public ResponseEntity<List<BookingResponseDTO>> getUpcomingBookings(
+            @RequestParam(required = false) UUID customerId
+    ) {
+        return ResponseEntity.ok(bookingService.getUpcomingBookings(customerId));
+    }
+
 
     /**
      * Create a new booking.
+     * customerId is resolved from the JWT — the frontend does not need to send it.
      */
     @PostMapping
-    public ResponseEntity<BookingResponseDTO> createBooking(@jakarta.validation.Valid @RequestBody BookingRequestDTO request) {
-        return ResponseEntity.status(201).body(bookingService.createBooking(request));
+    public ResponseEntity<BookingResponseDTO> createBooking(
+            @jakarta.validation.Valid @RequestBody BookingRequestDTO request,
+            org.springframework.security.core.Authentication authentication) {
+        return ResponseEntity.status(201).body(bookingService.createBooking(request, authentication.getName()));
     }
 
     /**
