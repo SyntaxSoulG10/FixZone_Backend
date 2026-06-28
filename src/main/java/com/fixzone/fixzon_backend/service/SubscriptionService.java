@@ -93,7 +93,7 @@ public class SubscriptionService {
                     Owner owner = ownerOpt.get();
                     SubscriptionPlan plan = planOpt.get();
 
-                    owner.setSubscriptionStatus("ACTIVE");
+                    owner.setSubscriptionStatus("PREMIUM_ACTIVE");
                     owner.setStatus("Active"); // Reactivate owner account on successful subscription
                     owner.setCurrentPlanId(planId);
                     owner.setAutoRenewEnabled(autoRenew);

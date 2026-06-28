@@ -2,6 +2,8 @@ package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.model.SubscriptionPlan;
 import com.fixzone.fixzon_backend.repository.SubscriptionPlanRepository;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import com.fixzone.fixzon_backend.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +27,12 @@ public class SubscriptionPlanServiceTest {
 
     @Mock
     private SubscriptionPlanRepository planRepository;
+
+    @Mock
+    private OwnerRepository ownerRepository;
+
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private SubscriptionPlanService planService;
@@ -101,12 +109,12 @@ public class SubscriptionPlanServiceTest {
     @Test
     void deletePlan_Exists_ShouldCallDelete() {
         // Arrange
-        when(planRepository.existsById(planId)).thenReturn(true);
+        when(planRepository.findById(planId)).thenReturn(Optional.of(samplePlan));
 
         // Act
         planService.deletePlan(planId);
 
         // Assert
-        verify(planRepository).deleteById(planId);
+        verify(planRepository).delete(samplePlan);
     }
 }

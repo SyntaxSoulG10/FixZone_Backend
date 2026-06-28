@@ -376,8 +376,10 @@ public class DataInitializer implements CommandLineRunner {
                 // Always sync password so raja@motors.lk / pass123 always works
                 owner.setPasswordHash(passwordEncoder.encode("pass123"));
                 // Ensure subscription is active so the owner can log in and use the dashboard
-                if (owner.getSubscriptionStatus() == null || "INACTIVE".equals(owner.getSubscriptionStatus()) || "EXPIRED".equals(owner.getSubscriptionStatus())) {
-                    owner.setSubscriptionStatus("ACTIVE");
+                String currentSubStatus = owner.getSubscriptionStatus();
+                if (currentSubStatus == null || "INACTIVE".equals(currentSubStatus) || "EXPIRED".equals(currentSubStatus) 
+                        || "TRIAL_EXPIRED".equals(currentSubStatus) || "PREMIUM_EXPIRED".equals(currentSubStatus)) {
+                    owner.setSubscriptionStatus("PREMIUM_ACTIVE");
                     owner.setTrialEndsAt(LocalDateTime.now().plusDays(335));
                 }
                 owner.setStatus("Active");

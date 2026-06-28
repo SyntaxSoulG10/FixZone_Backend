@@ -68,9 +68,10 @@ public class ServiceCenterController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Your account must be approved by a SuperAdmin before creating a branch.");
         }
 
-        // 2. Check subscription is active (TRIAL or ACTIVE)
-        String subStatus = ownerEntity.getSubscriptionStatus();
-        if (!"TRIAL".equals(subStatus) && !"ACTIVE".equals(subStatus)) {
+        // 2. Check subscription is active (TRIAL_ACTIVE or PREMIUM_ACTIVE)
+        com.fixzone.fixzon_backend.enums.SubscriptionStatus subStatus =
+                com.fixzone.fixzon_backend.enums.SubscriptionStatus.fromLegacy(ownerEntity.getSubscriptionStatus());
+        if (!subStatus.isAccessAllowed()) {
             return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body("Your subscription has expired. Please upgrade your plan before creating a branch.");
         }
 

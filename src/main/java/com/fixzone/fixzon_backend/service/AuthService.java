@@ -118,7 +118,7 @@ public class AuthService {
         owner.setOwnerCode(AppConstants.OWNER_PREFIX + System.currentTimeMillis());
         owner.setCompanyName(request.getCompanyName());
         owner.setCompanyNumber(request.getCompanyNumber());
-        owner.setSubscriptionStatus("TRIAL");
+        owner.setSubscriptionStatus("TRIAL_ACTIVE");
         owner.setTrialEndsAt(LocalDateTime.now().plusDays(30));
         owner.setAutoRenewEnabled(false);
 

@@ -64,6 +64,7 @@ public class ServiceCenterService {
     /**
      * RETRIEVAL: Fetches all active service centers whose owner has an active subscription.
      * Inactive/expired owners' branches are hidden from customers.
+     * Uses SubscriptionStatus enum with backward-compatible legacy mapping.
      */
     public List<ServiceCenterDTO> getAllServiceCenters() {
         List<ServiceCenter> centers = serviceCenterRepository.findByIsActive(true).stream()
@@ -71,9 +72,9 @@ public class ServiceCenterService {
                     if (center.getOwner() == null) return true; // no owner linked — show it
                     return ownerRepository.findById(center.getOwner().getUserId())
                             .map(owner -> {
-                                String status = owner.getSubscriptionStatus();
-                                // Only hide if explicitly INACTIVE or EXPIRED
-                                return !"INACTIVE".equals(status) && !"EXPIRED".equals(status);
+                                com.fixzone.fixzon_backend.enums.SubscriptionStatus status =
+                                        com.fixzone.fixzon_backend.enums.SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus());
+                                return status.isVisibleToCustomers();
                             })
                             .orElse(true); // owner not found in owner table — show it
                 })

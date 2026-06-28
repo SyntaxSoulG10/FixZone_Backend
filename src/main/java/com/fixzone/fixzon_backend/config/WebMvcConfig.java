@@ -17,6 +17,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(subscriptionInterceptor)
                 .addPathPatterns("/api/**") // Apply to all API endpoints
-                .excludePathPatterns("/api/auth/**", "/api/subscriptions/**", "/api/payments/connect/**");
+                .excludePathPatterns("/api/auth/**", "/api/subscriptions/**", "/api/subscription-plans/**", "/api/payments/connect/**");
     }
 }

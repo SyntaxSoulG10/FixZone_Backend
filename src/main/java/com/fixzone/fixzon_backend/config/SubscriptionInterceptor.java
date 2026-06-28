@@ -1,5 +1,6 @@
 package com.fixzone.fixzon_backend.config;
 
+import com.fixzone.fixzon_backend.enums.SubscriptionStatus;
 import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.AuthRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
@@ -11,8 +12,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import java.time.LocalDateTime;
-
+/**
+ * Real-time safety net that blocks API access for owners with expired subscriptions.
+ *
+ * The daily cron job (SubscriptionScheduler) is the primary mechanism for status
+ * transitions, but this interceptor catches any expiry that happens between cron runs.
+ * If it detects an expired owner, it persists the new status and returns HTTP 402.
+ */
 @Component
 public class SubscriptionInterceptor implements HandlerInterceptor {
 
@@ -28,7 +34,8 @@ public class SubscriptionInterceptor implements HandlerInterceptor {
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) throws Exception {
         // Skip check for public endpoints, subscription endpoints, payment connect, and owner profile endpoints
         String path = request.getRequestURI();
-        if (path.contains("/subscriptions/") || path.contains("/auth/") || path.contains("/payments/connect") || path.contains("/owners/")) {
+        if (path.contains("/subscriptions/") || path.contains("/subscription-plans") ||
+            path.contains("/auth/") || path.contains("/payments/connect") || path.contains("/owners/")) {
             return true;
         }
 
@@ -40,32 +47,55 @@ public class SubscriptionInterceptor implements HandlerInterceptor {
             Object userObj = authRepository.findByEmail(email).orElse(null);
 
             if (userObj instanceof Owner owner) {
-                LocalDateTime now = LocalDateTime.now();
+                // Use the enum's fromLegacy() to handle both old and new status strings
+                SubscriptionStatus status = SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus());
 
-                boolean isTrialExpired = "TRIAL".equals(owner.getSubscriptionStatus()) &&
-                        owner.getTrialEndsAt() != null &&
-                        owner.getTrialEndsAt().isBefore(now);
-
-                boolean isActiveExpired = "ACTIVE".equals(owner.getSubscriptionStatus()) &&
-                        owner.getNextBillingDate() != null &&
-                        owner.getNextBillingDate().isBefore(now);
-
-                boolean isExpired = isTrialExpired || isActiveExpired || "EXPIRED".equals(owner.getSubscriptionStatus()) || "INACTIVE".equals(owner.getSubscriptionStatus());
-
-                if (isExpired) {
-                    // Persist INACTIVE status to DB so customers cannot see their branches
-                    if (!"INACTIVE".equals(owner.getSubscriptionStatus())) {
-                        owner.setSubscriptionStatus("INACTIVE");
+                if (!status.isAccessAllowed()) {
+                    // Persist the canonical status if it differs from what's in the DB
+                    // This handles real-time detection between cron runs
+                    if (!status.name().equals(owner.getSubscriptionStatus())) {
+                        owner.setSubscriptionStatus(status.name());
                         owner.setStatus("Inactive");
                         ownerRepository.save(owner);
                     }
+
                     response.setStatus(HttpServletResponse.SC_PAYMENT_REQUIRED);
                     response.setContentType("application/json");
                     response.getWriter().write("{\"error\":\"SUBSCRIPTION_EXPIRED\",\"message\":\"Your subscription has expired. Please upgrade your plan to continue.\"}");
                     return false;
                 }
+
+                // Real-time expiry check (safety net between cron runs)
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+                boolean trialExpiredNow = status == SubscriptionStatus.TRIAL_ACTIVE &&
+                        owner.getTrialEndsAt() != null && owner.getTrialEndsAt().isBefore(now);
+
+                boolean premiumExpiredNow = status == SubscriptionStatus.PREMIUM_ACTIVE &&
+                        owner.getNextBillingDate() != null && owner.getNextBillingDate().isBefore(now);
+
+                if (trialExpiredNow) {
+                    owner.setSubscriptionStatus(SubscriptionStatus.TRIAL_EXPIRED.name());
+                    owner.setStatus("Inactive");
+                    ownerRepository.save(owner);
+                    return blockWithPaymentRequired(response);
+                }
+
+                if (premiumExpiredNow) {
+                    owner.setSubscriptionStatus(SubscriptionStatus.PREMIUM_EXPIRED.name());
+                    owner.setStatus("Inactive");
+                    ownerRepository.save(owner);
+                    return blockWithPaymentRequired(response);
+                }
             }
         }
         return true;
+    }
+
+    private boolean blockWithPaymentRequired(HttpServletResponse response) throws Exception {
+        response.setStatus(HttpServletResponse.SC_PAYMENT_REQUIRED);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\":\"SUBSCRIPTION_EXPIRED\",\"message\":\"Your subscription has expired. Please upgrade your plan to continue.\"}");
+        return false;
     }
 }
