@@ -37,6 +37,7 @@ public class ServiceCenterService {
     private final ManagerRepository managerRepository;
     private final SuperAdminRepository superAdminRepository;
     private final NotificationService notificationService;
+    private final BookingRepository bookingRepository;
 
     /**
      * Dependency Injection via Constructor: Ensures all required repositories
@@ -50,7 +51,8 @@ public class ServiceCenterService {
             InvoiceRepository invoiceRepository,
             ManagerRepository managerRepository,
             SuperAdminRepository superAdminRepository,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            BookingRepository bookingRepository) {
         this.serviceCenterRepository = serviceCenterRepository;
         this.userRepository = userRepository;
         this.servicePackageRepository = servicePackageRepository;
@@ -59,6 +61,7 @@ public class ServiceCenterService {
         this.managerRepository = managerRepository;
         this.superAdminRepository = superAdminRepository;
         this.notificationService = notificationService;
+        this.bookingRepository = bookingRepository;
     }
 
     /**
@@ -78,6 +81,21 @@ public class ServiceCenterService {
                             .orElse(true); // owner not found in owner table — show it
                 })
                 .collect(java.util.stream.Collectors.toList());
+        return mapEntitiesToDtos(centers);
+    }
+
+    /**
+     * TRUSTED CENTERS: Returns centers where the customer has a COMPLETED booking.
+     */
+    public List<ServiceCenterDTO> getTrustedCentersForCustomer(UUID customerId) {
+        if (customerId == null) {
+            throw new IllegalArgumentException("Customer ID cannot be null");
+        }
+        List<UUID> centerIds = bookingRepository.findTrustedCenterIds(customerId);
+        if (centerIds.isEmpty()) {
+            return List.of();
+        }
+        List<ServiceCenter> centers = serviceCenterRepository.findAllById(centerIds);
         return mapEntitiesToDtos(centers);
     }
 
