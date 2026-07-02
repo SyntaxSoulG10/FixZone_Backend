@@ -1,9 +1,24 @@
 {
   "properties": [
     {
+      "name": "imagekit.public-key",
+      "type": "java.lang.String",
+      "description": "ImageKit public key."
+    },
+    {
+      "name": "imagekit.private-key",
+      "type": "java.lang.String",
+      "description": "ImageKit private key."
+    },
+    {
+      "name": "imagekit.url-endpoint",
+      "type": "java.lang.String",
+      "description": "ImageKit URL endpoint."
+    },
+    {
       "name": "stripe.secret-key",
       "type": "java.lang.String",
-      "description": "The secret key for the Stripe API."
+      "description": "Stripe secret key."
     }
   ]
 }

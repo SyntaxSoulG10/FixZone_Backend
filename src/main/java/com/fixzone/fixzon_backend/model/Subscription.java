@@ -36,8 +36,14 @@ public class Subscription {
     }
 
     @PrePersist
-    protected void onCreate() {
-        if (this.id == null) this.id = UUID.randomUUID();
+    @PreUpdate
+    protected void onSaveOrUpdate() {
+        if (this.id == null) {
+            this.id = UUID.randomUUID();
+        }
+        if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("Database Validation Error: Subscription end date cannot be before the start date.");
+        }
     }
 
     // Getters and Setters

@@ -2,6 +2,7 @@ package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.DTO.InvoiceDTO;
 import com.fixzone.fixzon_backend.model.Invoice;
+import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.fixzone.fixzon_backend.repository.InvoiceRepository;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -12,9 +13,11 @@ import java.util.stream.Collectors;
 @Service
 public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
+    private final CustomerRepository customerRepository;
 
-    public InvoiceService(InvoiceRepository invoiceRepository) {
+    public InvoiceService(InvoiceRepository invoiceRepository, CustomerRepository customerRepository) {
         this.invoiceRepository = invoiceRepository;
+        this.customerRepository = customerRepository;
     }
 
     public List<InvoiceDTO> getAllInvoices() {
@@ -58,6 +61,20 @@ public class InvoiceService {
         return invoiceRepository.findByIssuedToCustomerId(customerId).stream()
                 .map(this::transformToDataTransferObject)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Resolves the logged-in customer by email and returns their invoices.
+     * Used by the customer dashboard invoice download feature.
+     */
+    public List<InvoiceDTO> getInvoicesForCurrentCustomer(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email must not be null");
+        }
+        UUID customerId = customerRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Customer not found: " + email))
+                .getUserId();
+        return getInvoicesByCustomer(customerId);
     }
 
     public List<InvoiceDTO> getInvoicesByStatus(String status) {

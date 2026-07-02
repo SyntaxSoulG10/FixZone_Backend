@@ -50,6 +50,16 @@ public class InvoiceController {
         return ResponseEntity.ok(invoiceService.getInvoicesByCustomer(customerId));
     }
 
+    /**
+     * Returns invoices for the currently authenticated customer.
+     * Used by the customer dashboard "download invoice" button on completed bookings.
+     */
+    @GetMapping("/my")
+    public ResponseEntity<List<InvoiceDTO>> getMyInvoices(
+            org.springframework.security.core.Authentication authentication) {
+        return ResponseEntity.ok(invoiceService.getInvoicesForCurrentCustomer(authentication.getName()));
+    }
+
     @GetMapping("/status/{status}")
     public ResponseEntity<List<InvoiceDTO>> getInvoicesByStatus(@PathVariable String status) {
         return ResponseEntity.ok(invoiceService.getInvoicesByStatus(status));

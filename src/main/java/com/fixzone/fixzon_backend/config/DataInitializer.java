@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Component
+@SuppressWarnings("null")
 public class DataInitializer implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
@@ -88,15 +89,45 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Schema migration note: {}", e.getMessage());
         }
 
-        if (!"create".equalsIgnoreCase(ddlAuto) && userRepository.count() > 0) {
-            log.info("Existing data found, ensuring Mock Charlie and Raja Motors exist...");
+        // Add model column to vehicles table if it doesn't exist
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            stmt.execute("ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS model VARCHAR(100)");
+        } catch (Exception e) {
+            log.info("Vehicle model column migration note: {}", e.getMessage());
+        }
+
+        // DATA REPAIR: Fix any owners in DB who have null subscription_status
+        // This ensures all seeded/manually-inserted owners are visible to customers
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            int fixed = stmt.executeUpdate(
+                "UPDATE owner SET subscription_status = 'ACTIVE', trial_ends_at = NOW() + INTERVAL '335 days' " +
+                "WHERE subscription_status IS NULL OR subscription_status = ''"
+            );
+            if (fixed > 0) {
+                log.info(">>> REPAIRED {} owner(s) with null subscription_status → set to ACTIVE <<<", fixed);
+            }
+        } catch (Exception e) {
+            log.info("Subscription status repair note: {}", e.getMessage());
+        }
+
+        // SAFETY GUARD: Only wipe and re-seed if explicitly in 'create' mode.
+        // Never delete data just because count() returned 0 — Neon cold start can cause
+        // a transient 0 count on the first query before the connection pool warms up.
+        boolean isCreateMode = "create".equalsIgnoreCase(ddlAuto);
+        long userCount = userRepository.count();
+
+        if (!isCreateMode || userCount > 0) {
+            log.info("Existing data found (count={}) or not in create mode. Ensuring seed data only...", userCount);
             ensureMockCharlie();
             ensureRajaMotors();
             ensureMockManager();
+            ensureMockPackages();
             return;
         }
 
-        log.info("--- CLEARING OLD DATA AND STARTING FRESH SEEDING ---");
+        log.info("--- FRESH INSTALL: CLEARING OLD DATA AND STARTING FRESH SEEDING ---");
 
         analyticsRepository.deleteAll();
         subscriptionRepository.deleteAll();
@@ -148,7 +179,8 @@ public class DataInitializer implements CommandLineRunner {
                 "contact@rajamotors.lk", 
                 "+94112000000", 
                 "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab",
-                "https://facebook.com/rajamotors", "https://twitter.com/rajamotors", "https://instagram.com/rajamotors"
+                "https://facebook.com/rajamotors", "https://twitter.com/rajamotors", "https://instagram.com/rajamotors",
+                null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false
         );
         owners.add(rajaOwner);
 
@@ -157,7 +189,8 @@ public class DataInitializer implements CommandLineRunner {
                 passwordEncoder.encode("pass123"), "ROLE_COMPANY_OWNER", true, LocalDateTime.now(), LocalDateTime.now(),
                 "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150", "FIX002", "Perera Motors",
                 "contact@perera.lk", "+94112000001", "https://images.unsplash.com", 
-                "https://facebook.com/pereramotors", "https://twitter.com/pereramotors", "https://instagram.com/pereramotors"));
+                "https://facebook.com/pereramotors", "https://twitter.com/pereramotors", "https://instagram.com/pereramotors",
+                null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false));
         
         ownerRepository.saveAll(owners);
 
@@ -190,9 +223,17 @@ public class DataInitializer implements CommandLineRunner {
             serviceCenterRepository.save(sc);
 
             UUID pkgId = UUID.fromString("22222222-2222-2222-2222-22222222222" + (i + 1));
-            ServicePackage p = new ServicePackage(pkgId, sc, "Full Service", "Package", "Oil & Filter", 
+            ServicePackage p = new ServicePackage(pkgId, sc, "Full Service", "Package", null, "Oil & Filter", 
                     new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system");
             servicePackageRepository.save(p);
+
+            // Also ensure the Bike Package from frontend mock exists
+            UUID bikePkgId = UUID.fromString("4aba5910-a686-49db-9dde-915c8b7f538c");
+            if (!servicePackageRepository.existsById(bikePkgId)) {
+                ServicePackage bikePkg = new ServicePackage(bikePkgId, sc, "Gold Package (Bike)", "Package", "BIKE", "Bike specialized care", 
+                        new BigDecimal("8000.00"), 240, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system");
+                servicePackageRepository.save(bikePkg);
+            }
         }
 
         log.info("--- DATA SEEDING COMPLETE ---");
@@ -200,6 +241,7 @@ public class DataInitializer implements CommandLineRunner {
         ensureMockCharlie();
         ensureRajaMotors();
         ensureMockManager();
+        ensureMockPackages();
     }
 
     private void ensureMockManager() {
@@ -240,7 +282,33 @@ public class DataInitializer implements CommandLineRunner {
             charlie.setCustomerCode("CUST-MOCK");
             customerRepository.save(charlie);
             log.info(">>> Mock Charlie Customer created successfully <<<");
+        } else {
+            // Ensure password is always in sync with what the code expects
+            userRepository.findById(charlieId).ifPresent(u -> {
+                u.setPasswordHash(passwordEncoder.encode("FixZone@2026!Secure"));
+                userRepository.save(u);
+                log.info(">>> Mock Charlie password synced <<<");
+            });
         }
+    }
+
+    private void ensureMockPackages() {
+        System.out.println(">>> Ensuring Mock Packages exist for frontend consistency <<<");
+        serviceCenterRepository.findAll().stream().findFirst().ifPresent(sc -> {
+            // Full Service
+            UUID fullPkgId = UUID.fromString("22222222-2222-2222-2222-222222222221");
+            if (!servicePackageRepository.existsById(fullPkgId)) {
+                servicePackageRepository.save(new ServicePackage(fullPkgId, sc, "Full Service", "Package", null, "Oil & Filter", 
+                    new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+            }
+            
+            // Bike Package
+            UUID bikePkgId = UUID.fromString("4aba5910-a686-49db-9dde-915c8b7f538c");
+            if (!servicePackageRepository.existsById(bikePkgId)) {
+                servicePackageRepository.save(new ServicePackage(bikePkgId, sc, "Gold Package (Bike)", "Package", "BIKE", "Bike specialized care", 
+                    new BigDecimal("8000.00"), 240, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+            }
+        });
     }
 
     private void ensureRajaMotors() {
@@ -270,7 +338,8 @@ public class DataInitializer implements CommandLineRunner {
                     "contact@rajamotors.lk", 
                     "+94112000000", 
                     "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab",
-                    "https://facebook.com/rajamotors", "https://twitter.com/rajamotors", "https://instagram.com/rajamotors"
+                    "https://facebook.com/rajamotors", "https://twitter.com/rajamotors", "https://instagram.com/rajamotors",
+                    null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false
             );
             ownerRepository.save(rajaOwner);
             seedRajaMotorsBranchesAndData(rajaOwner);
@@ -304,6 +373,16 @@ public class DataInitializer implements CommandLineRunner {
                 owner.setFacebookUrl("https://facebook.com/rajamotors");
                 owner.setTwitterUrl("https://twitter.com/rajamotors");
                 owner.setInstagramUrl("https://instagram.com/rajamotors");
+                // Always sync password so raja@motors.lk / pass123 always works
+                owner.setPasswordHash(passwordEncoder.encode("pass123"));
+                // Ensure subscription is active so the owner can log in and use the dashboard
+                String currentSubStatus = owner.getSubscriptionStatus();
+                if (currentSubStatus == null || "INACTIVE".equals(currentSubStatus) || "EXPIRED".equals(currentSubStatus) 
+                        || "TRIAL_EXPIRED".equals(currentSubStatus) || "PREMIUM_EXPIRED".equals(currentSubStatus)) {
+                    owner.setSubscriptionStatus("PREMIUM_ACTIVE");
+                    owner.setTrialEndsAt(LocalDateTime.now().plusDays(335));
+                }
+                owner.setStatus("Active");
                 ownerRepository.save(owner);
                 
                 log.debug("Proceeding to seed branches and history for: {}", owner.getEmail());
@@ -363,15 +442,15 @@ public class DataInitializer implements CommandLineRunner {
                 centers.add(serviceCenterRepository.save(sc));
 
                 // Add 3 distinct packages per center for variety
-                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Basic Service", "Base maintenance", 
+                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Basic Service", "Base maintenance", null,
                         "Essential oil and filter change.", new BigDecimal("8500.00"), 60, true, 
                         LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
                 
-                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Premium Full Service", "Full maintenance package", 
+                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Premium Full Service", "Full maintenance package", null,
                         "Oil change, filter, brake check, engine scan.", new BigDecimal("15500.00"), 120, true, 
                         LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
 
-                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Interior & Exterior Detail", "Deep cleaning", 
+                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Interior & Exterior Detail", "Deep cleaning", null,
                         "Full body wash, vacuum, and wax.", new BigDecimal("5500.00"), 90, true, 
                         LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
 
@@ -389,7 +468,7 @@ public class DataInitializer implements CommandLineRunner {
             for (ServiceCenter center : centers) {
                 List<ServicePackage> centerPackages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
                 if (centerPackages.isEmpty()) {
-                    packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), center, "Standard Service", "Base maintenance", 
+                    packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), center, "Standard Service", "Base maintenance", null,
                             "Essential checks and oil service.", new BigDecimal("8500.00"), 60, true, 
                             LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
                 } else {

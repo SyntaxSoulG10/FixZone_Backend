@@ -31,6 +31,14 @@ public class ServicePackage {
     @Column(name = "type", length = 100)
     private String type; // Can be used for comma-separated features
 
+    /**
+     * Restricts this package to a specific vehicle type.
+     * Null means compatible with all vehicle types.
+     * Expected values: "CAR", "BIKE", "VAN", "TRUCK", null (any)
+     */
+    @Column(name = "vehicle_type", length = 20)
+    private String vehicleType;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 

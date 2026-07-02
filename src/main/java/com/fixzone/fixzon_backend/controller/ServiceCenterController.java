@@ -10,6 +10,9 @@ import java.util.UUID;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.fixzone.fixzon_backend.service.OwnerService;
 import com.fixzone.fixzon_backend.DTO.OwnerDTO;
+import com.fixzone.fixzon_backend.model.Owner;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/service-centers")
@@ -18,10 +21,12 @@ public class ServiceCenterController {
     // Constructor injection strictly enforces dependency presence at instantiation.
     private final ServiceCenterService serviceCenterService;
     private final OwnerService ownerService;
+    private final OwnerRepository ownerRepository;
 
-    public ServiceCenterController(ServiceCenterService serviceCenterService, OwnerService ownerService) {
+    public ServiceCenterController(ServiceCenterService serviceCenterService, OwnerService ownerService, OwnerRepository ownerRepository) {
         this.serviceCenterService = serviceCenterService;
         this.ownerService = ownerService;
+        this.ownerRepository = ownerRepository;
     }
 
     @GetMapping
@@ -50,12 +55,27 @@ public class ServiceCenterController {
     }
 
     @PostMapping
-    public ResponseEntity<ServiceCenterDTO> createServiceCenter(@jakarta.validation.Valid @RequestBody ServiceCenterDTO dto) {
+    public ResponseEntity<?> createServiceCenter(@jakarta.validation.Valid @RequestBody ServiceCenterDTO dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
-        if (owner != null) {
-            dto.setOwnerId(owner.getUserId());
+        
+        Owner ownerEntity = ownerRepository.findByEmail(email).orElse(null);
+        if (ownerEntity == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Owner not found");
         }
+
+        // 1. Check if approved by SuperAdmin
+        if (!"Approved".equalsIgnoreCase(ownerEntity.getStatus()) && !"Active".equalsIgnoreCase(ownerEntity.getStatus())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Your account must be approved by a SuperAdmin before creating a branch.");
+        }
+
+        // 2. Check subscription is active (TRIAL_ACTIVE or PREMIUM_ACTIVE)
+        com.fixzone.fixzon_backend.enums.SubscriptionStatus subStatus =
+                com.fixzone.fixzon_backend.enums.SubscriptionStatus.fromLegacy(ownerEntity.getSubscriptionStatus());
+        if (!subStatus.isAccessAllowed()) {
+            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body("Your subscription has expired. Please upgrade your plan before creating a branch.");
+        }
+
+        dto.setOwnerId(ownerEntity.getUserId());
         return ResponseEntity.status(201).body(serviceCenterService.createServiceCenter(dto));
     }
 

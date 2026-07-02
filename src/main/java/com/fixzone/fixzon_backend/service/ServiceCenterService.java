@@ -27,6 +27,7 @@ import com.fixzone.fixzon_backend.model.ServicePackage;
  * metrics like revenue and capacity for the dashboard.
  */
 @Service
+@SuppressWarnings("null")
 public class ServiceCenterService {
     private final ServiceCenterRepository serviceCenterRepository;
     private final UserRepository userRepository;
@@ -61,11 +62,23 @@ public class ServiceCenterService {
     }
 
     /**
-     * RETRIEVAL: Fetches all active service centers.
-     * Optimized with bulk mapping to avoid N+1 query issues.
+     * RETRIEVAL: Fetches all active service centers whose owner has an active subscription.
+     * Inactive/expired owners' branches are hidden from customers.
+     * Uses SubscriptionStatus enum with backward-compatible legacy mapping.
      */
     public List<ServiceCenterDTO> getAllServiceCenters() {
-        List<ServiceCenter> centers = serviceCenterRepository.findByIsActive(true);
+        List<ServiceCenter> centers = serviceCenterRepository.findByIsActive(true).stream()
+                .filter(center -> {
+                    if (center.getOwner() == null) return true; // no owner linked — show it
+                    return ownerRepository.findById(center.getOwner().getUserId())
+                            .map(owner -> {
+                                com.fixzone.fixzon_backend.enums.SubscriptionStatus status =
+                                        com.fixzone.fixzon_backend.enums.SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus());
+                                return status.isVisibleToCustomers();
+                            })
+                            .orElse(true); // owner not found in owner table — show it
+                })
+                .collect(java.util.stream.Collectors.toList());
         return mapEntitiesToDtos(centers);
     }
 
@@ -251,6 +264,20 @@ public class ServiceCenterService {
 
         if (center.getOwner() != null) {
             dto.setOwnerId(center.getOwner().getUserId());
+            ownerRepository.findById(center.getOwner().getUserId()).ifPresent(owner -> {
+                boolean stripeConnected = Boolean.TRUE.equals(owner.getStripeOnboardingComplete())
+                        && owner.getStripeAccountId() != null
+                        && !owner.getStripeAccountId().isBlank();
+                dto.setStripeConnected(stripeConnected);
+                dto.setStripeConnectionMessage(stripeConnected
+                        ? "Stripe Connect is completed for this branch owner."
+                        : "Stripe Connect is not completed yet. Connect Stripe to receive customer payments.");
+            });
+        }
+
+        if (dto.getStripeConnected() == null) {
+            dto.setStripeConnected(false);
+            dto.setStripeConnectionMessage("Stripe Connect is not completed yet. Connect Stripe to receive customer payments.");
         }
 
         // AGGREGATION: Pull related service packages and enrich their metadata
