@@ -27,7 +27,7 @@ import com.fixzone.fixzon_backend.model.ServicePackage;
  * metrics like revenue and capacity for the dashboard.
  */
 @Service
-@SuppressWarnings("null")
+
 public class ServiceCenterService {
     private final ServiceCenterRepository serviceCenterRepository;
     private final UserRepository userRepository;

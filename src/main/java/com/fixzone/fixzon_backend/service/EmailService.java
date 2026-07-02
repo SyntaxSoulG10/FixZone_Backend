@@ -9,7 +9,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Service
-@SuppressWarnings("null")
+
 public class EmailService {
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 

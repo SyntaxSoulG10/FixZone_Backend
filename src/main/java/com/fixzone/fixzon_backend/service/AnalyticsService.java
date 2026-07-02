@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
  * during aggregation.
  */
 @Service
-@SuppressWarnings("null")
+
 public class AnalyticsService {
         private static final Logger log = LoggerFactory.getLogger(AnalyticsService.class);
 

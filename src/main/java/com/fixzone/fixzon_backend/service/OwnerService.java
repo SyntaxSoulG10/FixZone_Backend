@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * Handles the lifecycle of owner data, including registration, updates, and retrieval.
  */
 @Service
-@SuppressWarnings("null")
+
 public class OwnerService {
     private static final Logger log = LoggerFactory.getLogger(OwnerService.class);
 

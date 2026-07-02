@@ -20,7 +20,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Component
-@SuppressWarnings("null")
+
 public class DataInitializer implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 

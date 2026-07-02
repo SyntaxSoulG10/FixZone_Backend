@@ -20,7 +20,6 @@ import com.stripe.model.Account;
 import com.stripe.model.AccountLink;
 import com.stripe.param.AccountCreateParams;
 import com.stripe.param.AccountLinkCreateParams;
-import com.stripe.net.RequestOptions;
 import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import org.slf4j.Logger;
@@ -36,7 +35,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@SuppressWarnings("null")
+
 public class PaymentService {
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
