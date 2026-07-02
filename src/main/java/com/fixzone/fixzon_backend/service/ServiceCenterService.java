@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.fixzone.fixzon_backend.DTO.PagedResponse;
 
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -68,20 +71,34 @@ public class ServiceCenterService {
      * RETRIEVAL: Fetches all active service centers whose owner has an active subscription.
      * Inactive/expired owners' branches are hidden from customers.
      */
-    public List<ServiceCenterDTO> getAllServiceCenters() {
-        List<ServiceCenter> centers = serviceCenterRepository.findByIsActive(true).stream()
-                .filter(center -> {
-                    if (center.getOwner() == null) return true; // no owner linked — show it
-                    return ownerRepository.findById(center.getOwner().getUserId())
-                            .map(owner -> {
-                                String status = owner.getSubscriptionStatus();
-                                // Only hide if explicitly INACTIVE or EXPIRED
-                                return !"INACTIVE".equals(status) && !"EXPIRED".equals(status);
-                            })
-                            .orElse(true); // owner not found in owner table — show it
-                })
-                .collect(java.util.stream.Collectors.toList());
-        return mapEntitiesToDtos(centers);
+    public PagedResponse<ServiceCenterDTO> getAllServiceCenters(Pageable pageable) {
+        Page<ServiceCenter> page = serviceCenterRepository.findActiveAndValidSubscription(pageable);
+        List<ServiceCenterDTO> dtoList = mapEntitiesToDtos(page.getContent());
+        PagedResponse<ServiceCenterDTO> response = new PagedResponse<>();
+        response.setContent(dtoList);
+        response.setPageNo(page.getNumber());
+        response.setPageSize(page.getSize());
+        response.setTotalElements(page.getTotalElements());
+        response.setTotalPages(page.getTotalPages());
+        response.setLast(page.isLast());
+        return response;
+    }
+
+    /**
+     * GEOSPATIAL RETRIEVAL: Fetches nearby active service centers using Haversine distance,
+     * sorted by distance automatically.
+     */
+    public PagedResponse<ServiceCenterDTO> getNearbyServiceCenters(Double lat, Double lng, Double radius, Pageable pageable) {
+        Page<ServiceCenter> page = serviceCenterRepository.findNearbyServiceCenters(lat, lng, radius, pageable);
+        List<ServiceCenterDTO> dtoList = mapEntitiesToDtos(page.getContent());
+        PagedResponse<ServiceCenterDTO> response = new PagedResponse<>();
+        response.setContent(dtoList);
+        response.setPageNo(page.getNumber());
+        response.setPageSize(page.getSize());
+        response.setTotalElements(page.getTotalElements());
+        response.setTotalPages(page.getTotalPages());
+        response.setLast(page.isLast());
+        return response;
     }
 
     /**

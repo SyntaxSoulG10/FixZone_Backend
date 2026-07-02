@@ -38,6 +38,8 @@ public class ServiceCenterDTO {
     private LocalDateTime updatedAt;
     private String updatedBy;
     private String[] supportedVehicleBrands;
+    private Double latitude;
+    private Double longitude;
     private String status;
     private Boolean stripeConnected;
     private String stripeConnectionMessage;
