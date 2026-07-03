@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+
 public class SubscriptionPlanService {
 
     private final SubscriptionPlanRepository planRepository;

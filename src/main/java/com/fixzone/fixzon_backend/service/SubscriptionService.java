@@ -1,0 +1,118 @@
+package com.fixzone.fixzon_backend.service;
+
+import com.fixzone.fixzon_backend.model.Owner;
+import com.fixzone.fixzon_backend.model.SubscriptionPlan;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import com.fixzone.fixzon_backend.repository.SubscriptionPlanRepository;
+import com.fixzone.fixzon_backend.repository.AuthRepository;
+import com.stripe.Stripe;
+import com.stripe.exception.StripeException;
+import com.stripe.model.checkout.Session;
+import com.stripe.param.checkout.SessionCreateParams;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+public class SubscriptionService {
+    private static final Logger log = LoggerFactory.getLogger(SubscriptionService.class);
+
+    @Value("${stripe.secret-key}")
+    private String stripeApiKey;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
+    private final OwnerRepository ownerRepository;
+    private final SubscriptionPlanRepository subscriptionPlanRepository;
+    private final AuthRepository authRepository;
+
+    public SubscriptionService(OwnerRepository ownerRepository, SubscriptionPlanRepository subscriptionPlanRepository, AuthRepository authRepository) {
+        this.ownerRepository = ownerRepository;
+        this.subscriptionPlanRepository = subscriptionPlanRepository;
+        this.authRepository = authRepository;
+    }
+
+    public String createSubscriptionCheckout(String ownerEmail, UUID planId, boolean autoRenew) throws StripeException {
+        Stripe.apiKey = stripeApiKey;
+
+        Owner owner = (Owner) authRepository.findByEmail(ownerEmail)
+                .orElseThrow(() -> new RuntimeException("Owner not found"));
+
+        SubscriptionPlan plan = subscriptionPlanRepository.findById(planId)
+                .orElseThrow(() -> new RuntimeException("Plan not found"));
+
+        SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
+                .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setSuccessUrl(frontendUrl + "/dashboard/company-owner/profile?tab=billing&sub_success=true&session_id={CHECKOUT_SESSION_ID}")
+                .setCancelUrl(frontendUrl + "/dashboard/company-owner/profile?tab=billing&sub_canceled=true")
+                .setClientReferenceId(owner.getUserId().toString() + "_" + planId.toString() + "_" + autoRenew)
+                .addLineItem(SessionCreateParams.LineItem.builder()
+                        .setQuantity(1L)
+                        .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                .setCurrency("lkr")
+                                .setUnitAmount(plan.getPrice().longValue() * 100)
+                                .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                        .setName(plan.getName() + " Subscription")
+                                        .build())
+                                .build())
+                        .build());
+
+        // Save card details for future off-session charging if auto-renew is selected
+        if (autoRenew) {
+            paramsBuilder.setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
+                    .setSetupFutureUsage(SessionCreateParams.PaymentIntentData.SetupFutureUsage.OFF_SESSION)
+                    .build());
+        }
+
+        Session session = Session.create(paramsBuilder.build());
+        return session.getUrl();
+    }
+
+    public void handleSubscriptionSuccess(String sessionId) throws StripeException {
+        Stripe.apiKey = stripeApiKey;
+        Session session = Session.retrieve(sessionId);
+
+        if ("paid".equalsIgnoreCase(session.getPaymentStatus())) {
+            String clientReferenceId = session.getClientReferenceId();
+            if (clientReferenceId != null && clientReferenceId.contains("_")) {
+                String[] parts = clientReferenceId.split("_");
+                UUID ownerId = UUID.fromString(parts[0]);
+                UUID planId = UUID.fromString(parts[1]);
+                boolean autoRenew = Boolean.parseBoolean(parts[2]);
+
+                Optional<Owner> ownerOpt = ownerRepository.findById(ownerId);
+                Optional<SubscriptionPlan> planOpt = subscriptionPlanRepository.findById(planId);
+
+                if (ownerOpt.isPresent() && planOpt.isPresent()) {
+                    Owner owner = ownerOpt.get();
+                    SubscriptionPlan plan = planOpt.get();
+
+                    owner.setSubscriptionStatus("PREMIUM_ACTIVE");
+                    owner.setStatus("Active"); // Reactivate owner account on successful subscription
+                    owner.setCurrentPlanId(planId);
+                    owner.setAutoRenewEnabled(autoRenew);
+                    
+                    if (session.getCustomer() != null) {
+                        owner.setStripeCustomerId(session.getCustomer());
+                    }
+
+                    // Extend billing date by duration
+                    LocalDateTime now = LocalDateTime.now();
+                    LocalDateTime startDate = (owner.getNextBillingDate() != null && owner.getNextBillingDate().isAfter(now)) 
+                            ? owner.getNextBillingDate() 
+                            : now;
+                    
+                    owner.setNextBillingDate(startDate.plusMonths(plan.getDurationMonths()));
+                    ownerRepository.save(owner);
+                    log.info("Subscription updated for owner {}", owner.getEmail());
+                }
+            }
+        }
+    }
+}

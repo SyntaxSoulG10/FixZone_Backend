@@ -2,12 +2,18 @@ package com.fixzone.fixzon_backend.repository;
 
 import com.fixzone.fixzon_backend.model.Owner;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
 import java.util.Optional;
 
-@Repository
 public interface OwnerRepository extends JpaRepository<Owner, UUID> {
     Optional<Owner> findByOwnerCode(String ownerCode);
     Optional<Owner> findByEmail(String email);
+
+    /** Finds owners whose trial period has expired (for cron job). */
+    List<Owner> findBySubscriptionStatusAndTrialEndsAtBefore(String status, LocalDateTime date);
+
+    /** Finds owners whose premium billing date has passed and auto-renew is off (for cron job). */
+    List<Owner> findBySubscriptionStatusAndNextBillingDateBeforeAndAutoRenewEnabled(String status, LocalDateTime date, Boolean autoRenew);
 }

@@ -9,8 +9,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableScheduling
 @EnableConfigurationProperties(StripeConfig.class)
 public class FixzonBackendApplication {
     private static final Logger log = LoggerFactory.getLogger(FixzonBackendApplication.class);

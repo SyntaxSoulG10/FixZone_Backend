@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;

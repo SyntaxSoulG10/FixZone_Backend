@@ -2,7 +2,6 @@ package com.fixzone.fixzon_backend.controller;
 
 import com.fixzone.fixzon_backend.DTO.SuperAdminDTO;
 import com.fixzone.fixzon_backend.service.SuperAdminService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,8 +12,11 @@ import java.util.UUID;
 @RequestMapping("/api/super-admins")
 public class SuperAdminController {
 
-    @Autowired
-    private SuperAdminService superAdminService;
+    private final SuperAdminService superAdminService;
+
+    public SuperAdminController(SuperAdminService superAdminService) {
+        this.superAdminService = superAdminService;
+    }
 
     @GetMapping("/me")
     public ResponseEntity<SuperAdminDTO> getCurrentAdmin(org.springframework.security.core.Authentication authentication) {

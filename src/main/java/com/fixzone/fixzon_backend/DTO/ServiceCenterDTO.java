@@ -19,7 +19,6 @@ public class ServiceCenterDTO {
     @jakarta.validation.constraints.Size(min = 3, max = 100, message = "Name must be 3-100 characters")
     private String name;
 
-    @NotBlank(message = "Manager name is required")
     private String managerName;
 
     @NotBlank(message = "Address is required")
@@ -39,13 +38,13 @@ public class ServiceCenterDTO {
     private String updatedBy;
     private String[] supportedVehicleBrands;
     private String status;
+    private Boolean stripeConnected;
+    private String stripeConnectionMessage;
 
-    @NotBlank(message = "Business registration document is required")
     private String businessRegUrl;
 
     private String taxIdUrl;
 
-    @NotBlank(message = "NIC/Identity document is required")
     private String nicUrl;
 
     private String rejectionReason;

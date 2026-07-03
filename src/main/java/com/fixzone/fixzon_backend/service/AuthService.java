@@ -118,6 +118,9 @@ public class AuthService {
         owner.setOwnerCode(AppConstants.OWNER_PREFIX + System.currentTimeMillis());
         owner.setCompanyName(request.getCompanyName());
         owner.setCompanyNumber(request.getCompanyNumber());
+        owner.setSubscriptionStatus("TRIAL_ACTIVE");
+        owner.setTrialEndsAt(LocalDateTime.now().plusDays(30));
+        owner.setAutoRenewEnabled(false);
 
         Owner savedOwner = ownerRepository.save(owner);
 
@@ -133,6 +136,18 @@ public class AuthService {
                 owner.getRole(),
                 owner.getFullName()
         );
+    }
+
+    public void changePassword(String email, String currentPassword, String newPassword) {
+        User user = authRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Incorrect current password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        authRepository.save(user);
     }
 
     private void triggerSignupNotifications(User user, String roleLabel) {
