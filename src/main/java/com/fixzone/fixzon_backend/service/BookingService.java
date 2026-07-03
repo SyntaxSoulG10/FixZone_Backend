@@ -111,6 +111,11 @@ public class BookingService {
                         booking.setTenantId(pkg.getServiceCenter().getOwner().getUserId());
                     }
                 }
+                
+                // Set the estimated cost based on the package's base price
+                if (pkg.getBasePrice() != null) {
+                    booking.setEstimatedCost(pkg.getBasePrice());
+                }
             });
         }
 
