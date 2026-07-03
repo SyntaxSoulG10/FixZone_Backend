@@ -56,7 +56,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/invoices/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "ROLE_SUPER_ADMIN", "ROLE_SERVICE_MANAGER", "CUSTOMER", "OWNER", "MANAGER")
                         .requestMatchers("/api/service-packages", "/api/service-packages/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "ROLE_SERVICE_MANAGER", "CUSTOMER", "OWNER", "MANAGER")
                         .requestMatchers("/api/service-centers", "/api/service-centers/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "ROLE_SERVICE_MANAGER", "CUSTOMER", "OWNER", "MANAGER")
-                        .requestMatchers("/api/analytics/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_OWNER")
+                        .requestMatchers("/api/analytics/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_OWNER", "ROLE_SERVICE_MANAGER")
                         .requestMatchers("/api/owners/**").hasAnyAuthority("ROLE_COMPANY_OWNER", "OWNER")
                         .requestMatchers("/api/managers/**").hasAnyAuthority("ROLE_SERVICE_MANAGER", "ROLE_COMPANY_OWNER", "MANAGER")
                         .anyRequest().authenticated())

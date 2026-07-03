@@ -113,11 +113,8 @@ public class BookingService {
                 }
             });
         }
-
-        if (booking.getBookingId() == null) {
-            booking.setBookingId(UUID.randomUUID());
-        }
-
+        
+        // Use a default tenant ID if not provided (for multi-tenant support)
         if (booking.getTenantId() == null) {
             booking.setTenantId(UUID.fromString(AppConstants.DEFAULT_TENANT_ID));
         }
@@ -190,11 +187,32 @@ public class BookingService {
             if (!refundSuccess) {
                 log.error(">>> STRIPE REFUND FAILED! Check Stripe Dashboard.");
             }
+        } else {
+            booking.setCancellationPenalty(BigDecimal.ZERO);
         }
 
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setIsCancelled(true);
-        booking.setCancelledAt(LocalDateTime.now());
+        booking.setCancelledAt(java.time.LocalDateTime.now());
+        
+        return mapToResponseDTO(bookingRepository.save(booking));
+    }
+
+    @Transactional
+    public BookingResponseDTO editExistingBooking(UUID id, BookingRequestDTO request) {
+        Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        
+        // Update fields based on request
+        if (request.getBookingDate() != null) {
+            booking.setBookingDate(request.getBookingDate());
+        }
+        if (request.getBookingTime() != null) {
+            booking.setBookingTime(request.getBookingTime());
+        }
+        if (request.getSpecialRequest() != null) {
+            booking.setSpecialRequest(request.getSpecialRequest());
+        }
         
         return mapToResponseDTO(bookingRepository.save(booking));
     }

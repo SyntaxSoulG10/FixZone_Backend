@@ -163,6 +163,12 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.startService(id));
     }
 
+    @PutMapping("/{id}/edit")
+    public ResponseEntity<BookingResponseDTO> editExistingBooking(
+            @PathVariable UUID id, 
+            @RequestBody BookingRequestDTO request) {
+        return ResponseEntity.ok(bookingService.editExistingBooking(id, request));
+    }
 
     // Legacy endpoints removed
 }
