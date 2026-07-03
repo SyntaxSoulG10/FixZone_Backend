@@ -32,16 +32,18 @@ public class ReportService {
         }
 
         if (report.getFileContentBase64() != null && !report.getFileContentBase64().isEmpty()) {
-            try {
-                String uploadedUrl = imageKitService.uploadImage(report.getFileContentBase64(), report.getName().replaceAll("\\s+", "_"));
-                if (uploadedUrl != null) {
-                    report.setDownloadUrl(uploadedUrl);
-                    // Clear the base64 content so we don't store it in the database
-                    report.setFileContentBase64(null);
+            if (!"OPERATIONS".equals(report.getType())) {
+                try {
+                    String uploadedUrl = imageKitService.uploadImage(report.getFileContentBase64(), report.getName().replaceAll("\\s+", "_"));
+                    if (uploadedUrl != null) {
+                        report.setDownloadUrl(uploadedUrl);
+                        // Clear the base64 content so we don't store it in the database
+                        report.setFileContentBase64(null);
+                    }
+                } catch (Exception e) {
+                    // If upload fails, just continue, fallback behavior applies
+                    e.printStackTrace();
                 }
-            } catch (Exception e) {
-                // If upload fails, just continue, fallback behavior applies
-                e.printStackTrace();
             }
         }
 
