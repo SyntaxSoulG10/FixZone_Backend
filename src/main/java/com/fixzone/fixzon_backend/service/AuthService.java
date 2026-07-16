@@ -31,6 +31,7 @@ public class AuthService {
     private final SuperAdminRepository superAdminRepository;
     private final NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
+    private final OtpService otpService;
     private final JwtUtil jwtUtil;
 
     public AuthService(AuthRepository authRepository,
@@ -39,6 +40,7 @@ public class AuthService {
                        SuperAdminRepository superAdminRepository,
                        NotificationService notificationService,
                        PasswordEncoder passwordEncoder,
+                       OtpService otpService,
                        JwtUtil jwtUtil) {
         this.authRepository = authRepository;
         this.customerRepository = customerRepository;
@@ -46,6 +48,7 @@ public class AuthService {
         this.superAdminRepository = superAdminRepository;
         this.notificationService = notificationService;
         this.passwordEncoder = passwordEncoder;
+        this.otpService = otpService;
         this.jwtUtil = jwtUtil;
     }
 
@@ -69,7 +72,8 @@ public class AuthService {
                 user.getRole(),
                 user.getFullName(),
                 user.getProfilePictureUrl(),
-                user.getPhone()
+                user.getPhone(),
+                user.getEmailVerified() != null ? user.getEmailVerified() : false
         );
     }
 
@@ -93,6 +97,9 @@ public class AuthService {
         // Safe notification trigger
         triggerSignupNotifications(savedCustomer, "Customer");
 
+        // Send OTP
+        otpService.generateAndSendOtp(savedCustomer.getEmail(), savedCustomer.getFullName());
+
         String token = jwtUtil.generateToken(customer);
 
         return new AuthResponseDTO(
@@ -102,7 +109,8 @@ public class AuthService {
                 customer.getRole(),
                 customer.getFullName(),
                 customer.getProfilePictureUrl(),
-                customer.getPhone()
+                customer.getPhone(),
+                customer.getEmailVerified() != null ? customer.getEmailVerified() : false
         );
     }
 
@@ -131,6 +139,9 @@ public class AuthService {
         // Safe notification trigger
         triggerSignupNotifications(savedOwner, "Owner");
 
+        // Send OTP
+        otpService.generateAndSendOtp(savedOwner.getEmail(), savedOwner.getFullName());
+
         String token = jwtUtil.generateToken(owner);
 
         return new AuthResponseDTO(
@@ -140,7 +151,8 @@ public class AuthService {
                 owner.getRole(),
                 owner.getFullName(),
                 owner.getProfilePictureUrl(),
-                owner.getPhone()
+                owner.getPhone(),
+                owner.getEmailVerified() != null ? owner.getEmailVerified() : false
         );
     }
 
@@ -158,5 +170,23 @@ public class AuthService {
         } catch (Exception e) {
             System.err.println("Error triggering signup notifications: " + e.getMessage());
         }
+    }
+
+    public boolean verifyEmail(String email, String otpCode) {
+        if (otpService.verifyOtp(email, otpCode)) {
+            User user = authRepository.findByEmail(email).orElse(null);
+            if (user != null) {
+                user.setEmailVerified(true);
+                authRepository.save(user);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void resendOtp(String email) {
+        User user = authRepository.findByEmail(email)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        otpService.generateAndSendOtp(user.getEmail(), user.getFullName());
     }
 }

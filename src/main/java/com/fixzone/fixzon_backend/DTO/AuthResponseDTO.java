@@ -16,4 +16,5 @@ public class AuthResponseDTO {
     private String fullName;
     private String profilePictureUrl;
     private String phone;
+    private boolean emailVerified;
 }
