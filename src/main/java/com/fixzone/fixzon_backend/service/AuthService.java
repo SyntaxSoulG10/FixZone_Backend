@@ -67,7 +67,9 @@ public class AuthService {
                 user.getUserId(),
                 user.getEmail(),
                 user.getRole(),
-                user.getFullName()
+                user.getFullName(),
+                user.getProfilePictureUrl(),
+                user.getPhone()
         );
     }
 
@@ -98,7 +100,9 @@ public class AuthService {
                 customer.getUserId(),
                 customer.getEmail(),
                 customer.getRole(),
-                customer.getFullName()
+                customer.getFullName(),
+                customer.getProfilePictureUrl(),
+                customer.getPhone()
         );
     }
 
@@ -134,7 +138,9 @@ public class AuthService {
                 owner.getUserId(),
                 owner.getEmail(),
                 owner.getRole(),
-                owner.getFullName()
+                owner.getFullName(),
+                owner.getProfilePictureUrl(),
+                owner.getPhone()
         );
     }
 
