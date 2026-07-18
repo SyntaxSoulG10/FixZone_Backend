@@ -127,6 +127,7 @@ class OwnerServiceTest {
 
     @Test
     void removeOwner_ShouldCallRepositoryDelete() {
+        when(ownerRepository.existsById(ownerId)).thenReturn(true);
         ownerService.removeOwner(ownerId);
         verify(ownerRepository, times(1)).deleteById(ownerId);
     }
