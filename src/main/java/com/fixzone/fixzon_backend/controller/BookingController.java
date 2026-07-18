@@ -113,7 +113,7 @@ public class BookingController {
     public ResponseEntity<BookingResponseDTO> createBooking(
             @jakarta.validation.Valid @RequestBody BookingRequestDTO request,
             org.springframework.security.core.Authentication authentication) {
-        return ResponseEntity.status(201).body(bookingService.createBooking(request, authentication.getName()));
+        return ResponseEntity.status(201).body(bookingService.createBooking(request, authentication));
     }
 
     /**

@@ -90,17 +90,28 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponseDTO createBooking(BookingRequestDTO request, String customerEmail) {
-        // Resolve customer from JWT email — never trust customerId from the request body
-        com.fixzone.fixzon_backend.model.Customer customer = customerRepository
-                .findByEmail(customerEmail)
-                .orElseThrow(() -> new RuntimeException("Customer not found: " + customerEmail));
-
+    public BookingResponseDTO createBooking(BookingRequestDTO request, org.springframework.security.core.Authentication authentication) {
         Booking booking = new Booking();
         BeanUtils.copyProperties(Objects.requireNonNull(request, "Request must not be null"), booking);
 
-        // Always set customer from the authenticated user
-        booking.setCustomerId(customer.getUserId());
+        boolean isManager = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE_MANAGER") || a.getAuthority().equals("ROLE_COMPANY_OWNER") || a.getAuthority().equals("ROLE_SYSTEM_ADMIN"));
+
+        if (!isManager) {
+            // Resolve customer from JWT email — never trust customerId from the request body
+            String customerEmail = authentication.getName();
+            com.fixzone.fixzon_backend.model.Customer customer = customerRepository
+                    .findByEmail(customerEmail)
+                    .orElseThrow(() -> new RuntimeException("Customer not found: " + customerEmail));
+            
+            // Always set customer from the authenticated user
+            booking.setCustomerId(customer.getUserId());
+        } else {
+            if (request.getCustomerId() == null) {
+                throw new RuntimeException("Customer ID is required when a manager creates a booking");
+            }
+            booking.setCustomerId(request.getCustomerId());
+        }
 
         // Securely fetch centerId and tenantId from the ServicePackage
         if (booking.getPackageId() != null) {
@@ -258,7 +269,7 @@ public class BookingService {
         return bookings.stream()
                 .filter(b -> {
                     java.time.LocalDateTime dt = java.time.LocalDateTime.of(b.getBookingDate(), b.getBookingTime());
-                    return !dt.isBefore(now);
+                    return !dt.isBefore(now) && b.getBookingDate().equals(now.toLocalDate());
                 })
                 .sorted(Comparator.comparing(b -> java.time.LocalDateTime.of(b.getBookingDate(), b.getBookingTime())))
                 .map(this::mapToResponseDTO)
