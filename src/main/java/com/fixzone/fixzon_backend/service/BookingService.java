@@ -124,10 +124,14 @@ public class BookingService {
                 if (pkg.getServiceCenter() != null) {
                     booking.setCenterId(pkg.getServiceCenter().getCenterId());
                     if (pkg.getServiceCenter().getOwner() != null) {
-                        // Always resolve via ownerRepository so we get the Owner subtype
-                        // (not just User), which carries the stripe fields.
-                        ownerRepository.findById(pkg.getServiceCenter().getOwner().getUserId())
-                                .ifPresent(owner -> booking.setTenantId(owner.getUserId()));
+                        UUID ownerId = pkg.getServiceCenter().getOwner().getUserId();
+                        ownerRepository.findById(ownerId).ifPresent(owner -> {
+                            com.fixzone.fixzon_backend.enums.SubscriptionStatus status = com.fixzone.fixzon_backend.enums.SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus());
+                            if (!status.isAccessAllowed()) {
+                                throw new RuntimeException("Cannot create booking. The service center's subscription has expired.");
+                            }
+                            booking.setTenantId(owner.getUserId());
+                        });
                     }
                 }
             });
