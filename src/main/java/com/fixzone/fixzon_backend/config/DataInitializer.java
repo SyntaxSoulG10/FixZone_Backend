@@ -124,6 +124,7 @@ public class DataInitializer implements CommandLineRunner {
             ensureRajaMotors();
             ensureMockManager();
             ensureMockPackages();
+            ensureSuperAdmins();
             return;
         }
 
@@ -242,6 +243,29 @@ public class DataInitializer implements CommandLineRunner {
         ensureRajaMotors();
         ensureMockManager();
         ensureMockPackages();
+        ensureSuperAdmins();
+    }
+
+    private void ensureSuperAdmins() {
+        log.info(">>> Ensuring Super Admins exist <<<");
+        String[] adminNames = { "Aruna Kumara", "Ruwan Silva", "Gihan Fernando" };
+        for (int i = 0; i < adminNames.length; i++) {
+            String email = "admin" + (i + 1) + "@fixzone.lk";
+            if (!userRepository.existsByEmail(email)) {
+                SuperAdmin admin = new SuperAdmin(UUID.randomUUID(), adminNames[i], email,
+                        "+9411555000" + i, passwordEncoder.encode("FixZone@2026!Secure"), "ROLE_SUPER_ADMIN", true,
+                        LocalDateTime.now(), LocalDateTime.now(), "system", LocalDateTime.now(), "system",
+                        "https://i.pravatar.cc/150?u=" + adminNames[i].replace(" ", "+"), "ADM-00" + (i + 1));
+                superAdminRepository.save(admin);
+                log.info(">>> Created Super Admin: {} <<<", email);
+            } else {
+                // Ensure password is correct
+                userRepository.findByEmail(email).ifPresent(u -> {
+                    u.setPasswordHash(passwordEncoder.encode("FixZone@2026!Secure"));
+                    userRepository.save(u);
+                });
+            }
+        }
     }
 
     private void ensureMockManager() {

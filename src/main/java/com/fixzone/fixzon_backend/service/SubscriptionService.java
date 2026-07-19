@@ -4,7 +4,6 @@ import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.model.SubscriptionPlan;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.SubscriptionPlanRepository;
-import com.fixzone.fixzon_backend.repository.AuthRepository;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
@@ -30,12 +29,10 @@ public class SubscriptionService {
 
     private final OwnerRepository ownerRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
-    private final AuthRepository authRepository;
 
-    public SubscriptionService(OwnerRepository ownerRepository, SubscriptionPlanRepository subscriptionPlanRepository, AuthRepository authRepository) {
+    public SubscriptionService(OwnerRepository ownerRepository, SubscriptionPlanRepository subscriptionPlanRepository) {
         this.ownerRepository = ownerRepository;
         this.subscriptionPlanRepository = subscriptionPlanRepository;
-        this.authRepository = authRepository;
     }
 
     public String createSubscriptionCheckout(String ownerEmail, UUID planId, boolean autoRenew) throws StripeException {
