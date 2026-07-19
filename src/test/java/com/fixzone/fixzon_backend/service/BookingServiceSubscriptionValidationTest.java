@@ -12,7 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 
-import java.util.Collection;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -66,7 +66,7 @@ class BookingServiceSubscriptionValidationTest {
         // Authentication returns customer role (not manager)
         when(authentication.getName()).thenReturn("customer@test.com");
         when(authentication.getAuthorities()).thenAnswer(inv ->
-                (Collection) List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_CUSTOMER")));
+                (java.util.Collection<? extends org.springframework.security.core.GrantedAuthority>) List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_CUSTOMER")));
     }
 
     @Test

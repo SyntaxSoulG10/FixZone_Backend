@@ -4,7 +4,7 @@ import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.model.SubscriptionPlan;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.SubscriptionPlanRepository;
-import com.fixzone.fixzon_backend.repository.AuthRepository;
+
 import com.fixzone.fixzon_backend.repository.SubscriptionRepository;
 import com.fixzone.fixzon_backend.repository.SubscriptionBillingRepository;
 import com.fixzone.fixzon_backend.model.Subscription;
@@ -35,18 +35,17 @@ public class SubscriptionService {
 
     private final OwnerRepository ownerRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
-    private final AuthRepository authRepository;
+
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionBillingRepository subscriptionBillingRepository;
 
     public SubscriptionService(OwnerRepository ownerRepository, 
                                SubscriptionPlanRepository subscriptionPlanRepository, 
-                               AuthRepository authRepository,
                                SubscriptionRepository subscriptionRepository,
                                SubscriptionBillingRepository subscriptionBillingRepository) {
         this.ownerRepository = ownerRepository;
         this.subscriptionPlanRepository = subscriptionPlanRepository;
-        this.authRepository = authRepository;
+
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionBillingRepository = subscriptionBillingRepository;
     }

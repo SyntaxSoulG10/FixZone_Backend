@@ -678,4 +678,26 @@ public class DataInitializer implements CommandLineRunner {
             log.error("[ERROR] Failed to update manager images: {}", e.getMessage(), e);
         }
     }
+    private void ensureSuperAdmins() {
+        if (!userRepository.existsByEmail("admin1@fixzone.lk")) {
+            SuperAdmin admin = new SuperAdmin(
+                UUID.randomUUID(),
+                "Super Admin 1",
+                "admin1@fixzone.lk",
+                "+94770000001",
+                passwordEncoder.encode("FixzoneAdmin!2026"),
+                "ROLE_SUPER_ADMIN",
+                true,
+                LocalDateTime.now(),
+                LocalDateTime.now(),
+                "system",
+                LocalDateTime.now(),
+                "system",
+                "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=256&h=256&auto=format&fit=crop",
+                "SA-001"
+            );
+            superAdminRepository.save(admin);
+            log.info(">>> Mock Super Admin created successfully <<<");
+        }
+    }
 }
