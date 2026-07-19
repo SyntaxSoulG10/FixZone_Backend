@@ -7,6 +7,7 @@ import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.CustomerRepository;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import com.fixzone.fixzon_backend.repository.VehicleRepository;
@@ -37,19 +38,22 @@ public class BookingService {
     private final VehicleRepository vehicleRepository;
     private final PaymentService paymentService;
     private final CustomerRepository customerRepository;
+    private final OwnerRepository ownerRepository;
 
     public BookingService(BookingRepository bookingRepository,
             ServiceCenterRepository serviceCenterRepository,
             ServicePackageRepository servicePackageRepository,
             VehicleRepository vehicleRepository,
             PaymentService paymentService,
-            CustomerRepository customerRepository) {
+            CustomerRepository customerRepository,
+            OwnerRepository ownerRepository) {
         this.bookingRepository = bookingRepository;
         this.serviceCenterRepository = serviceCenterRepository;
         this.servicePackageRepository = servicePackageRepository;
         this.vehicleRepository = vehicleRepository;
         this.paymentService = paymentService;
         this.customerRepository = customerRepository;
+        this.ownerRepository = ownerRepository;
     }
 
     @Transactional(readOnly = true)
@@ -108,7 +112,14 @@ public class BookingService {
                 if (pkg.getServiceCenter() != null) {
                     booking.setCenterId(pkg.getServiceCenter().getCenterId());
                     if (pkg.getServiceCenter().getOwner() != null) {
-                        booking.setTenantId(pkg.getServiceCenter().getOwner().getUserId());
+                        UUID ownerId = pkg.getServiceCenter().getOwner().getUserId();
+                        ownerRepository.findById(ownerId).ifPresent(owner -> {
+                            com.fixzone.fixzon_backend.enums.SubscriptionStatus status = com.fixzone.fixzon_backend.enums.SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus());
+                            if (!status.isAccessAllowed()) {
+                                throw new RuntimeException("Cannot create booking. The service center's subscription has expired.");
+                            }
+                        });
+                        booking.setTenantId(ownerId);
                     }
                 }
             });
