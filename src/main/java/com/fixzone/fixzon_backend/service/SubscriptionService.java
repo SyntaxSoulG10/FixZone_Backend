@@ -41,7 +41,7 @@ public class SubscriptionService {
     public String createSubscriptionCheckout(String ownerEmail, UUID planId, boolean autoRenew) throws StripeException {
         Stripe.apiKey = stripeApiKey;
 
-        Owner owner = (Owner) authRepository.findByEmail(ownerEmail)
+        Owner owner = ownerRepository.findByEmail(ownerEmail)
                 .orElseThrow(() -> new RuntimeException("Owner not found"));
 
         SubscriptionPlan plan = subscriptionPlanRepository.findById(planId)

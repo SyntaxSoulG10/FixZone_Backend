@@ -24,7 +24,7 @@ public class SubscriptionController {
     }
 
     @PostMapping("/checkout")
-    public ResponseEntity<String> checkout(Principal principal, @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> checkout(Principal principal, @RequestBody Map<String, Object> payload) {
         if (principal == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User must be logged in");
         }
@@ -33,7 +33,7 @@ public class SubscriptionController {
             boolean autoRenew = payload.containsKey("autoRenew") && (Boolean) payload.get("autoRenew");
 
             String url = subscriptionService.createSubscriptionCheckout(principal.getName(), planId, autoRenew);
-            return ResponseEntity.ok(url);
+            return ResponseEntity.ok(Map.of("checkoutUrl", url));
         } catch (StripeException e) {
             log.error("Stripe Subscription Error: ", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create subscription session");
