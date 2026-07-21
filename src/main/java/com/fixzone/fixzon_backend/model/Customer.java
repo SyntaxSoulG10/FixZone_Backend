@@ -33,7 +33,7 @@ public class Customer extends User {
             Boolean emailVerified, LocalDateTime lastLoginAt, LocalDateTime createdAt, String createdBy,
             LocalDateTime updatedAt, String updatedBy, String profilePictureUrl, String customerCode, String preferredContactMethod) {
         super(userId, fullName, email, phone, passwordHash, role, emailVerified, lastLoginAt, createdAt, createdBy,
-                updatedAt, updatedBy, "Active", profilePictureUrl);
+                updatedAt, updatedBy, "Active", profilePictureUrl, null, null);
         this.customerCode = customerCode;
         this.preferredContactMethod = preferredContactMethod;
     }

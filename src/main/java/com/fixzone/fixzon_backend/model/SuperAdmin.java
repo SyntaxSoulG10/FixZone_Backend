@@ -22,7 +22,7 @@ public class SuperAdmin extends User {
             Boolean emailVerified, LocalDateTime lastLoginAt, LocalDateTime createdAt, String createdBy,
             LocalDateTime updatedAt, String updatedBy, String profilePictureUrl, String adminCode) {
         super(userId, fullName, email, phone, passwordHash, role, emailVerified, lastLoginAt, createdAt, createdBy,
-                updatedAt, updatedBy, "Active", profilePictureUrl);
+                updatedAt, updatedBy, "Active", profilePictureUrl, null, null);
         this.adminCode = adminCode;
     }
 
