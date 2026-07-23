@@ -70,7 +70,7 @@ public class EmailService {
             String sender = (senderEmail != null && !senderEmail.isEmpty() && !senderEmail.contains("example.com")) ? senderEmail : fromEmail;
             helper.setFrom(sender, "FixZone Security");
             helper.setTo(toEmail);
-            helper.setSubject("Password Reset Request - FixZone");
+            helper.setSubject("FixZone - Password Recovery");
 
             String content = "<h1>FixZone Password Reset</h1>" +
                     "<p>We received a request to reset your password.</p>" +
