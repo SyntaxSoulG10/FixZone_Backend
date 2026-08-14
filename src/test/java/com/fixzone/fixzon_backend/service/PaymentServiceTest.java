@@ -24,7 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings("null")
+
 class PaymentServiceTest {
 
     @Mock
@@ -35,6 +35,10 @@ class PaymentServiceTest {
     private BookingRepository bookingRepository;
     @Mock
     private AuthRepository authRepository;
+    @Mock
+    private com.fixzone.fixzon_backend.repository.OwnerRepository ownerRepository;
+    @Mock
+    private com.fixzone.fixzon_backend.repository.ServiceCenterRepository serviceCenterRepository;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -63,6 +67,18 @@ class PaymentServiceTest {
     void initPayment_ShouldCalculateCorrectAmountAndSave() {
         // Mocking the repository to return the service package
         when(servicePackageRepository.findById(packageId)).thenReturn(Optional.of(servicePackage));
+        
+        // Mock owner to pass ensurePayoutReady
+        com.fixzone.fixzon_backend.model.Owner owner = new com.fixzone.fixzon_backend.model.Owner();
+        owner.setUserId(UUID.randomUUID());
+        owner.setStripeOnboardingComplete(true);
+        owner.setStripeAccountId("acct_123");
+        when(ownerRepository.findById(any())).thenReturn(Optional.of(owner));
+        
+        // Mock service center
+        com.fixzone.fixzon_backend.model.ServiceCenter sc = new com.fixzone.fixzon_backend.model.ServiceCenter();
+        sc.setOwner(owner);
+        when(serviceCenterRepository.findById(any())).thenReturn(Optional.of(sc));
         
         // Capture the saved payment
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));

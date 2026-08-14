@@ -31,7 +31,7 @@ public class ServiceCenter {
     @Column(name = "name", nullable = false, length = 150)
     private String name;
 
-    @Column(name = "address", length = 255)
+    @Column(name = "address", length = 1000)
     private String address;
 
     @Column(name = "contact_phone", length = 20)

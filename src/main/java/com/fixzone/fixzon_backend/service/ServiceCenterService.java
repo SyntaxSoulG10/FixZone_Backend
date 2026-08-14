@@ -30,7 +30,7 @@ import com.fixzone.fixzon_backend.model.ServicePackage;
  * metrics like revenue and capacity for the dashboard.
  */
 @Service
-@SuppressWarnings("null")
+
 public class ServiceCenterService {
     private final ServiceCenterRepository serviceCenterRepository;
     private final UserRepository userRepository;
@@ -70,6 +70,7 @@ public class ServiceCenterService {
     /**
      * RETRIEVAL: Fetches all active service centers whose owner has an active subscription.
      * Inactive/expired owners' branches are hidden from customers.
+     * Uses SubscriptionStatus enum with backward-compatible legacy mapping.
      */
     public PagedResponse<ServiceCenterDTO> getAllServiceCenters(Pageable pageable) {
         Page<ServiceCenter> page = serviceCenterRepository.findActiveAndValidSubscription(pageable);

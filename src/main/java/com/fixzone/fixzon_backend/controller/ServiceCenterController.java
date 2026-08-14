@@ -90,9 +90,10 @@ public class ServiceCenterController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Your account must be approved by a SuperAdmin before creating a branch.");
         }
 
-        // 2. Check subscription is active (TRIAL or ACTIVE)
-        String subStatus = ownerEntity.getSubscriptionStatus();
-        if (!"TRIAL".equals(subStatus) && !"ACTIVE".equals(subStatus)) {
+        // 2. Check subscription is active (TRIAL_ACTIVE or PREMIUM_ACTIVE)
+        com.fixzone.fixzon_backend.enums.SubscriptionStatus subStatus =
+                com.fixzone.fixzon_backend.enums.SubscriptionStatus.fromLegacy(ownerEntity.getSubscriptionStatus());
+        if (!subStatus.isAccessAllowed()) {
             return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body("Your subscription has expired. Please upgrade your plan before creating a branch.");
         }
 
@@ -103,12 +104,36 @@ public class ServiceCenterController {
     @PutMapping("/{id}")
     public ResponseEntity<ServiceCenterDTO> updateServiceCenter(@PathVariable UUID id,
             @jakarta.validation.Valid @RequestBody ServiceCenterDTO dto) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+        
+        ServiceCenterDTO existingCenter = serviceCenterService.getServiceCenterById(id);
+        if (existingCenter == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        if (owner == null || !owner.getUserId().equals(existingCenter.getOwnerId())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Access Denied: You do not own this service center");
+        }
+        
         ServiceCenterDTO updatedCenter = serviceCenterService.updateServiceCenter(id, dto);
         return updatedCenter != null ? ResponseEntity.ok(updatedCenter) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteServiceCenter(@PathVariable UUID id) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+        
+        ServiceCenterDTO existingCenter = serviceCenterService.getServiceCenterById(id);
+        if (existingCenter == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        if (owner == null || !owner.getUserId().equals(existingCenter.getOwnerId())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Access Denied: You do not own this service center");
+        }
+
         serviceCenterService.deleteServiceCenter(id);
         return ResponseEntity.noContent().build();
     }

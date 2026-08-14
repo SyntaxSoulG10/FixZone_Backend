@@ -19,7 +19,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@SuppressWarnings("null")
+
 public class SuperAdminAnalyticsService {
     private static final Logger log = LoggerFactory.getLogger(SuperAdminAnalyticsService.class);
 

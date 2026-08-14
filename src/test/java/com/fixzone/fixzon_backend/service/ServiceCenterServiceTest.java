@@ -25,7 +25,7 @@ import org.springframework.data.domain.Pageable;
 import com.fixzone.fixzon_backend.DTO.PagedResponse;
 
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings("null")
+
 class ServiceCenterServiceTest {
 
     @Mock private ServiceCenterRepository serviceCenterRepository;
@@ -102,6 +102,7 @@ class ServiceCenterServiceTest {
 
     @Test
     void deleteServiceCenter_ShouldPerformCascadingCleanup() {
+        when(serviceCenterRepository.existsById(centerId)).thenReturn(true);
         when(servicePackageRepository.findByServiceCenter_CenterId(centerId)).thenReturn(new ArrayList<>());
         when(managerRepository.findByManagedCenterId(centerId)).thenReturn(new ArrayList<>());
         when(invoiceRepository.findByCenterId(centerId)).thenReturn(new ArrayList<>());

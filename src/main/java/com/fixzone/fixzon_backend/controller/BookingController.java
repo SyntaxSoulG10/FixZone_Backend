@@ -113,7 +113,7 @@ public class BookingController {
     public ResponseEntity<BookingResponseDTO> createBooking(
             @jakarta.validation.Valid @RequestBody BookingRequestDTO request,
             org.springframework.security.core.Authentication authentication) {
-        return ResponseEntity.status(201).body(bookingService.createBooking(request, authentication.getName()));
+        return ResponseEntity.status(201).body(bookingService.createBooking(request, authentication));
     }
 
     /**
@@ -163,6 +163,12 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.startService(id));
     }
 
+    @PutMapping("/{id}/edit")
+    public ResponseEntity<BookingResponseDTO> editExistingBooking(
+            @PathVariable UUID id, 
+            @RequestBody BookingRequestDTO request) {
+        return ResponseEntity.ok(bookingService.editExistingBooking(id, request));
+    }
 
     // Legacy endpoints removed
 }

@@ -4,7 +4,11 @@ import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.model.SubscriptionPlan;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.SubscriptionPlanRepository;
-import com.fixzone.fixzon_backend.repository.AuthRepository;
+
+import com.fixzone.fixzon_backend.repository.SubscriptionRepository;
+import com.fixzone.fixzon_backend.repository.SubscriptionBillingRepository;
+import com.fixzone.fixzon_backend.model.Subscription;
+import com.fixzone.fixzon_backend.model.SubscriptionBilling;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
@@ -12,8 +16,9 @@ import com.stripe.param.checkout.SessionCreateParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
+import java.util.List;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,18 +35,25 @@ public class SubscriptionService {
 
     private final OwnerRepository ownerRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
-    private final AuthRepository authRepository;
 
-    public SubscriptionService(OwnerRepository ownerRepository, SubscriptionPlanRepository subscriptionPlanRepository, AuthRepository authRepository) {
+    private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionBillingRepository subscriptionBillingRepository;
+
+    public SubscriptionService(OwnerRepository ownerRepository, 
+                               SubscriptionPlanRepository subscriptionPlanRepository, 
+                               SubscriptionRepository subscriptionRepository,
+                               SubscriptionBillingRepository subscriptionBillingRepository) {
         this.ownerRepository = ownerRepository;
         this.subscriptionPlanRepository = subscriptionPlanRepository;
-        this.authRepository = authRepository;
+
+        this.subscriptionRepository = subscriptionRepository;
+        this.subscriptionBillingRepository = subscriptionBillingRepository;
     }
 
     public String createSubscriptionCheckout(String ownerEmail, UUID planId, boolean autoRenew) throws StripeException {
         Stripe.apiKey = stripeApiKey;
 
-        Owner owner = (Owner) authRepository.findByEmail(ownerEmail)
+        Owner owner = ownerRepository.findByEmail(ownerEmail)
                 .orElseThrow(() -> new RuntimeException("Owner not found"));
 
         SubscriptionPlan plan = subscriptionPlanRepository.findById(planId)
@@ -93,7 +105,7 @@ public class SubscriptionService {
                     Owner owner = ownerOpt.get();
                     SubscriptionPlan plan = planOpt.get();
 
-                    owner.setSubscriptionStatus("ACTIVE");
+                    owner.setSubscriptionStatus("PREMIUM_ACTIVE");
                     owner.setStatus("Active"); // Reactivate owner account on successful subscription
                     owner.setCurrentPlanId(planId);
                     owner.setAutoRenewEnabled(autoRenew);
@@ -111,8 +123,66 @@ public class SubscriptionService {
                     owner.setNextBillingDate(startDate.plusMonths(plan.getDurationMonths()));
                     ownerRepository.save(owner);
                     log.info("Subscription updated for owner {}", owner.getEmail());
+
+                    // Handle Subscription entity
+                    Subscription subscription = subscriptionRepository.findByOwnerUserId(owner.getUserId())
+                            .orElseGet(() -> {
+                                Subscription newSub = new Subscription();
+                                newSub.setOwner(owner);
+                                return newSub;
+                            });
+                    subscription.setPlan(plan);
+                    subscription.setStartDate(startDate.toLocalDate());
+                    subscription.setEndDate(owner.getNextBillingDate().toLocalDate());
+                    subscription.setStatus("ACTIVE");
+                    subscriptionRepository.save(subscription);
+
+                    // Create Billing Record
+                    SubscriptionBilling billing = new SubscriptionBilling();
+                    billing.setSubscriptionId(subscription.getId());
+                    billing.setAmount(plan.getPrice());
+                    billing.setPaymentDate(now);
+                    billing.setStatus("Success");
+                    billing.setMethod("Stripe Checkout");
+                    
+                    // Retrieve invoice ID or payment intent from Stripe session if available
+                    String invoiceId = session.getInvoice();
+                    if (invoiceId == null) {
+                        invoiceId = session.getPaymentIntent();
+                        if (invoiceId == null) {
+                            invoiceId = "INV-" + session.getId().substring(Math.max(0, session.getId().length() - 8));
+                        }
+                    }
+                    billing.setInvoiceId(invoiceId);
+
+                    subscriptionBillingRepository.save(billing);
+                    log.info("Created billing record for owner {}", owner.getEmail());
                 }
             }
         }
+    }
+
+    @Scheduled(cron = "0 0 0 * * ?") // Run at midnight every day
+    public void checkSubscriptionExpirations() {
+        log.info("Running daily subscription expiration check...");
+        LocalDateTime now = LocalDateTime.now();
+
+        // Expire trials
+        List<Owner> expiredTrials = ownerRepository.findBySubscriptionStatusAndTrialEndsAtBefore("TRIAL_ACTIVE", now);
+        for (Owner owner : expiredTrials) {
+            log.info("Trial expired for owner: {}", owner.getEmail());
+            owner.setSubscriptionStatus("TRIAL_EXPIRED");
+            ownerRepository.save(owner);
+        }
+
+        // Expire premium plans where auto-renew is false
+        List<Owner> expiredPremiums = ownerRepository.findBySubscriptionStatusAndNextBillingDateBeforeAndAutoRenewEnabled("PREMIUM_ACTIVE", now, false);
+        for (Owner owner : expiredPremiums) {
+            log.info("Premium subscription expired for owner: {}", owner.getEmail());
+            owner.setSubscriptionStatus("PREMIUM_EXPIRED");
+            ownerRepository.save(owner);
+        }
+
+        log.info("Completed daily subscription expiration check. Updated {} trials and {} premium plans.", expiredTrials.size(), expiredPremiums.size());
     }
 }

@@ -26,9 +26,9 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
         @org.springframework.data.repository.query.Param("vehicleType") String vehicleType
     );
 
-    @org.springframework.data.jpa.repository.Query("SELECT sp FROM ServicePackage sp JOIN sp.serviceCenter sc JOIN User u ON sc.owner.userId = u.userId WHERE u.ownerCode = :ownerCode AND sp.isActive = true")
+    @org.springframework.data.jpa.repository.Query("SELECT sp FROM ServicePackage sp JOIN sp.serviceCenter sc JOIN Owner o ON sc.owner.userId = o.userId WHERE o.ownerCode = :ownerCode AND sp.isActive = true")
     List<ServicePackage> findPackagesByOwnerCode(@org.springframework.data.repository.query.Param("ownerCode") String ownerCode);
 
-    @org.springframework.data.jpa.repository.Query("SELECT sp FROM ServicePackage sp JOIN sp.serviceCenter sc JOIN User u ON sc.owner.userId = u.userId WHERE u.email = :email AND sp.isActive = true")
+    @org.springframework.data.jpa.repository.Query("SELECT sp FROM ServicePackage sp JOIN sp.serviceCenter sc JOIN Owner o ON sc.owner.userId = o.userId WHERE o.email = :email AND sp.isActive = true")
     List<ServicePackage> findPackagesByOwnerEmail(@org.springframework.data.repository.query.Param("email") String email);
 }

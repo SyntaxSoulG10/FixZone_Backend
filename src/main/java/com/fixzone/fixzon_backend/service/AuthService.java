@@ -33,6 +33,10 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final OtpService otpService;
     private final JwtUtil jwtUtil;
+    private final EmailService emailService;
+
+    @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
 
     public AuthService(AuthRepository authRepository,
                        CustomerRepository customerRepository,
@@ -41,7 +45,8 @@ public class AuthService {
                        NotificationService notificationService,
                        PasswordEncoder passwordEncoder,
                        OtpService otpService,
-                       JwtUtil jwtUtil) {
+                       JwtUtil jwtUtil,
+                       EmailService emailService) {
         this.authRepository = authRepository;
         this.customerRepository = customerRepository;
         this.ownerRepository = ownerRepository;
@@ -50,6 +55,34 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.otpService = otpService;
         this.jwtUtil = jwtUtil;
+        this.emailService = emailService;
+    }
+
+    public void forgotPassword(String email) {
+        User user = authRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("If the email is registered, a reset link will be sent."));
+
+        String token = UUID.randomUUID().toString();
+        user.setResetToken(token);
+        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
+        authRepository.save(user);
+
+        String resetLink = frontendUrl + "/reset-password?token=" + token;
+        emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
+    }
+
+    public void resetPassword(String token, String newPassword) {
+        User user = authRepository.findByResetToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
+
+        if (user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Reset token has expired");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        authRepository.save(user);
     }
 
     public AuthResponseDTO login(AuthRequestDTO request) {
@@ -130,7 +163,7 @@ public class AuthService {
         owner.setOwnerCode(AppConstants.OWNER_PREFIX + System.currentTimeMillis());
         owner.setCompanyName(request.getCompanyName());
         owner.setCompanyNumber(request.getCompanyNumber());
-        owner.setSubscriptionStatus("TRIAL");
+        owner.setSubscriptionStatus("TRIAL_ACTIVE");
         owner.setTrialEndsAt(LocalDateTime.now().plusDays(30));
         owner.setAutoRenewEnabled(false);
 
@@ -154,6 +187,18 @@ public class AuthService {
                 owner.getPhone(),
                 owner.getEmailVerified() != null ? owner.getEmailVerified() : false
         );
+    }
+
+    public void changePassword(String email, String currentPassword, String newPassword) {
+        User user = authRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Incorrect current password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        authRepository.save(user);
     }
 
     private void triggerSignupNotifications(User user, String roleLabel) {

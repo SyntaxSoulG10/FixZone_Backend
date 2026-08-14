@@ -20,7 +20,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Component
-@SuppressWarnings("null")
+
 public class DataInitializer implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
@@ -42,6 +42,7 @@ public class DataInitializer implements CommandLineRunner {
     private final SuperAdminRepository superAdminRepository;
     private final PasswordEncoder passwordEncoder;
     private final DataSource dataSource;
+    private final SubscriptionBillingRepository subscriptionBillingRepository;
 
     @Value("${spring.jpa.hibernate.ddl-auto:update}")
     private String ddlAuto;
@@ -54,8 +55,8 @@ public class DataInitializer implements CommandLineRunner {
             NotificationRepository notificationRepository, SubscriptionRepository subscriptionRepository,
             SubscriptionPlanRepository planRepository,
             AnalyticsRepository analyticsRepository, BookingHistoryRepository bookingHistoryRepository,
-            PaymentRepository paymentRepository, PasswordEncoder passwordEncoder,
-            DataSource dataSource) {
+            PaymentRepository paymentRepository, PasswordEncoder passwordEncoder, 
+            DataSource dataSource, SubscriptionBillingRepository subscriptionBillingRepository) {
         this.userRepository = userRepository;
         this.ownerRepository = ownerRepository;
         this.customerRepository = customerRepository;
@@ -74,6 +75,7 @@ public class DataInitializer implements CommandLineRunner {
         this.paymentRepository = paymentRepository;
         this.passwordEncoder = passwordEncoder;
         this.dataSource = dataSource;
+        this.subscriptionBillingRepository = subscriptionBillingRepository;
     }
 
     @Override
@@ -111,6 +113,20 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Subscription status repair note: {}", e.getMessage());
         }
 
+        // CLEAR DUMMY PROFILE PHOTO: Remove the bearded man placeholder from existing test accounts
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            int fixed = stmt.executeUpdate(
+                "UPDATE users SET profile_picture_url = NULL " +
+                "WHERE profile_picture_url LIKE '%unsplash.com/photo-1472099645785%'"
+            );
+            if (fixed > 0) {
+                log.info(">>> REPAIRED {} user(s) with dummy bearded man profile photo → set to NULL <<<", fixed);
+            }
+        } catch (Exception e) {
+            log.info("Clear dummy photo note: {}", e.getMessage());
+        }
+
         // SAFETY GUARD: Only wipe and re-seed if explicitly in 'create' mode.
         // Never delete data just because count() returned 0 — Neon cold start can cause
         // a transient 0 count on the first query before the connection pool warms up.
@@ -123,12 +139,14 @@ public class DataInitializer implements CommandLineRunner {
             ensureRajaMotors();
             ensureMockManager();
             ensureMockPackages();
+            ensureSuperAdmins();
             return;
         }
 
         log.info("--- FRESH INSTALL: CLEARING OLD DATA AND STARTING FRESH SEEDING ---");
 
         analyticsRepository.deleteAll();
+        subscriptionBillingRepository.deleteAll();
         subscriptionRepository.deleteAll();
         planRepository.deleteAll();
         notificationRepository.deleteAll();
@@ -212,7 +230,20 @@ public class DataInitializer implements CommandLineRunner {
             sub.setPlan(Math.random() > 0.5 ? premiumPlan : basicPlan);
             sub.setStatus("ACTIVE");
             sub.setBillingHistory("Initial subscription activated on " + sub.getStartDate() + " via system seeding.");
-            subscriptionRepository.save(sub);
+            sub = subscriptionRepository.save(sub);
+
+            if (owner.getEmail().equals("raja@motors.lk")) {
+                for (int m = 1; m <= 3; m++) {
+                    SubscriptionBilling sb = new SubscriptionBilling();
+                    sb.setSubscriptionId(sub.getId());
+                    sb.setAmount(sub.getPlan().getPrice());
+                    sb.setPaymentDate(LocalDateTime.now().minusMonths(m));
+                    sb.setStatus("Paid");
+                    sb.setMethod("Visa **** 4242");
+                    sb.setInvoiceId("INV-2024-00" + m);
+                    subscriptionBillingRepository.save(sb);
+                }
+            }
         }
 
         for (int i = 0; i < owners.size(); i++) {
@@ -247,6 +278,24 @@ public class DataInitializer implements CommandLineRunner {
         ensureRajaMotors();
         ensureMockManager();
         ensureMockPackages();
+        ensureSuperAdmins();
+
+        // FORCE SEED BILLING HISTORY IF EMPTY (Temporary fix)
+        if (subscriptionBillingRepository.count() == 0) {
+            log.info(">>> FORCE SEEDING BILLING HISTORY FOR ALL SUBSCRIPTIONS <<<");
+            List<Subscription> allSubs = subscriptionRepository.findAll();
+            for (Subscription sub : allSubs) {
+                SubscriptionBilling sb = new SubscriptionBilling();
+                sb.setSubscriptionId(sub.getId());
+                sb.setAmount(new BigDecimal("14900.00"));
+                sb.setPaymentDate(LocalDateTime.now().minusDays(10));
+                sb.setStatus("Paid");
+                sb.setMethod("MasterCard **** 1234");
+                sb.setInvoiceId("INV-TEST-005");
+                subscriptionBillingRepository.save(sb);
+            }
+            log.info(">>> FORCE SEEDING COMPLETE <<<");
+        }
     }
 
     private void ensureMockManager() {
@@ -346,9 +395,9 @@ public class DataInitializer implements CommandLineRunner {
                     "contact@rajamotors.lk",
                     "+94112000000",
                     "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab",
-                    "https://facebook.com/rajamotors", "https://twitter.com/rajamotors",
-                    "https://instagram.com/rajamotors",
-                    null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false);
+                    "https://facebook.com/rajamotors", "https://twitter.com/rajamotors", "https://instagram.com/rajamotors",
+                    null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false
+            );
             ownerRepository.save(rajaOwner);
             seedRajaMotorsBranchesAndData(rajaOwner);
             log.info(">>> Raja Motors created and seeded successfully <<<");
@@ -384,8 +433,7 @@ public class DataInitializer implements CommandLineRunner {
                 // Always sync password so raja@motors.lk / pass123 always works
                 owner.setPasswordHash(passwordEncoder.encode("pass123"));
                 // Ensure subscription is active so the owner can log in and use the dashboard
-                if (owner.getSubscriptionStatus() == null || "INACTIVE".equals(owner.getSubscriptionStatus())
-                        || "EXPIRED".equals(owner.getSubscriptionStatus())) {
+                if (owner.getSubscriptionStatus() == null || "INACTIVE".equals(owner.getSubscriptionStatus()) || "EXPIRED".equals(owner.getSubscriptionStatus())) {
                     owner.setSubscriptionStatus("ACTIVE");
                     owner.setTrialEndsAt(LocalDateTime.now().plusDays(335));
                 }
@@ -665,6 +713,28 @@ public class DataInitializer implements CommandLineRunner {
             log.info("[SUCCESS] Manager images updated to professional Unsplash URL.");
         } catch (Exception e) {
             log.error("[ERROR] Failed to update manager images: {}", e.getMessage(), e);
+        }
+    }
+    private void ensureSuperAdmins() {
+        if (!userRepository.existsByEmail("admin1@fixzone.lk")) {
+            SuperAdmin admin = new SuperAdmin(
+                UUID.randomUUID(),
+                "Super Admin 1",
+                "admin1@fixzone.lk",
+                "+94770000001",
+                passwordEncoder.encode("FixzoneAdmin!2026"),
+                "ROLE_SUPER_ADMIN",
+                true,
+                LocalDateTime.now(),
+                LocalDateTime.now(),
+                "system",
+                LocalDateTime.now(),
+                "system",
+                null,
+                "SA-001"
+            );
+            superAdminRepository.save(admin);
+            log.info(">>> Mock Super Admin created successfully <<<");
         }
     }
 }

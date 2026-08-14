@@ -6,9 +6,11 @@ import com.fixzone.fixzon_backend.enums.PaymentStatus;
 import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.model.Payment;
 import com.fixzone.fixzon_backend.model.ServicePackage;
+import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.PaymentRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
+import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.AuthRepository;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
@@ -42,7 +44,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@SuppressWarnings("null")
+
 public class PaymentService {
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
@@ -63,17 +65,20 @@ public class PaymentService {
     private final BookingRepository bookingRepository;
     private final AuthRepository authRepository;
     private final OwnerRepository ownerRepository;
+    private final ServiceCenterRepository serviceCenterRepository;
 
     public PaymentService(PaymentRepository paymentRepository,
             ServicePackageRepository servicePackageRepository,
             BookingRepository bookingRepository,
             AuthRepository authRepository,
-            OwnerRepository ownerRepository) {
+            OwnerRepository ownerRepository,
+            ServiceCenterRepository serviceCenterRepository) {
         this.paymentRepository = paymentRepository;
         this.servicePackageRepository = servicePackageRepository;
         this.bookingRepository = bookingRepository;
         this.authRepository = authRepository;
         this.ownerRepository = ownerRepository;
+        this.serviceCenterRepository = serviceCenterRepository;
     }
 
     @Transactional
@@ -99,16 +104,39 @@ public class PaymentService {
         }
         payment.setServicePackageId(packageId);
         payment.setVehicleId(UUID.fromString(request.getVehicleId()));
-        
-        // Get center from service package to ensure correctness
+
+        // Resolve centerId and tenantId (owner) from the service package → service center chain.
+        // This is the AUTHORITATIVE path — we never trust centerId/ownerId from the client request.
         if (servicePackage.getServiceCenter() != null) {
-            payment.setCenterId(servicePackage.getServiceCenter().getCenterId());
-            if (servicePackage.getServiceCenter().getOwner() != null) {
-                payment.setTenantId(servicePackage.getServiceCenter().getOwner().getUserId());
+            ServiceCenter center = servicePackage.getServiceCenter();
+            payment.setCenterId(center.getCenterId());
+
+            // Resolve owner: prefer the eager relation; fall back to a DB look-up by centerId
+            if (center.getOwner() != null) {
+                // The owner field on ServiceCenter is typed as User — resolve the full Owner entity
+                ownerRepository.findById(center.getOwner().getUserId()).ifPresent(owner ->
+                        payment.setTenantId(owner.getUserId()));
+            } else {
+                // Fallback: look up owner directly from the service center record in DB
+                serviceCenterRepository.findById(center.getCenterId()).ifPresent(sc -> {
+                    if (sc.getOwner() != null) {
+                        ownerRepository.findById(sc.getOwner().getUserId()).ifPresent(owner ->
+                                payment.setTenantId(owner.getUserId()));
+                    }
+                });
             }
         } else if (request.getCenterId() != null && !request.getCenterId().isEmpty()) {
-            payment.setCenterId(UUID.fromString(request.getCenterId()));
+            // Service package does not have the center eagerly loaded — look it up
+            UUID centerId = UUID.fromString(request.getCenterId());
+            payment.setCenterId(centerId);
+            serviceCenterRepository.findById(centerId).ifPresent(sc -> {
+                if (sc.getOwner() != null) {
+                    ownerRepository.findById(sc.getOwner().getUserId()).ifPresent(owner ->
+                            payment.setTenantId(owner.getUserId()));
+                }
+            });
         }
+
         payment.setDate(request.getDate());
         payment.setTimeSlot(request.getTimeSlot());
         payment.setAmount(initialAmount);
@@ -121,7 +149,10 @@ public class PaymentService {
             });
         }
 
-        validatePayoutEligibility(payment.getTenantId());
+        // Validate BEFORE saving — throw a clear error if the owner has not completed
+        // Stripe Connect so the frontend can show an actionable message immediately.
+        ensurePayoutReady(payment.getTenantId());
+
         return paymentRepository.save(payment);
     }
 

@@ -5,6 +5,7 @@ import com.fixzone.fixzon_backend.DTO.RefundRequest;
 import com.fixzone.fixzon_backend.DTO.RescheduleRequest;
 import com.fixzone.fixzon_backend.model.Payment;
 import com.fixzone.fixzon_backend.service.PaymentService;
+import java.util.UUID;
 import com.stripe.exception.StripeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,13 +36,23 @@ public class PaymentController {
     @PostMapping("/init")
     public ResponseEntity<?> initPayment(@RequestBody InitPaymentRequest request, java.security.Principal principal) {
         String customerEmail = principal != null ? principal.getName() : null;
-        com.fixzone.fixzon_backend.model.Payment payment = paymentService.initPayment(request, request.getBookingId(), customerEmail);
-        java.util.Map<String, Object> eligibility = paymentService.validatePayoutEligibility(payment.getTenantId());
-        return ResponseEntity.ok(java.util.Map.of(
-                "paymentId", payment.getId(),
-                "stripeConnected", eligibility.get("stripeConnected"),
-                "message", eligibility.get("message")
-        ));
+        try {
+            com.fixzone.fixzon_backend.model.Payment payment = paymentService.initPayment(request, request.getBookingId(), customerEmail);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "paymentId", payment.getId(),
+                    "stripeConnected", true,
+                    "message", "Payment initialised successfully."
+            ));
+        } catch (IllegalStateException ex) {
+            // Owner has not completed Stripe Connect — return a clear 409 so the UI
+            // can display "This branch cannot accept online payments yet" immediately.
+            log.warn(">>> PAYMENT INIT BLOCKED: {}", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of(
+                    "stripeConnected", false,
+                    "requiresStripeConnect", true,
+                    "message", ex.getMessage()
+            ));
+        }
     }
 
     @PostMapping("/stripe")
@@ -152,6 +163,25 @@ public class PaymentController {
     public ResponseEntity<String> reschedule(@RequestBody RescheduleRequest rescheduleRequest) throws StripeException {
         String newSessionUrl = paymentService.reschedulePayment(rescheduleRequest.getBookingId());
         return ResponseEntity.ok(newSessionUrl);
+    }
+
+    /**
+     * Returns the internal payment record ID for a given booking UUID.
+     * Used by the frontend "Proceed to Payment" button for PENDING_PAYMENT bookings.
+     */
+    @GetMapping("/by-booking/{bookingId}")
+    public ResponseEntity<?> getPaymentByBookingUUID(@PathVariable UUID bookingId) {
+        try {
+            Long paymentId = paymentService.findPaymentIdByBookingUUID(bookingId);
+            if (paymentId == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(java.util.Map.of("paymentId", paymentId));
+        } catch (Exception e) {
+            log.error("Error finding payment for booking {}: {}", bookingId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("error", "Could not find payment record"));
+        }
     }
 
     @PostMapping("/connect")

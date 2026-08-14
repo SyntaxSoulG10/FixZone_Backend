@@ -61,11 +61,19 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             @Param("now") LocalDateTime now
     );
 
-    // OPTIONAL: Expired bookings finder
+    // OPTIONAL: Expired bookings finder (5-min payment window passed)
     @Query("""
     SELECT b FROM Booking b
     WHERE b.status = 'PENDING_PAYMENT'
     AND b.expiresAt < :now
     """)
     List<Booking> findExpiredBookings(@Param("now") LocalDateTime now);
+
+    // Confirmed bookings whose service date has already passed
+    @Query("""
+    SELECT b FROM Booking b
+    WHERE b.status = 'CONFIRMED'
+    AND b.bookingDate < :today
+    """)
+    List<Booking> findConfirmedPastBookings(@Param("today") LocalDate today);
 }

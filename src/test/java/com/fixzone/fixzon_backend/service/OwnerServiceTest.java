@@ -20,7 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings("null")
+
 class OwnerServiceTest {
 
     @Mock
@@ -127,6 +127,7 @@ class OwnerServiceTest {
 
     @Test
     void removeOwner_ShouldCallRepositoryDelete() {
+        when(ownerRepository.existsById(ownerId)).thenReturn(true);
         ownerService.removeOwner(ownerId);
         verify(ownerRepository, times(1)).deleteById(ownerId);
     }
