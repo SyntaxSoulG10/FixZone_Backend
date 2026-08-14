@@ -32,10 +32,25 @@ public class SubscriptionInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) throws Exception {
-        // Skip check for public endpoints, subscription endpoints, payment connect, and owner profile endpoints
+        // Only block specific write operations, allow all GET requests
+        String method = request.getMethod();
+        if ("GET".equalsIgnoreCase(method)) {
+            return true;
+        }
+
         String path = request.getRequestURI();
-        if (path.contains("/subscriptions/") || path.contains("/subscription-plans") ||
-            path.contains("/auth/") || path.contains("/payments/connect") || path.contains("/owners/")) {
+        
+        // Define paths that are blocked for expired subscriptions
+        boolean isBlockedWriteAction = 
+            (path.startsWith("/api/service-centers") && ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method))) ||
+            (path.startsWith("/api/service-packages") && ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method))) ||
+            (path.startsWith("/api/managers") && ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method))) ||
+            (path.matches("^/api/bookings/[^/]+/cancel$") && "PUT".equalsIgnoreCase(method)) ||
+            (path.equals("/api/payments/init") && "POST".equalsIgnoreCase(method)) ||
+            (path.equals("/api/payments/stripe") && "POST".equalsIgnoreCase(method)) ||
+            (path.equals("/api/payments/connect") && "POST".equalsIgnoreCase(method));
+
+        if (!isBlockedWriteAction) {
             return true;
         }
 
