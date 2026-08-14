@@ -7,6 +7,8 @@ import com.fixzone.fixzon_backend.repository.AuthRepository;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.PaymentRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +37,10 @@ class PaymentServiceTest {
     private BookingRepository bookingRepository;
     @Mock
     private AuthRepository authRepository;
+    @Mock
+    private OwnerRepository ownerRepository;
+    @Mock
+    private ServiceCenterRepository serviceCenterRepository;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -66,6 +72,15 @@ class PaymentServiceTest {
         
         // Capture the saved payment
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        com.fixzone.fixzon_backend.model.ServiceCenter center = new com.fixzone.fixzon_backend.model.ServiceCenter();
+        com.fixzone.fixzon_backend.model.Owner owner = new com.fixzone.fixzon_backend.model.Owner();
+        owner.setUserId(UUID.randomUUID());
+        owner.setStripeOnboardingComplete(true);
+        owner.setStripeAccountId("acct_123");
+        center.setOwner(owner);
+        when(serviceCenterRepository.findById(any(UUID.class))).thenReturn(Optional.of(center));
+        when(ownerRepository.findById(any(UUID.class))).thenReturn(Optional.of(owner));
 
         Payment result = paymentService.initPayment(request, "BOOK-123", "test@example.com");
 

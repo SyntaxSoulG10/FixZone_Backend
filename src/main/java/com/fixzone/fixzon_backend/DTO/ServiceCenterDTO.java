@@ -29,6 +29,7 @@ public class ServiceCenterDTO {
     @jakarta.validation.constraints.Pattern(regexp = "^[0-9+]{10,15}$", message = "Phone must be 10-15 digits")
     private String contactPhone;
 
+    @NotBlank(message = "Opening hours are required")
     private String openingHours;
     private BigDecimal rating;
     private Boolean isActive;
