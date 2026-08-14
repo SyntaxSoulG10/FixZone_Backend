@@ -38,6 +38,9 @@ public class Vehicle {
     @Column(name = "image_url")
     private String imageUrl;
 
+    @Column(name = "last_service_date")
+    private java.time.LocalDate lastServiceDate;
+
     @PrePersist
     protected void onCreate() {
         if (id == null) {

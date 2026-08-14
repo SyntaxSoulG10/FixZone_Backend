@@ -62,6 +62,31 @@ public class EmailService {
         }
     }
 
+    public void sendVerificationOtpEmail(String toEmail, String fullName, String otp) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+
+            String sender = (senderEmail != null && !senderEmail.isEmpty() && !senderEmail.contains("example.com")) ? senderEmail : fromEmail;
+            helper.setFrom(sender, "FixZone Team");
+            helper.setTo(toEmail);
+            helper.setSubject("FixZone - Your Verification Code");
+
+            String content = "<h1>Verify Your Email, " + fullName + "!</h1>" +
+                    "<p>Thank you for registering with FixZone.</p>" +
+                    "<p>Your 5-digit verification code is:</p>" +
+                    "<h2 style=\"letter-spacing: 5px; color: #E84E0F;\">" + otp + "</h2>" +
+                    "<p>This code will expire in 10 minutes.</p>" +
+                    "<p>Best regards,<br>The FixZone Team</p>";
+
+            helper.setText(content, true);
+            mailSender.send(message);
+            log.info("OTP Email SENT successfully to: {}", toEmail);
+        } catch (Exception e) {
+            log.error("ERROR: OTP Email failed to send to {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
+
     public void sendPasswordResetEmail(String toEmail, String resetLink) {
         try {
             MimeMessage message = mailSender.createMimeMessage();

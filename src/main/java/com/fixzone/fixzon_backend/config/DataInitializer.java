@@ -104,9 +104,8 @@ public class DataInitializer implements CommandLineRunner {
         try (java.sql.Connection conn = dataSource.getConnection()) {
             java.sql.Statement stmt = conn.createStatement();
             int fixed = stmt.executeUpdate(
-                "UPDATE owner SET subscription_status = 'ACTIVE', trial_ends_at = NOW() + INTERVAL '335 days' " +
-                "WHERE subscription_status IS NULL OR subscription_status = ''"
-            );
+                    "UPDATE owner SET subscription_status = 'ACTIVE', trial_ends_at = NOW() + INTERVAL '335 days' " +
+                            "WHERE subscription_status IS NULL OR subscription_status = ''");
             if (fixed > 0) {
                 log.info(">>> REPAIRED {} owner(s) with null subscription_status → set to ACTIVE <<<", fixed);
             }
@@ -179,44 +178,46 @@ public class DataInitializer implements CommandLineRunner {
         List<Owner> owners = new ArrayList<>();
         // Raja Motors - Specifically requested by the user
         Owner rajaOwner = new Owner(
-                UUID.fromString("32fc2f2c-474a-48e2-9cc6-d1473ff122db"), 
-                "Raja Owner", 
-                "raja@motors.lk", 
+                UUID.fromString("32fc2f2c-474a-48e2-9cc6-d1473ff122db"),
+                "Raja Owner",
+                "raja@motors.lk",
                 "+94771234567",
-                passwordEncoder.encode("pass123"), 
-                "ROLE_COMPANY_OWNER", 
-                true, 
-                LocalDateTime.now(), 
+                passwordEncoder.encode("pass123"),
+                "ROLE_COMPANY_OWNER",
+                true,
                 LocalDateTime.now(),
-                "system", 
-                LocalDateTime.now(), 
-                "system", 
-                "https://i.pravatar.cc/150?u=raja", 
-                "FIX001", 
+                LocalDateTime.now(),
+                "system",
+                LocalDateTime.now(),
+                "system",
+                "https://i.pravatar.cc/150?u=raja",
+                "FIX001",
                 "Raja Motors",
-                "contact@rajamotors.lk", 
-                "+94112000000", 
+                "contact@rajamotors.lk",
+                "+94112000000",
                 "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab",
                 "https://facebook.com/rajamotors", "https://twitter.com/rajamotors", "https://instagram.com/rajamotors",
-                null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false
-        );
+                null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false);
         owners.add(rajaOwner);
 
         // Tharindu Perera
         owners.add(new Owner(UUID.randomUUID(), "Tharindu Perera", "owner2@fixzone.lk", "+94771000001",
                 passwordEncoder.encode("pass123"), "ROLE_COMPANY_OWNER", true, LocalDateTime.now(), LocalDateTime.now(),
                 "system", LocalDateTime.now(), "system", "https://i.pravatar.cc/150", "FIX002", "Perera Motors",
-                "contact@perera.lk", "+94112000001", "https://images.unsplash.com", 
-                "https://facebook.com/pereramotors", "https://twitter.com/pereramotors", "https://instagram.com/pereramotors",
+                "contact@perera.lk", "+94112000001", "https://images.unsplash.com",
+                "https://facebook.com/pereramotors", "https://twitter.com/pereramotors",
+                "https://instagram.com/pereramotors",
                 null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false));
-        
+
         ownerRepository.saveAll(owners);
 
         // First, seed some Subscription Plans
-        SubscriptionPlan basicPlan = new SubscriptionPlan(UUID.randomUUID(), "Basic", new BigDecimal("5000"), "Basic Plan", 1, true, 
-            java.util.List.of("Basic Service Center Profile", "Up to 5 Managers"), false);
-        SubscriptionPlan premiumPlan = new SubscriptionPlan(UUID.randomUUID(), "Premium", new BigDecimal("35000"), "Premium Plan", 1, true, 
-            java.util.List.of("Multiple Locations", "API Access"), false);
+        SubscriptionPlan basicPlan = new SubscriptionPlan(UUID.randomUUID(), "Basic", new BigDecimal("5000"),
+                "Basic Plan", 1, true,
+                java.util.List.of("Basic Service Center Profile", "Up to 5 Managers"), false);
+        SubscriptionPlan premiumPlan = new SubscriptionPlan(UUID.randomUUID(), "Premium", new BigDecimal("35000"),
+                "Premium Plan", 1, true,
+                java.util.List.of("Multiple Locations", "API Access"), false);
         planRepository.save(basicPlan);
         planRepository.save(premiumPlan);
 
@@ -250,25 +251,29 @@ public class DataInitializer implements CommandLineRunner {
             UUID scId = UUID.fromString("11111111-1111-1111-1111-11111111111" + (i + 1));
             ServiceCenter sc = new ServiceCenter(scId, owner, owner.getCompanyName() + " HQ", "Colombo",
                     "+9411400", "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
-                    LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, "APPROVED", null, null, null, null, null);
+                    LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, null, null, "APPROVED", null, null, null,
+                    null, null);
             serviceCenterRepository.save(sc);
 
             UUID pkgId = UUID.fromString("22222222-2222-2222-2222-22222222222" + (i + 1));
-            ServicePackage p = new ServicePackage(pkgId, sc, "Full Service", "Package", null, "Oil & Filter", 
-                    new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system");
+            ServicePackage p = new ServicePackage(pkgId, sc, "Full Service", "Package", null, "Oil & Filter",
+                    new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(),
+                    "system");
             servicePackageRepository.save(p);
 
             // Also ensure the Bike Package from frontend mock exists
             UUID bikePkgId = UUID.fromString("4aba5910-a686-49db-9dde-915c8b7f538c");
             if (!servicePackageRepository.existsById(bikePkgId)) {
-                ServicePackage bikePkg = new ServicePackage(bikePkgId, sc, "Gold Package (Bike)", "Package", "BIKE", "Bike specialized care", 
-                        new BigDecimal("8000.00"), 240, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system");
+                ServicePackage bikePkg = new ServicePackage(bikePkgId, sc, "Gold Package (Bike)", "Package", "BIKE",
+                        "Bike specialized care",
+                        new BigDecimal("8000.00"), 240, true, LocalDateTime.now(), "system", LocalDateTime.now(),
+                        "system");
                 servicePackageRepository.save(bikePkg);
             }
         }
 
         log.info("--- DATA SEEDING COMPLETE ---");
-        
+
         ensureMockCharlie();
         ensureRajaMotors();
         ensureMockManager();
@@ -297,22 +302,21 @@ public class DataInitializer implements CommandLineRunner {
         if (!userRepository.existsByEmail("manager1@fixzone.lk") && serviceCenterRepository.count() > 0) {
             ServiceCenter firstCenter = serviceCenterRepository.findAll().get(0);
             Manager manager = new Manager(
-                UUID.randomUUID(),
-                "Roshan Wijesinghe",
-                "manager1@fixzone.lk",
-                "+94772000000",
-                passwordEncoder.encode("FixzoneManager!2026"),
-                "ROLE_SERVICE_MANAGER",
-                true,
-                LocalDateTime.now(),
-                LocalDateTime.now(),
-                "system",
-                LocalDateTime.now(),
-                "system",
-                "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=256&h=256&auto=format&fit=crop",
-                "MGR-001",
-                firstCenter.getCenterId()
-            );
+                    UUID.randomUUID(),
+                    "Roshan Wijesinghe",
+                    "manager1@fixzone.lk",
+                    "+94772000000",
+                    passwordEncoder.encode("FixzoneManager!2026"),
+                    "ROLE_SERVICE_MANAGER",
+                    true,
+                    LocalDateTime.now(),
+                    LocalDateTime.now(),
+                    "system",
+                    LocalDateTime.now(),
+                    "system",
+                    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=256&h=256&auto=format&fit=crop",
+                    "MGR-001",
+                    firstCenter.getCenterId());
             managerRepository.save(manager);
             log.info(">>> Mock Manager created successfully <<<");
         }
@@ -347,15 +351,19 @@ public class DataInitializer implements CommandLineRunner {
             // Full Service
             UUID fullPkgId = UUID.fromString("22222222-2222-2222-2222-222222222221");
             if (!servicePackageRepository.existsById(fullPkgId)) {
-                servicePackageRepository.save(new ServicePackage(fullPkgId, sc, "Full Service", "Package", null, "Oil & Filter", 
-                    new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+                servicePackageRepository
+                        .save(new ServicePackage(fullPkgId, sc, "Full Service", "Package", null, "Oil & Filter",
+                                new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system",
+                                LocalDateTime.now(), "system"));
             }
-            
+
             // Bike Package
             UUID bikePkgId = UUID.fromString("4aba5910-a686-49db-9dde-915c8b7f538c");
             if (!servicePackageRepository.existsById(bikePkgId)) {
-                servicePackageRepository.save(new ServicePackage(bikePkgId, sc, "Gold Package (Bike)", "Package", "BIKE", "Bike specialized care", 
-                    new BigDecimal("8000.00"), 240, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+                servicePackageRepository.save(new ServicePackage(bikePkgId, sc, "Gold Package (Bike)", "Package",
+                        "BIKE", "Bike specialized care",
+                        new BigDecimal("8000.00"), 240, true, LocalDateTime.now(), "system", LocalDateTime.now(),
+                        "system"));
             }
         });
     }
@@ -363,32 +371,32 @@ public class DataInitializer implements CommandLineRunner {
     private void ensureRajaMotors() {
         UUID rajaId = UUID.fromString("32fc2f2c-474a-48e2-9cc6-d1473ff122db");
         String rajaEmail = "raja@motors.lk";
-        
+
         // Check if user already exists by ID or Email
         log.info("Checking for Raja Motors (ID: {}, Email: {})...", rajaId, rajaEmail);
         if (!userRepository.existsById(rajaId) && !userRepository.findByEmail(rajaEmail).isPresent()) {
             log.info("Raja Motors not found. Creating new Owner...");
             Owner rajaOwner = new Owner(
-                    rajaId, 
-                    "Raja Owner", 
-                    rajaEmail, 
+                    rajaId,
+                    "Raja Owner",
+                    rajaEmail,
                     "+94771234567",
-                    passwordEncoder.encode("pass123"), 
-                    "ROLE_COMPANY_OWNER", 
-                    true, 
-                    LocalDateTime.now(), 
+                    passwordEncoder.encode("pass123"),
+                    "ROLE_COMPANY_OWNER",
+                    true,
                     LocalDateTime.now(),
-                    "system", 
-                    LocalDateTime.now(), 
-                    "system", 
-                    "https://i.pravatar.cc/150?u=raja", 
-                    "RAJA001", 
+                    LocalDateTime.now(),
+                    "system",
+                    LocalDateTime.now(),
+                    "system",
+                    "https://i.pravatar.cc/150?u=raja",
+                    "RAJA001",
                     "Raja Motors",
-                    "contact@rajamotors.lk", 
-                    "+94112000000", 
+                    "contact@rajamotors.lk",
+                    "+94112000000",
                     "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab",
                     "https://facebook.com/rajamotors", "https://twitter.com/rajamotors", "https://instagram.com/rajamotors",
-                    null, false, "PREMIUM_EXPIRED", LocalDateTime.now().minusDays(1), null, null, null, false
+                    null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false
             );
             ownerRepository.save(rajaOwner);
             seedRajaMotorsBranchesAndData(rajaOwner);
@@ -415,7 +423,7 @@ public class DataInitializer implements CommandLineRunner {
                     owner.setStatus("Active");
                     owner.setCreatedAt(user.getCreatedAt());
                 }
-                
+
                 // Sync essential details for analytics and UI testing
                 owner.setOwnerCode("RAJA001");
                 owner.setCompanyName("Raja Motors");
@@ -424,12 +432,14 @@ public class DataInitializer implements CommandLineRunner {
                 owner.setInstagramUrl("https://instagram.com/rajamotors");
                 // Always sync password so raja@motors.lk / pass123 always works
                 owner.setPasswordHash(passwordEncoder.encode("pass123"));
-                // Ensure subscription is expired so the owner can test the expired state
-                owner.setSubscriptionStatus("PREMIUM_EXPIRED");
-                owner.setTrialEndsAt(LocalDateTime.now().minusDays(1));
+                // Ensure subscription is active so the owner can log in and use the dashboard
+                if (owner.getSubscriptionStatus() == null || "INACTIVE".equals(owner.getSubscriptionStatus()) || "EXPIRED".equals(owner.getSubscriptionStatus())) {
+                    owner.setSubscriptionStatus("ACTIVE");
+                    owner.setTrialEndsAt(LocalDateTime.now().plusDays(335));
+                }
                 owner.setStatus("Active");
                 ownerRepository.save(owner);
-                
+
                 log.debug("Proceeding to seed branches and history for: {}", owner.getEmail());
                 seedRajaMotorsBranchesAndData(owner);
             } else {
@@ -443,13 +453,14 @@ public class DataInitializer implements CommandLineRunner {
         try {
             int existingCount = serviceCenterRepository.findByOwner_UserId(owner.getUserId()).size();
             long historyCount = bookingRepository.countByTenantId(owner.getUserId());
-            
+
             log.debug("Seeding Raja Motors - Branches: {}, History: {}", existingCount, historyCount);
-            
+
             // Always update existing manager images if they are already in the DB
             updateManagerImagesForOwner(owner);
 
-            // SKIP SEEDING if history already exists, but UPDATE metrics to ensure they are accurate
+            // SKIP SEEDING if history already exists, but UPDATE metrics to ensure they are
+            // accurate
             if (historyCount > 0) {
                 log.debug("Raja Motors already has history data. Updating metrics from existing records...");
                 updateCustomerMetricsForOwner(owner);
@@ -458,189 +469,205 @@ public class DataInitializer implements CommandLineRunner {
 
             log.debug("NO HISTORY FOUND: Seeding history for Raja Motors...");
 
-        log.info("Seeding 3 branches for Raja Motors...");
-        // Delete existing ones to start fresh with 3 branches if it was partially seeded
-        if (existingCount > 0) {
-            List<ServiceCenter> existingCenters = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
-            for (ServiceCenter center : existingCenters) {
-                // CLEAR DATA IN REVERSE ORDER OF CONSTRAINTS
-                paymentRecordRepository.deleteAll(paymentRecordRepository.findByCenterId(center.getCenterId()));
-                invoiceRepository.deleteAll(invoiceRepository.findByCenterId(center.getCenterId()));
-                bookingRepository.deleteAll(bookingRepository.findByCenterId(center.getCenterId()));
+            log.info("Seeding 3 branches for Raja Motors...");
+            // Delete existing ones to start fresh with 3 branches if it was partially
+            // seeded
+            if (existingCount > 0) {
+                List<ServiceCenter> existingCenters = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
+                for (ServiceCenter center : existingCenters) {
+                    // CLEAR DATA IN REVERSE ORDER OF CONSTRAINTS
+                    paymentRecordRepository.deleteAll(paymentRecordRepository.findByCenterId(center.getCenterId()));
+                    invoiceRepository.deleteAll(invoiceRepository.findByCenterId(center.getCenterId()));
+                    bookingRepository.deleteAll(bookingRepository.findByCenterId(center.getCenterId()));
+                }
+                if (existingCount < 3) {
+                    serviceCenterRepository.deleteAll(existingCenters);
+                    log.info("Cleaned up incomplete centers for re-seed.");
+                }
             }
-            if (existingCount < 3) {
-                serviceCenterRepository.deleteAll(existingCenters);
-                log.info("Cleaned up incomplete centers for re-seed.");
-            }
-        }
 
-        String[] locations = {"Colombo", "Kandy", "Galle"};
-        List<ServiceCenter> centers = new ArrayList<>();
-        List<ServicePackage> packages = new ArrayList<>();
-        List<Manager> managers = new ArrayList<>();
+            String[] locations = { "Colombo", "Kandy", "Galle" };
+            List<ServiceCenter> centers = new ArrayList<>();
+            List<ServicePackage> packages = new ArrayList<>();
+            List<Manager> managers = new ArrayList<>();
 
-        if (serviceCenterRepository.findByOwner_UserId(owner.getUserId()).size() < 3) {
-            for (String loc : locations) {
-                ServiceCenter sc = new ServiceCenter(UUID.randomUUID(), owner, "Raja Motors - " + loc, loc,
-                        "+94112000" + loc.length(), "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
-                        LocalDateTime.now(), "system", new String[] {"Toyota", "Honda", "Nissan", "Suzuki"}, "APPROVED", null, null, null, null, null);
-                centers.add(serviceCenterRepository.save(sc));
+            if (serviceCenterRepository.findByOwner_UserId(owner.getUserId()).size() < 3) {
+                for (String loc : locations) {
+                    ServiceCenter sc = new ServiceCenter(UUID.randomUUID(), owner, "Raja Motors - " + loc, loc,
+                            "+94112000" + loc.length(), "08:00 - 18:00", new BigDecimal("4.5"), true,
+                            LocalDateTime.now(), "system",
+                            LocalDateTime.now(), "system", new String[] { "Toyota", "Honda", "Nissan", "Suzuki" },
+                            null, null, "APPROVED", null, null, null, null, null);
+                    centers.add(serviceCenterRepository.save(sc));
 
-                // Add 3 distinct packages per center for variety
-                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Basic Service", "Base maintenance", null,
-                        "Essential oil and filter change.", new BigDecimal("8500.00"), 60, true, 
-                        LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
-                
-                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Premium Full Service", "Full maintenance package", null,
-                        "Oil change, filter, brake check, engine scan.", new BigDecimal("15500.00"), 120, true, 
-                        LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+                    // Add 3 distinct packages per center for variety
+                    packages.add(servicePackageRepository
+                            .save(new ServicePackage(UUID.randomUUID(), sc, "Basic Service", "Base maintenance", null,
+                                    "Essential oil and filter change.", new BigDecimal("8500.00"), 60, true,
+                                    LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
 
-                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Interior & Exterior Detail", "Deep cleaning", null,
-                        "Full body wash, vacuum, and wax.", new BigDecimal("5500.00"), 90, true, 
-                        LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
-
-                String mgrImg = "https://images.unsplash.com/photo-1651684215020-f7a5b6610f23?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvZmlsZSUyMHBob3Rvc3xlbnwwfHwwfHx8MA%3D%3D";
-                
-                Manager mgr = new Manager(UUID.randomUUID(), loc + " Branch Manager", "manager." + loc.toLowerCase() + "@raja.lk", 
-                        "+94771000" + loc.length(), passwordEncoder.encode("manager123"), "ROLE_SERVICE_MANAGER", true, 
-                        null, LocalDateTime.now(), "system", LocalDateTime.now(), "system", 
-                        mgrImg, "MGR-" + loc.substring(0, 3).toUpperCase(), sc.getCenterId());
-                managers.add(managerRepository.save(mgr));
-            }
-        } else {
-            centers = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
-            // Ensure each center has at least some packages for seeding
-            for (ServiceCenter center : centers) {
-                List<ServicePackage> centerPackages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
-                if (centerPackages.isEmpty()) {
-                    packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), center, "Standard Service", "Base maintenance", null,
-                            "Essential checks and oil service.", new BigDecimal("8500.00"), 60, true, 
+                    packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc,
+                            "Premium Full Service", "Full maintenance package", null,
+                            "Oil change, filter, brake check, engine scan.", new BigDecimal("15500.00"), 120, true,
                             LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
-                } else {
-                    packages.addAll(centerPackages);
-                }
-            }
-        }
 
-        // Create some customers
-        List<Customer> customers = new ArrayList<>();
-        for (int i = 1; i <= 10; i++) {
-            String email = "customer" + i + "@rajamail.com";
-            Optional<User> existingUser = userRepository.findByEmail(email);
-            if (existingUser.isPresent()) {
-                customers.add((Customer) existingUser.get());
+                    packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc,
+                            "Interior & Exterior Detail", "Deep cleaning", null,
+                            "Full body wash, vacuum, and wax.", new BigDecimal("5500.00"), 90, true,
+                            LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+
+                    String mgrImg = "https://images.unsplash.com/photo-1651684215020-f7a5b6610f23?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvZmlsZSUyMHBob3Rvc3xlbnwwfHwwfHx8MA%3D%3D";
+
+                    Manager mgr = new Manager(UUID.randomUUID(), loc + " Branch Manager",
+                            "manager." + loc.toLowerCase() + "@raja.lk",
+                            "+94771000" + loc.length(), passwordEncoder.encode("manager123"), "ROLE_SERVICE_MANAGER",
+                            true,
+                            null, LocalDateTime.now(), "system", LocalDateTime.now(), "system",
+                            mgrImg, "MGR-" + loc.substring(0, 3).toUpperCase(), sc.getCenterId());
+                    managers.add(managerRepository.save(mgr));
+                }
             } else {
-                Customer c = new Customer();
-                c.setUserId(UUID.randomUUID());
-                c.setFullName("Raja Customer " + i);
-                c.setEmail(email);
-                c.setPhone("+9477123456" + i);
-                c.setPasswordHash(passwordEncoder.encode("password123"));
-                c.setRole("ROLE_CUSTOMER");
-                c.setStatus("Active");
-                c.setCreatedAt(LocalDateTime.now().minusMonths(4));
-                c.setCustomerCode("CUST-" + i);
-                customers.add(customerRepository.save(c));
+                centers = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
+                // Ensure each center has at least some packages for seeding
+                for (ServiceCenter center : centers) {
+                    List<ServicePackage> centerPackages = servicePackageRepository
+                            .findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
+                    if (centerPackages.isEmpty()) {
+                        packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), center,
+                                "Standard Service", "Base maintenance", null,
+                                "Essential checks and oil service.", new BigDecimal("8500.00"), 60, true,
+                                LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+                    } else {
+                        packages.addAll(centerPackages);
+                    }
+                }
             }
-        }
 
-        // Seed 3 months of historical data
-        LocalDateTime now = LocalDateTime.now();
-        for (int day = 0; day < 90; day++) {
-            LocalDateTime bookingDateTime = now.minusDays(day);
-            
-            // Generate 2-4 bookings per day across random centers
-            int dailyBookings = 2 + (int)(Math.random() * 3);
-            for (int i = 0; i < dailyBookings; i++) {
-                ServiceCenter center = centers.get((int)(Math.random() * centers.size()));
-                Customer customer = customers.get((int)(Math.random() * customers.size()));
-                
-                // Pick a random package from this specific center's packages
-                List<ServicePackage> centerPackages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
-                if (centerPackages.isEmpty()) continue;
-                ServicePackage pkg = centerPackages.get((int)(Math.random() * centerPackages.size()));
-                
-                Booking b = new Booking();
-                b.setBookingId(UUID.randomUUID());
-                b.setTenantId(owner.getUserId());
-                b.setCenterId(center.getCenterId());
-                b.setCustomerId(customer.getUserId());
-                b.setVehicleId(UUID.randomUUID());
-                b.setPackageId(pkg.getPackageId());
-                b.setBookingDate(bookingDateTime.toLocalDate());
-                b.setBookingTime(LocalTime.of(9 + (int)(Math.random() * 8), 0));
-                
-                // Determine status based on age
-                if (day > 2) {
-                    // Older than 2 days -> mostly COMPLETED
-                    b.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED);
-                } else if (day == 0) {
-                    // Today -> mostly CONFIRMED or IN_PROGRESS
-                    b.setStatus(Math.random() > 0.5 ? com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED : com.fixzone.fixzon_backend.enums.BookingStatus.IN_PROGRESS);
+            // Create some customers
+            List<Customer> customers = new ArrayList<>();
+            for (int i = 1; i <= 10; i++) {
+                String email = "customer" + i + "@rajamail.com";
+                Optional<User> existingUser = userRepository.findByEmail(email);
+                if (existingUser.isPresent()) {
+                    customers.add((Customer) existingUser.get());
                 } else {
-                    b.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED);
-                }
-                
-                b.setEstimatedCost(pkg.getBasePrice());
-                b.setBookingFee(new BigDecimal("1000.00"));
-                b.setBookingFeePaid(true);
-                b.setCreatedAt(bookingDateTime);
-                
-                bookingRepository.save(b);
-
-                // Update customer visits
-                customer.setVisits((customer.getVisits() == null ? 0 : customer.getVisits()) + 1);
-
-                // 1. Create Invoice FIRST to satisfy PaymentRecord FK constraint
-                Invoice inv = new Invoice();
-                inv.setInvoiceId(UUID.randomUUID());
-                inv.setCompanyCode(owner.getOwnerCode());
-                inv.setCenterId(center.getCenterId());
-                inv.setBookingId(b.getBookingId());
-                inv.setIssuedToCustomerId(customer.getUserId());
-                inv.setSubtotal(pkg.getBasePrice());
-                inv.setTax(pkg.getBasePrice().multiply(new BigDecimal("0.08"))); // 8% tax
-                inv.setDiscount(BigDecimal.ZERO);
-                inv.setTotal(inv.getSubtotal().add(inv.getTax()));
-                inv.setStatus(b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED ? "PAID" : "PENDING");
-                inv.setIssuedAt(bookingDateTime.plusHours(2));
-                inv.setCreatedAt(bookingDateTime.plusHours(2));
-                invoiceRepository.save(inv);
-
-                // Update customer total spent if paid
-                if ("PAID".equals(inv.getStatus())) {
-                    customer.setTotalSpent((customer.getTotalSpent() == null ? BigDecimal.ZERO : customer.getTotalSpent()).add(inv.getTotal()));
-                }
-                customerRepository.save(customer);
-
-                // 2. Create Online Payment (Booking Fee) linked to Invoice
-                PaymentRecord onlinePayment = new PaymentRecord();
-                onlinePayment.setPaymentId(UUID.randomUUID());
-                onlinePayment.setInvoiceId(inv.getInvoiceId()); // MUST BE SET
-                onlinePayment.setCenterId(center.getCenterId());
-                onlinePayment.setAmount(new BigDecimal("1000.00"));
-                onlinePayment.setMethod("CARD");
-                onlinePayment.setStatus("SUCCESS");
-                onlinePayment.setCreatedAt(bookingDateTime);
-                paymentRecordRepository.save(onlinePayment);
-
-                // 3. If COMPLETED, create final Cash Payment
-                if (b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED) {
-                    // Final Balance Payment
-                    PaymentRecord cashPayment = new PaymentRecord();
-                    cashPayment.setPaymentId(UUID.randomUUID());
-                    cashPayment.setInvoiceId(inv.getInvoiceId());
-                    cashPayment.setCenterId(center.getCenterId());
-                    cashPayment.setAmount(inv.getTotal().subtract(new BigDecimal("1000.00")));
-                    cashPayment.setMethod("CASH");
-                    cashPayment.setStatus("SUCCESS");
-                    cashPayment.setProcessedAt(bookingDateTime.plusHours(2).plusMinutes(5));
-                    cashPayment.setCreatedAt(bookingDateTime.plusHours(2).plusMinutes(5));
-                    paymentRecordRepository.save(cashPayment);
+                    Customer c = new Customer();
+                    c.setUserId(UUID.randomUUID());
+                    c.setFullName("Raja Customer " + i);
+                    c.setEmail(email);
+                    c.setPhone("+9477123456" + i);
+                    c.setPasswordHash(passwordEncoder.encode("password123"));
+                    c.setRole("ROLE_CUSTOMER");
+                    c.setStatus("Active");
+                    c.setCreatedAt(LocalDateTime.now().minusMonths(4));
+                    c.setCustomerCode("CUST-" + i);
+                    customers.add(customerRepository.save(c));
                 }
             }
-        }
-        log.info("[SUCCESS] Raja Motors seeding completed successfully for {}", owner.getEmail());
+
+            // Seed 3 months of historical data
+            LocalDateTime now = LocalDateTime.now();
+            for (int day = 0; day < 90; day++) {
+                LocalDateTime bookingDateTime = now.minusDays(day);
+
+                // Generate 2-4 bookings per day across random centers
+                int dailyBookings = 2 + (int) (Math.random() * 3);
+                for (int i = 0; i < dailyBookings; i++) {
+                    ServiceCenter center = centers.get((int) (Math.random() * centers.size()));
+                    Customer customer = customers.get((int) (Math.random() * customers.size()));
+
+                    // Pick a random package from this specific center's packages
+                    List<ServicePackage> centerPackages = servicePackageRepository
+                            .findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
+                    if (centerPackages.isEmpty())
+                        continue;
+                    ServicePackage pkg = centerPackages.get((int) (Math.random() * centerPackages.size()));
+
+                    Booking b = new Booking();
+                    b.setBookingId(UUID.randomUUID());
+                    b.setTenantId(owner.getUserId());
+                    b.setCenterId(center.getCenterId());
+                    b.setCustomerId(customer.getUserId());
+                    b.setVehicleId(UUID.randomUUID());
+                    b.setPackageId(pkg.getPackageId());
+                    b.setBookingDate(bookingDateTime.toLocalDate());
+                    b.setBookingTime(LocalTime.of(9 + (int) (Math.random() * 8), 0));
+
+                    // Determine status based on age
+                    if (day > 2) {
+                        // Older than 2 days -> mostly COMPLETED
+                        b.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED);
+                    } else if (day == 0) {
+                        // Today -> mostly CONFIRMED or IN_PROGRESS
+                        b.setStatus(Math.random() > 0.5 ? com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED
+                                : com.fixzone.fixzon_backend.enums.BookingStatus.IN_PROGRESS);
+                    } else {
+                        b.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED);
+                    }
+
+                    b.setEstimatedCost(pkg.getBasePrice());
+                    b.setBookingFee(new BigDecimal("1000.00"));
+                    b.setBookingFeePaid(true);
+                    b.setCreatedAt(bookingDateTime);
+
+                    bookingRepository.save(b);
+
+                    // Update customer visits
+                    customer.setVisits((customer.getVisits() == null ? 0 : customer.getVisits()) + 1);
+
+                    // 1. Create Invoice FIRST to satisfy PaymentRecord FK constraint
+                    Invoice inv = new Invoice();
+                    inv.setInvoiceId(UUID.randomUUID());
+                    inv.setCompanyCode(owner.getOwnerCode());
+                    inv.setCenterId(center.getCenterId());
+                    inv.setBookingId(b.getBookingId());
+                    inv.setIssuedToCustomerId(customer.getUserId());
+                    inv.setSubtotal(pkg.getBasePrice());
+                    inv.setTax(pkg.getBasePrice().multiply(new BigDecimal("0.08"))); // 8% tax
+                    inv.setDiscount(BigDecimal.ZERO);
+                    inv.setTotal(inv.getSubtotal().add(inv.getTax()));
+                    inv.setStatus(b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED ? "PAID"
+                            : "PENDING");
+                    inv.setIssuedAt(bookingDateTime.plusHours(2));
+                    inv.setCreatedAt(bookingDateTime.plusHours(2));
+                    invoiceRepository.save(inv);
+
+                    // Update customer total spent if paid
+                    if ("PAID".equals(inv.getStatus())) {
+                        customer.setTotalSpent(
+                                (customer.getTotalSpent() == null ? BigDecimal.ZERO : customer.getTotalSpent())
+                                        .add(inv.getTotal()));
+                    }
+                    customerRepository.save(customer);
+
+                    // 2. Create Online Payment (Booking Fee) linked to Invoice
+                    PaymentRecord onlinePayment = new PaymentRecord();
+                    onlinePayment.setPaymentId(UUID.randomUUID());
+                    onlinePayment.setInvoiceId(inv.getInvoiceId()); // MUST BE SET
+                    onlinePayment.setCenterId(center.getCenterId());
+                    onlinePayment.setAmount(new BigDecimal("1000.00"));
+                    onlinePayment.setMethod("CARD");
+                    onlinePayment.setStatus("SUCCESS");
+                    onlinePayment.setCreatedAt(bookingDateTime);
+                    paymentRecordRepository.save(onlinePayment);
+
+                    // 3. If COMPLETED, create final Cash Payment
+                    if (b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED) {
+                        // Final Balance Payment
+                        PaymentRecord cashPayment = new PaymentRecord();
+                        cashPayment.setPaymentId(UUID.randomUUID());
+                        cashPayment.setInvoiceId(inv.getInvoiceId());
+                        cashPayment.setCenterId(center.getCenterId());
+                        cashPayment.setAmount(inv.getTotal().subtract(new BigDecimal("1000.00")));
+                        cashPayment.setMethod("CASH");
+                        cashPayment.setStatus("SUCCESS");
+                        cashPayment.setProcessedAt(bookingDateTime.plusHours(2).plusMinutes(5));
+                        cashPayment.setCreatedAt(bookingDateTime.plusHours(2).plusMinutes(5));
+                        paymentRecordRepository.save(cashPayment);
+                    }
+                }
+            }
+            log.info("[SUCCESS] Raja Motors seeding completed successfully for {}", owner.getEmail());
         } catch (Exception e) {
             log.error("[ERROR] Failed to seed Raja Motors data: {}", e.getMessage(), e);
         }
@@ -652,16 +679,16 @@ public class DataInitializer implements CommandLineRunner {
             List<Customer> customers = customerRepository.findAll();
             for (Customer customer : customers) {
                 long visits = bookingRepository.findByCustomerId(customer.getUserId()).stream()
-                    .filter(b -> b.getTenantId().equals(owner.getUserId()))
-                    .count();
-                
+                        .filter(b -> b.getTenantId().equals(owner.getUserId()))
+                        .count();
+
                 BigDecimal totalSpent = invoiceRepository.findByIssuedToCustomerId(customer.getUserId()).stream()
-                    .filter(inv -> "PAID".equalsIgnoreCase(inv.getStatus()))
-                    .map(Invoice::getTotal)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-                
+                        .filter(inv -> "PAID".equalsIgnoreCase(inv.getStatus()))
+                        .map(Invoice::getTotal)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
                 if (visits > 0 || totalSpent.compareTo(BigDecimal.ZERO) > 0) {
-                    customer.setVisits((int)visits);
+                    customer.setVisits((int) visits);
                     customer.setTotalSpent(totalSpent);
                     customerRepository.save(customer);
                 }

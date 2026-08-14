@@ -4,6 +4,10 @@ import com.fixzone.fixzon_backend.DTO.CustomerDTO;
 import com.fixzone.fixzon_backend.service.CustomerService;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import com.fixzone.fixzon_backend.DTO.ServiceCenterDTO;
+import com.fixzone.fixzon_backend.service.ServiceCenterService;
+import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,10 +25,12 @@ public class CustomerController {
 
     private final CustomerService customerService;
     private final OwnerService ownerService;
+    private final ServiceCenterService serviceCenterService;
 
-    public CustomerController(CustomerService customerService, OwnerService ownerService) {
+    public CustomerController(CustomerService customerService, OwnerService ownerService, ServiceCenterService serviceCenterService) {
         this.customerService = customerService;
         this.ownerService = ownerService;
+        this.serviceCenterService = serviceCenterService;
     }
 
     /**
@@ -52,5 +58,14 @@ public class CustomerController {
         }
 
         return ResponseEntity.ok(customerService.getCustomersByOwnerCode(owner.getOwnerCode()));
+    }
+
+    /**
+     * Retrieves service centers where the customer has completed at least one booking.
+     * This provides the "Trusted Service Centers" data directly to the frontend.
+     */
+    @GetMapping("/{customerId}/trusted-service-centers")
+    public ResponseEntity<List<ServiceCenterDTO>> getTrustedServiceCenters(@PathVariable UUID customerId) {
+        return ResponseEntity.ok(serviceCenterService.getTrustedCentersForCustomer(customerId));
     }
 }
