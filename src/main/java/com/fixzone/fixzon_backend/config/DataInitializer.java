@@ -114,6 +114,20 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Subscription status repair note: {}", e.getMessage());
         }
 
+        // CLEAR DUMMY PROFILE PHOTO: Remove the bearded man placeholder from existing test accounts
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            int fixed = stmt.executeUpdate(
+                "UPDATE users SET profile_picture_url = NULL " +
+                "WHERE profile_picture_url LIKE '%unsplash.com/photo-1472099645785%'"
+            );
+            if (fixed > 0) {
+                log.info(">>> REPAIRED {} user(s) with dummy bearded man profile photo → set to NULL <<<", fixed);
+            }
+        } catch (Exception e) {
+            log.info("Clear dummy photo note: {}", e.getMessage());
+        }
+
         // SAFETY GUARD: Only wipe and re-seed if explicitly in 'create' mode.
         // Never delete data just because count() returned 0 — Neon cold start can cause
         // a transient 0 count on the first query before the connection pool warms up.
@@ -374,7 +388,7 @@ public class DataInitializer implements CommandLineRunner {
                     "+94112000000", 
                     "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab",
                     "https://facebook.com/rajamotors", "https://twitter.com/rajamotors", "https://instagram.com/rajamotors",
-                    null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false
+                    null, false, "PREMIUM_EXPIRED", LocalDateTime.now().minusDays(1), null, null, null, false
             );
             ownerRepository.save(rajaOwner);
             seedRajaMotorsBranchesAndData(rajaOwner);
@@ -410,13 +424,9 @@ public class DataInitializer implements CommandLineRunner {
                 owner.setInstagramUrl("https://instagram.com/rajamotors");
                 // Always sync password so raja@motors.lk / pass123 always works
                 owner.setPasswordHash(passwordEncoder.encode("pass123"));
-                // Ensure subscription is active so the owner can log in and use the dashboard
-                String currentSubStatus = owner.getSubscriptionStatus();
-                if (currentSubStatus == null || "INACTIVE".equals(currentSubStatus) || "EXPIRED".equals(currentSubStatus) 
-                        || "TRIAL_EXPIRED".equals(currentSubStatus) || "PREMIUM_EXPIRED".equals(currentSubStatus)) {
-                    owner.setSubscriptionStatus("PREMIUM_ACTIVE");
-                    owner.setTrialEndsAt(LocalDateTime.now().plusDays(335));
-                }
+                // Ensure subscription is expired so the owner can test the expired state
+                owner.setSubscriptionStatus("PREMIUM_EXPIRED");
+                owner.setTrialEndsAt(LocalDateTime.now().minusDays(1));
                 owner.setStatus("Active");
                 ownerRepository.save(owner);
                 
@@ -693,7 +703,7 @@ public class DataInitializer implements CommandLineRunner {
                 "system",
                 LocalDateTime.now(),
                 "system",
-                "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=256&h=256&auto=format&fit=crop",
+                null,
                 "SA-001"
             );
             superAdminRepository.save(admin);
