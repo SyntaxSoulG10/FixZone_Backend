@@ -706,4 +706,39 @@ public class PaymentService {
         booking.setBookingFeePaid(true);
         bookingRepository.save(booking);
     }
+
+    /**
+     * Finds the internal payment record ID for a given booking UUID.
+     * Strategy:
+     *  1. If the booking has a gatewaySessionId, find the payment by that session ID.
+     *  2. Otherwise, find the most recent payment matching package + vehicle + date.
+     */
+    public Long findPaymentIdByBookingUUID(UUID bookingUUID) {
+        Booking booking = bookingRepository.findById(bookingUUID)
+                .orElseThrow(() -> new RuntimeException("Booking not found: " + bookingUUID));
+
+        // Strategy 1: match by Stripe session ID stored on the booking
+        if (booking.getGatewaySessionId() != null && !booking.getGatewaySessionId().isBlank()) {
+            Optional<Payment> bySession = paymentRepository.findByGatewaySessionId(booking.getGatewaySessionId());
+            if (bySession.isPresent()) {
+                return bySession.get().getId();
+            }
+        }
+
+        // Strategy 2: find the most recent payment matching package + vehicle + date
+        if (booking.getPackageId() != null && booking.getVehicleId() != null && booking.getBookingDate() != null) {
+            String dateStr = booking.getBookingDate().toString();
+            return paymentRepository.findAll().stream()
+                    .filter(p ->
+                        booking.getPackageId().equals(p.getServicePackageId()) &&
+                        booking.getVehicleId().equals(p.getVehicleId()) &&
+                        dateStr.equals(p.getDate())
+                    )
+                    .max(java.util.Comparator.comparing(Payment::getId))
+                    .map(Payment::getId)
+                    .orElse(null);
+        }
+
+        return null;
+    }
 }
