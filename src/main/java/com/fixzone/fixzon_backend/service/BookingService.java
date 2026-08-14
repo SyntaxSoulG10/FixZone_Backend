@@ -7,6 +7,7 @@ import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.CustomerRepository;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import com.fixzone.fixzon_backend.repository.VehicleRepository;
@@ -36,19 +37,22 @@ public class BookingService {
     private final VehicleRepository vehicleRepository;
     private final PaymentService paymentService;
     private final CustomerRepository customerRepository;
+    private final OwnerRepository ownerRepository;
 
     public BookingService(BookingRepository bookingRepository,
             ServiceCenterRepository serviceCenterRepository,
             ServicePackageRepository servicePackageRepository,
             VehicleRepository vehicleRepository,
             PaymentService paymentService,
-            CustomerRepository customerRepository) {
+            CustomerRepository customerRepository,
+            OwnerRepository ownerRepository) {
         this.bookingRepository = bookingRepository;
         this.serviceCenterRepository = serviceCenterRepository;
         this.servicePackageRepository = servicePackageRepository;
         this.vehicleRepository = vehicleRepository;
         this.paymentService = paymentService;
         this.customerRepository = customerRepository;
+        this.ownerRepository = ownerRepository;
     }
 
     @Transactional(readOnly = true)
@@ -89,34 +93,56 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponseDTO createBooking(BookingRequestDTO request, String customerEmail) {
-        // Resolve customer from JWT email — never trust customerId from the request body
-        com.fixzone.fixzon_backend.model.Customer customer = customerRepository
-                .findByEmail(customerEmail)
-                .orElseThrow(() -> new RuntimeException("Customer not found: " + customerEmail));
-
+    public BookingResponseDTO createBooking(BookingRequestDTO request, org.springframework.security.core.Authentication authentication) {
         Booking booking = new Booking();
         BeanUtils.copyProperties(Objects.requireNonNull(request, "Request must not be null"), booking);
 
-        // Always set customer from the authenticated user
-        booking.setCustomerId(customer.getUserId());
+        boolean isManager = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE_MANAGER") || a.getAuthority().equals("ROLE_COMPANY_OWNER") || a.getAuthority().equals("ROLE_SYSTEM_ADMIN"));
 
-        // Securely fetch centerId and tenantId from the ServicePackage
+        if (!isManager) {
+            // Resolve customer from JWT email — never trust customerId from the request body
+            String customerEmail = authentication.getName();
+            com.fixzone.fixzon_backend.model.Customer customer = customerRepository
+                    .findByEmail(customerEmail)
+                    .orElseThrow(() -> new RuntimeException("Customer not found: " + customerEmail));
+            
+            // Always set customer from the authenticated user
+            booking.setCustomerId(customer.getUserId());
+        } else {
+            if (request.getCustomerId() == null) {
+                throw new RuntimeException("Customer ID is required when a manager creates a booking");
+            }
+            booking.setCustomerId(request.getCustomerId());
+        }
+
+        // Securely fetch centerId and tenantId from the ServicePackage → ServiceCenter → Owner chain.
+        // We always look up the Owner entity to ensure stripeAccountId / stripeOnboardingComplete
+        // are read from the correct table, regardless of when the branch was created.
         if (booking.getPackageId() != null) {
             servicePackageRepository.findById(booking.getPackageId()).ifPresent(pkg -> {
                 if (pkg.getServiceCenter() != null) {
                     booking.setCenterId(pkg.getServiceCenter().getCenterId());
                     if (pkg.getServiceCenter().getOwner() != null) {
-                        booking.setTenantId(pkg.getServiceCenter().getOwner().getUserId());
+                        UUID ownerId = pkg.getServiceCenter().getOwner().getUserId();
+                        ownerRepository.findById(ownerId).ifPresent(owner -> {
+                            com.fixzone.fixzon_backend.enums.SubscriptionStatus status = com.fixzone.fixzon_backend.enums.SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus());
+                            if (!status.isAccessAllowed()) {
+                                throw new RuntimeException("Cannot create booking. The service center's subscription has expired.");
+                            }
+                            booking.setTenantId(owner.getUserId());
+                        });
                     }
                 }
             });
         }
-        
-        // Use a default tenant ID if not provided (for multi-tenant support)
-        if (booking.getTenantId() == null) {
-            booking.setTenantId(UUID.fromString(AppConstants.DEFAULT_TENANT_ID));
+        if (booking.getBookingId() == null) {
+            booking.setBookingId(UUID.randomUUID());
         }
+
+        // NOTE: We intentionally do NOT fall back to a DEFAULT_TENANT_ID here.
+        // If tenantId is null it means the branch has no owner — the payment service
+        // will throw a clear error when the customer tries to pay.
 
         booking.setStatus(BookingStatus.PENDING_PAYMENT);
         Booking saved = bookingRepository.save(booking);
@@ -249,15 +275,21 @@ public class BookingService {
 
         List<Booking> bookings;
         if (customerId != null) {
-            bookings = bookingRepository.findByCustomerIdAndStatus(customerId, com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED);
+            bookings = bookingRepository.findByCustomerId(customerId).stream()
+                    .filter(b -> b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED || 
+                                 b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.PENDING_PAYMENT)
+                    .collect(Collectors.toList());
         } else {
-            bookings = bookingRepository.findByStatus(com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED);
+            bookings = bookingRepository.findAll().stream()
+                    .filter(b -> b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED || 
+                                 b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.PENDING_PAYMENT)
+                    .collect(Collectors.toList());
         }
 
         return bookings.stream()
                 .filter(b -> {
                     java.time.LocalDateTime dt = java.time.LocalDateTime.of(b.getBookingDate(), b.getBookingTime());
-                    return !dt.isBefore(now);
+                    return !dt.isBefore(now) && b.getBookingDate().equals(now.toLocalDate());
                 })
                 .sorted(Comparator.comparing(b -> java.time.LocalDateTime.of(b.getBookingDate(), b.getBookingTime())))
                 .map(this::mapToResponseDTO)

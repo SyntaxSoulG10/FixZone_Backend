@@ -42,6 +42,7 @@ public class DataInitializer implements CommandLineRunner {
     private final SuperAdminRepository superAdminRepository;
     private final PasswordEncoder passwordEncoder;
     private final DataSource dataSource;
+    private final SubscriptionBillingRepository subscriptionBillingRepository;
 
     @Value("${spring.jpa.hibernate.ddl-auto:update}")
     private String ddlAuto;
@@ -55,7 +56,7 @@ public class DataInitializer implements CommandLineRunner {
             SubscriptionPlanRepository planRepository,
             AnalyticsRepository analyticsRepository, BookingHistoryRepository bookingHistoryRepository,
             PaymentRepository paymentRepository, PasswordEncoder passwordEncoder, 
-            DataSource dataSource) {
+            DataSource dataSource, SubscriptionBillingRepository subscriptionBillingRepository) {
         this.userRepository = userRepository;
         this.ownerRepository = ownerRepository;
         this.customerRepository = customerRepository;
@@ -74,6 +75,7 @@ public class DataInitializer implements CommandLineRunner {
         this.paymentRepository = paymentRepository;
         this.passwordEncoder = passwordEncoder;
         this.dataSource = dataSource;
+        this.subscriptionBillingRepository = subscriptionBillingRepository;
     }
 
     @Override
@@ -124,12 +126,14 @@ public class DataInitializer implements CommandLineRunner {
             ensureRajaMotors();
             ensureMockManager();
             ensureMockPackages();
+            ensureSuperAdmins();
             return;
         }
 
         log.info("--- FRESH INSTALL: CLEARING OLD DATA AND STARTING FRESH SEEDING ---");
 
         analyticsRepository.deleteAll();
+        subscriptionBillingRepository.deleteAll();
         subscriptionRepository.deleteAll();
         planRepository.deleteAll();
         notificationRepository.deleteAll();
@@ -211,7 +215,20 @@ public class DataInitializer implements CommandLineRunner {
             sub.setPlan(Math.random() > 0.5 ? premiumPlan : basicPlan);
             sub.setStatus("ACTIVE");
             sub.setBillingHistory("Initial subscription activated on " + sub.getStartDate() + " via system seeding.");
-            subscriptionRepository.save(sub);
+            sub = subscriptionRepository.save(sub);
+
+            if (owner.getEmail().equals("raja@motors.lk")) {
+                for (int m = 1; m <= 3; m++) {
+                    SubscriptionBilling sb = new SubscriptionBilling();
+                    sb.setSubscriptionId(sub.getId());
+                    sb.setAmount(sub.getPlan().getPrice());
+                    sb.setPaymentDate(LocalDateTime.now().minusMonths(m));
+                    sb.setStatus("Paid");
+                    sb.setMethod("Visa **** 4242");
+                    sb.setInvoiceId("INV-2024-00" + m);
+                    subscriptionBillingRepository.save(sb);
+                }
+            }
         }
 
         for (int i = 0; i < owners.size(); i++) {
@@ -242,6 +259,24 @@ public class DataInitializer implements CommandLineRunner {
         ensureRajaMotors();
         ensureMockManager();
         ensureMockPackages();
+        ensureSuperAdmins();
+
+        // FORCE SEED BILLING HISTORY IF EMPTY (Temporary fix)
+        if (subscriptionBillingRepository.count() == 0) {
+            log.info(">>> FORCE SEEDING BILLING HISTORY FOR ALL SUBSCRIPTIONS <<<");
+            List<Subscription> allSubs = subscriptionRepository.findAll();
+            for (Subscription sub : allSubs) {
+                SubscriptionBilling sb = new SubscriptionBilling();
+                sb.setSubscriptionId(sub.getId());
+                sb.setAmount(new BigDecimal("14900.00"));
+                sb.setPaymentDate(LocalDateTime.now().minusDays(10));
+                sb.setStatus("Paid");
+                sb.setMethod("MasterCard **** 1234");
+                sb.setInvoiceId("INV-TEST-005");
+                subscriptionBillingRepository.save(sb);
+            }
+            log.info(">>> FORCE SEEDING COMPLETE <<<");
+        }
     }
 
     private void ensureMockManager() {
@@ -641,6 +676,28 @@ public class DataInitializer implements CommandLineRunner {
             log.info("[SUCCESS] Manager images updated to professional Unsplash URL.");
         } catch (Exception e) {
             log.error("[ERROR] Failed to update manager images: {}", e.getMessage(), e);
+        }
+    }
+    private void ensureSuperAdmins() {
+        if (!userRepository.existsByEmail("admin1@fixzone.lk")) {
+            SuperAdmin admin = new SuperAdmin(
+                UUID.randomUUID(),
+                "Super Admin 1",
+                "admin1@fixzone.lk",
+                "+94770000001",
+                passwordEncoder.encode("FixzoneAdmin!2026"),
+                "ROLE_SUPER_ADMIN",
+                true,
+                LocalDateTime.now(),
+                LocalDateTime.now(),
+                "system",
+                LocalDateTime.now(),
+                "system",
+                "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=256&h=256&auto=format&fit=crop",
+                "SA-001"
+            );
+            superAdminRepository.save(admin);
+            log.info(">>> Mock Super Admin created successfully <<<");
         }
     }
 }
