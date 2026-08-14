@@ -219,6 +219,7 @@ public class ServiceCenterService {
         existing.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : existing.getIsActive());
         existing.setUpdatedBy(dto.getUpdatedBy());
         existing.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
+        existing.setGoogleMapsUrl(dto.getGoogleMapsUrl());
 
         return mapEntityToDto(serviceCenterRepository.save(existing));
     }
@@ -334,6 +335,7 @@ public class ServiceCenterService {
         center.setCreatedBy(dto.getCreatedBy());
         center.setUpdatedBy(dto.getUpdatedBy());
         center.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
+        center.setGoogleMapsUrl(dto.getGoogleMapsUrl());
         return center;
     }
 }

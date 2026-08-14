@@ -236,7 +236,7 @@ public class DataInitializer implements CommandLineRunner {
             UUID scId = UUID.fromString("11111111-1111-1111-1111-11111111111" + (i + 1));
             ServiceCenter sc = new ServiceCenter(scId, owner, owner.getCompanyName() + " HQ", "Colombo",
                     "+9411400", "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
-                    LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, "APPROVED", null, null, null, null, null);
+                    LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, "APPROVED", null, null, null, null, null, null);
             serviceCenterRepository.save(sc);
 
             UUID pkgId = UUID.fromString("22222222-2222-2222-2222-22222222222" + (i + 1));
@@ -473,7 +473,7 @@ public class DataInitializer implements CommandLineRunner {
             for (String loc : locations) {
                 ServiceCenter sc = new ServiceCenter(UUID.randomUUID(), owner, "Raja Motors - " + loc, loc,
                         "+94112000" + loc.length(), "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
-                        LocalDateTime.now(), "system", new String[] {"Toyota", "Honda", "Nissan", "Suzuki"}, "APPROVED", null, null, null, null, null);
+                        LocalDateTime.now(), "system", new String[] {"Toyota", "Honda", "Nissan", "Suzuki"}, "APPROVED", null, null, null, null, null, null);
                 centers.add(serviceCenterRepository.save(sc));
 
                 // Add 3 distinct packages per center for variety
