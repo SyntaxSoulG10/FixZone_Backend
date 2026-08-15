@@ -22,7 +22,6 @@ import com.stripe.model.Account;
 import com.stripe.model.AccountLink;
 import com.stripe.param.AccountCreateParams;
 import com.stripe.param.AccountLinkCreateParams;
-import com.stripe.net.RequestOptions;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
