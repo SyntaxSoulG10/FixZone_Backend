@@ -12,6 +12,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+import com.fixzone.fixzon_backend.model.ServiceCenter;
+
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
     
     List<Booking> findByCenterId(UUID centerId);
@@ -28,6 +30,14 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     // For user booking history/tabs (pending / completed / active)
     List<Booking> findByCustomerIdAndStatus(UUID customerId, BookingStatus status);
+
+    @Query("""
+    SELECT DISTINCT b.centerId 
+    FROM Booking b 
+    WHERE b.customerId = :customerId 
+    AND b.status = 'COMPLETED'
+    """)
+    List<UUID> findTrustedCenterIds(@Param("customerId") UUID customerId);
 
     // NEW: Smart slot locking (with expiry)
     @Query("""

@@ -148,6 +148,7 @@ public class CustomerProfileController {
         vehicle.setPlateNumber(plateNumber);
         vehicle.setModel(model != null ? model.trim() : null);
         vehicle.setVehicleType(vehicleType != null ? vehicleType.toUpperCase() : null);
+        vehicle.setLastServiceDate(java.time.LocalDate.now());
 
         // Upload vehicle image to ImageKit if provided
         if (imageData != null && !imageData.isBlank()) {

@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.fixzone.fixzon_backend.DTO.PagedResponse;
 
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,6 +40,7 @@ public class ServiceCenterService {
     private final ManagerRepository managerRepository;
     private final SuperAdminRepository superAdminRepository;
     private final NotificationService notificationService;
+    private final BookingRepository bookingRepository;
 
     /**
      * Dependency Injection via Constructor: Ensures all required repositories
@@ -50,7 +54,8 @@ public class ServiceCenterService {
             InvoiceRepository invoiceRepository,
             ManagerRepository managerRepository,
             SuperAdminRepository superAdminRepository,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            BookingRepository bookingRepository) {
         this.serviceCenterRepository = serviceCenterRepository;
         this.userRepository = userRepository;
         this.servicePackageRepository = servicePackageRepository;
@@ -59,6 +64,7 @@ public class ServiceCenterService {
         this.managerRepository = managerRepository;
         this.superAdminRepository = superAdminRepository;
         this.notificationService = notificationService;
+        this.bookingRepository = bookingRepository;
     }
 
     /**
@@ -66,19 +72,48 @@ public class ServiceCenterService {
      * Inactive/expired owners' branches are hidden from customers.
      * Uses SubscriptionStatus enum with backward-compatible legacy mapping.
      */
-    public List<ServiceCenterDTO> getAllServiceCenters() {
-        List<ServiceCenter> centers = serviceCenterRepository.findByIsActive(true).stream()
-                .filter(center -> {
-                    if (center.getOwner() == null) return true; // no owner linked — show it
-                    return ownerRepository.findById(center.getOwner().getUserId())
-                            .map(owner -> {
-                                com.fixzone.fixzon_backend.enums.SubscriptionStatus status =
-                                        com.fixzone.fixzon_backend.enums.SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus());
-                                return status.isVisibleToCustomers();
-                            })
-                            .orElse(true); // owner not found in owner table — show it
-                })
-                .collect(java.util.stream.Collectors.toList());
+    public PagedResponse<ServiceCenterDTO> getAllServiceCenters(Pageable pageable) {
+        Page<ServiceCenter> page = serviceCenterRepository.findActiveAndValidSubscription(pageable);
+        List<ServiceCenterDTO> dtoList = mapEntitiesToDtos(page.getContent());
+        PagedResponse<ServiceCenterDTO> response = new PagedResponse<>();
+        response.setContent(dtoList);
+        response.setPageNo(page.getNumber());
+        response.setPageSize(page.getSize());
+        response.setTotalElements(page.getTotalElements());
+        response.setTotalPages(page.getTotalPages());
+        response.setLast(page.isLast());
+        return response;
+    }
+
+    /**
+     * GEOSPATIAL RETRIEVAL: Fetches nearby active service centers using Haversine distance,
+     * sorted by distance automatically.
+     */
+    public PagedResponse<ServiceCenterDTO> getNearbyServiceCenters(Double lat, Double lng, Double radius, Pageable pageable) {
+        Page<ServiceCenter> page = serviceCenterRepository.findNearbyServiceCenters(lat, lng, radius, pageable);
+        List<ServiceCenterDTO> dtoList = mapEntitiesToDtos(page.getContent());
+        PagedResponse<ServiceCenterDTO> response = new PagedResponse<>();
+        response.setContent(dtoList);
+        response.setPageNo(page.getNumber());
+        response.setPageSize(page.getSize());
+        response.setTotalElements(page.getTotalElements());
+        response.setTotalPages(page.getTotalPages());
+        response.setLast(page.isLast());
+        return response;
+    }
+
+    /**
+     * TRUSTED CENTERS: Returns centers where the customer has a COMPLETED booking.
+     */
+    public List<ServiceCenterDTO> getTrustedCentersForCustomer(UUID customerId) {
+        if (customerId == null) {
+            throw new IllegalArgumentException("Customer ID cannot be null");
+        }
+        List<UUID> centerIds = bookingRepository.findTrustedCenterIds(customerId);
+        if (centerIds.isEmpty()) {
+            return List.of();
+        }
+        List<ServiceCenter> centers = serviceCenterRepository.findAllById(centerIds);
         return mapEntitiesToDtos(centers);
     }
 
