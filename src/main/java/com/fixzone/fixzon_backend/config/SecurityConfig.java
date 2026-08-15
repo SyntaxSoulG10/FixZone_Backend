@@ -72,14 +72,21 @@ public class SecurityConfig {
      * We explicitly whitelist local development origins to allow the Next.js frontend
      * to communicate with this Spring Boot server without being blocked by browser security.
      */
+    @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
+
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        // Allow common local development origins
-        configuration.setAllowedOrigins(java.util.List.of(
-                "http://localhost:3000",
-                "http://127.0.0.1:3000"
-        ));
+        
+        java.util.List<String> origins = new java.util.ArrayList<>();
+        origins.add("http://localhost:3000");
+        origins.add("http://127.0.0.1:3000");
+        if (frontendUrl != null && !frontendUrl.isBlank() && !origins.contains(frontendUrl.trim())) {
+            origins.add(frontendUrl.trim());
+        }
+        
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(java.util.Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
         configuration.setExposedHeaders(java.util.List.of("Authorization"));
