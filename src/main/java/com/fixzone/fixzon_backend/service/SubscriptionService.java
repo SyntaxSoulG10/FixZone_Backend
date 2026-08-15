@@ -50,6 +50,18 @@ public class SubscriptionService {
         this.subscriptionBillingRepository = subscriptionBillingRepository;
     }
 
+    private String resolveFrontendUrl() {
+        String base = frontendUrl;
+        if (base != null && !base.isBlank()) {
+            base = base.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("/+$", "");
+            if (!base.startsWith("http://") && !base.startsWith("https://")) {
+                base = "https://" + base;
+            }
+            return base;
+        }
+        return "http://localhost:3000";
+    }
+
     public String createSubscriptionCheckout(String ownerEmail, UUID planId, boolean autoRenew) throws StripeException {
         Stripe.apiKey = stripeApiKey;
 
@@ -59,10 +71,17 @@ public class SubscriptionService {
         SubscriptionPlan plan = subscriptionPlanRepository.findById(planId)
                 .orElseThrow(() -> new RuntimeException("Plan not found"));
 
+        String baseUrl = resolveFrontendUrl();
+        String successUrl = baseUrl + "/dashboard/company-owner/profile?tab=billing&sub_success=true&session_id={CHECKOUT_SESSION_ID}";
+        String cancelUrl = baseUrl + "/dashboard/company-owner/profile?tab=billing&sub_canceled=true";
+
+        log.info("Creating Stripe Subscription Checkout for owner '{}', plan '{}': successUrl='{}', cancelUrl='{}'",
+                owner.getEmail(), plan.getName(), successUrl, cancelUrl);
+
         SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(frontendUrl + "/dashboard/company-owner/profile?tab=billing&sub_success=true&session_id={CHECKOUT_SESSION_ID}")
-                .setCancelUrl(frontendUrl + "/dashboard/company-owner/profile?tab=billing&sub_canceled=true")
+                .setSuccessUrl(successUrl)
+                .setCancelUrl(cancelUrl)
                 .setClientReferenceId(owner.getUserId().toString() + "_" + planId.toString() + "_" + autoRenew)
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)

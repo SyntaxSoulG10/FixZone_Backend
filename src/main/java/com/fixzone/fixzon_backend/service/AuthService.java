@@ -67,7 +67,12 @@ public class AuthService {
         user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
         authRepository.save(user);
 
-        String resetLink = frontendUrl + "/reset-password?token=" + token;
+        String cleanFrontendUrl = frontendUrl != null ? frontendUrl.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("/+$", "") : "http://localhost:3000";
+        if (!cleanFrontendUrl.startsWith("http://") && !cleanFrontendUrl.startsWith("https://")) {
+            cleanFrontendUrl = "https://" + cleanFrontendUrl;
+        }
+
+        String resetLink = cleanFrontendUrl + "/reset-password?token=" + token;
         emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
     }
 
