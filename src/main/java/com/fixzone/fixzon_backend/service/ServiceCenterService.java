@@ -68,6 +68,9 @@ public class ServiceCenterService {
      */
     public List<ServiceCenterDTO> getAllServiceCenters() {
         List<ServiceCenter> centers = serviceCenterRepository.findByIsActive(true).stream()
+                .filter(center -> !"SUSPENDED".equalsIgnoreCase(center.getStatus())
+                        && !"REJECTED".equalsIgnoreCase(center.getStatus())
+                        && !"PENDING".equalsIgnoreCase(center.getStatus()))
                 .filter(center -> {
                     if (center.getOwner() == null) return true; // no owner linked — show it
                     return ownerRepository.findById(center.getOwner().getUserId())
@@ -216,7 +219,14 @@ public class ServiceCenterService {
         existing.setContactPhone(dto.getContactPhone());
         existing.setOpeningHours(dto.getOpeningHours());
         existing.setRating(dto.getRating());
-        existing.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : existing.getIsActive());
+        
+        // If suspended by admin, preserve inactive state
+        if ("SUSPENDED".equalsIgnoreCase(existing.getStatus())) {
+            existing.setIsActive(false);
+        } else {
+            existing.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : existing.getIsActive());
+        }
+
         existing.setUpdatedBy(dto.getUpdatedBy());
         existing.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
         existing.setGoogleMapsUrl(dto.getGoogleMapsUrl());

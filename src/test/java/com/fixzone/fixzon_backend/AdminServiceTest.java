@@ -263,6 +263,7 @@ class AdminServiceTest {
             ServiceCenterDTO result = adminService.updateServiceCenterStatus(id, "SUSPENDED");
 
             assertThat(result.getStatus()).isEqualTo("SUSPENDED");
+            assertThat(result.getIsActive()).isFalse();
         }
 
         @Test

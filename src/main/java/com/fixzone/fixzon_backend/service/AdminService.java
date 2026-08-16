@@ -88,12 +88,18 @@ public class AdminService {
         Objects.requireNonNull(id, "ID must not be null");
         ServiceCenter sc = serviceCenterRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service Center not found"));
-        sc.setStatus(status); // SUSPENDED, ACTIVE
+        sc.setStatus(status); // SUSPENDED, ACTIVE, APPROVED
+        if ("SUSPENDED".equalsIgnoreCase(status)) {
+            sc.setIsActive(false);
+        } else if ("ACTIVE".equalsIgnoreCase(status) || "APPROVED".equalsIgnoreCase(status)) {
+            sc.setIsActive(true);
+        }
 
         // Notify Owner of the service center status update
-        String title = "Service Center " + (status.equalsIgnoreCase("ACTIVE") ? "Reactivated" : "Suspended");
+        boolean isReactivated = status.equalsIgnoreCase("ACTIVE") || status.equalsIgnoreCase("APPROVED");
+        String title = "Service Center " + (isReactivated ? "Reactivated" : "Suspended");
         String message = "Your service center '" + sc.getName() + "' status has been changed to " + status + " by the administrator.";
-        String type = status.equalsIgnoreCase("ACTIVE") ? "SUCCESS" : "WARNING";
+        String type = isReactivated ? "SUCCESS" : "WARNING";
         createNotification(sc.getOwner(), title, message, type, "/dashboard/company-owner/centers");
 
         return convertToDTO(serviceCenterRepository.save(sc));
