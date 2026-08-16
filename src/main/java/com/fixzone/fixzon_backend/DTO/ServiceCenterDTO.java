@@ -41,6 +41,8 @@ public class ServiceCenterDTO {
     private Double longitude;
     private String status;
     private Boolean stripeConnected;
+    private Boolean paymentEnabled;
+    private Boolean canAcceptPayments;
     private String stripeConnectionMessage;
 
     private String businessRegUrl;

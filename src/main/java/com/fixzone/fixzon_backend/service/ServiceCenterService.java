@@ -68,7 +68,8 @@ public class ServiceCenterService {
     }
 
     /**
-     * RETRIEVAL: Fetches all active service centers whose owner has an active subscription.
+     * RETRIEVAL: Fetches all active service centers whose owner has an active
+     * subscription.
      * Inactive/expired owners' branches are hidden from customers.
      * Uses SubscriptionStatus enum with backward-compatible legacy mapping.
      */
@@ -86,10 +87,12 @@ public class ServiceCenterService {
     }
 
     /**
-     * GEOSPATIAL RETRIEVAL: Fetches nearby active service centers using Haversine distance,
+     * GEOSPATIAL RETRIEVAL: Fetches nearby active service centers using Haversine
+     * distance,
      * sorted by distance automatically.
      */
-    public PagedResponse<ServiceCenterDTO> getNearbyServiceCenters(Double lat, Double lng, Double radius, Pageable pageable) {
+    public PagedResponse<ServiceCenterDTO> getNearbyServiceCenters(Double lat, Double lng, Double radius,
+            Pageable pageable) {
         Page<ServiceCenter> page = serviceCenterRepository.findNearbyServiceCenters(lat, lng, radius, pageable);
         List<ServiceCenterDTO> dtoList = mapEntitiesToDtos(page.getContent());
         PagedResponse<ServiceCenterDTO> response = new PagedResponse<>();
@@ -151,6 +154,11 @@ public class ServiceCenterService {
             return List.of();
 
         List<UUID> centerIds = centers.stream().map(ServiceCenter::getCenterId).collect(Collectors.toList());
+        List<UUID> ownerIds = centers.stream()
+                .map(center -> center.getOwner() != null ? center.getOwner().getUserId() : null)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
 
         // BULK FETCH: Get all related data at once
         Map<UUID, BigDecimal> revenueMap = invoiceRepository.sumTotalByCenterIdIn(centerIds).stream()
@@ -163,6 +171,9 @@ public class ServiceCenterService {
         Map<UUID, List<Manager>> managersMap = managerRepository.findByManagedCenterIdIn(centerIds).stream()
                 .collect(Collectors.groupingBy(Manager::getManagedCenterId));
 
+        Map<UUID, com.fixzone.fixzon_backend.model.Owner> ownersMap = ownerRepository.findAllById(ownerIds).stream()
+                .collect(Collectors.toMap(com.fixzone.fixzon_backend.model.Owner::getUserId, owner -> owner, (a, b) -> a));
+
         return centers.stream().map(center -> {
             ServiceCenterDTO dto = new ServiceCenterDTO();
             BeanUtils.copyProperties(center, dto);
@@ -170,6 +181,12 @@ public class ServiceCenterService {
             if (center.getOwner() != null) {
                 dto.setOwnerId(center.getOwner().getUserId());
             }
+
+            com.fixzone.fixzon_backend.model.Owner owner = ownersMap.get(center.getOwner() != null ? center.getOwner().getUserId() : null);
+            boolean[] eligibility = resolvePaymentEligibility(center, owner);
+            dto.setStripeConnected(eligibility[0]);
+            dto.setPaymentEnabled(eligibility[1]);
+            dto.setCanAcceptPayments(eligibility[1]);
 
             // Map packages
             List<ServicePackageDTO> packageDtos = packagesMap.getOrDefault(center.getCenterId(), List.of()).stream()
@@ -191,11 +208,30 @@ public class ServiceCenterService {
             }
 
             // Capacity Estimation
-            dto.setMechanicsCount(AppConstants.BASE_MECHANICS_COUNT + (center.getName().length() % AppConstants.MECHANICS_VARIANCE_MODULO));
-            dto.setCurrentCapacity(AppConstants.BASE_CAPACITY + (center.getName().length() % AppConstants.CAPACITY_VARIANCE_MODULO));
+            dto.setMechanicsCount(AppConstants.BASE_MECHANICS_COUNT
+                    + (center.getName().length() % AppConstants.MECHANICS_VARIANCE_MODULO));
+            dto.setCurrentCapacity(
+                    AppConstants.BASE_CAPACITY + (center.getName().length() % AppConstants.CAPACITY_VARIANCE_MODULO));
 
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    private boolean[] resolvePaymentEligibility(ServiceCenter center) {
+        return resolvePaymentEligibility(center, center.getOwner() != null ? ownerRepository.findById(center.getOwner().getUserId()).orElse(null) : null);
+    }
+
+    private boolean[] resolvePaymentEligibility(ServiceCenter center, com.fixzone.fixzon_backend.model.Owner owner) {
+        boolean approved = "APPROVED".equalsIgnoreCase(center.getStatus());
+        boolean active = Boolean.TRUE.equals(center.getIsActive());
+        boolean stripeConnected = owner != null
+                && Boolean.TRUE.equals(owner.getStripeOnboardingComplete())
+                && owner.getStripeAccountId() != null
+                && !owner.getStripeAccountId().isBlank();
+        boolean subscriptionVisible = owner != null
+                && com.fixzone.fixzon_backend.enums.SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus()).isVisibleToCustomers();
+        boolean paymentEnabled = approved && active && stripeConnected && subscriptionVisible;
+        return new boolean[] { stripeConnected, paymentEnabled };
     }
 
     /**
@@ -210,7 +246,7 @@ public class ServiceCenterService {
         if (center.getCenterId() == null) {
             center.setCenterId(UUID.randomUUID());
         }
-        
+
         if (center.getStatus() == null) {
             center.setStatus("PENDING");
         }
@@ -220,9 +256,11 @@ public class ServiceCenterService {
         // Notify all Super Admins
         try {
             String ownerName = savedCenter.getOwner() != null ? savedCenter.getOwner().getFullName() : "An Owner";
-            String message = "New registration: '" + savedCenter.getName() + "' has been registered by " + ownerName + " and is pending review.";
+            String message = "New registration: '" + savedCenter.getName() + "' has been registered by " + ownerName
+                    + " and is pending review.";
             List<SuperAdmin> admins = superAdminRepository.findAll();
-            notificationService.broadcastNotificationSafe(admins, "New Service Center Registered", message, "INFO", "/dashboard/super-admin");
+            notificationService.broadcastNotificationSafe(admins, "New Service Center Registered", message, "INFO",
+                    "/dashboard/super-admin");
         } catch (Exception e) {
             System.err.println("Failed to trigger service center registration notification: " + e.getMessage());
         }
@@ -262,25 +300,27 @@ public class ServiceCenterService {
         if (id == null) {
             throw new IllegalArgumentException("ID for deletion cannot be null");
         }
-        
+
         if (!serviceCenterRepository.existsById(id)) {
             throw new IllegalStateException("Service center not found with id: " + id);
         }
-        // CASCADING CLEANUP: Remove or nullify all associations before deleting the center
+        // CASCADING CLEANUP: Remove or nullify all associations before deleting the
+        // center
         // 1. Delete associated service packages
         List<ServicePackage> packages = servicePackageRepository.findByServiceCenter_CenterId(id);
         servicePackageRepository.deleteAll(packages);
-        
-        // 2. Clear managers' center association (or delete them if they only belong to this center)
+
+        // 2. Clear managers' center association (or delete them if they only belong to
+        // this center)
         List<Manager> managers = managerRepository.findByManagedCenterId(id);
         for (Manager manager : managers) {
             manager.setManagedCenterId(null);
             managerRepository.save(manager);
         }
-        
+
         // 3. Delete invoices and payment records linked to this center
         invoiceRepository.deleteAll(invoiceRepository.findByCenterId(id));
-        
+
         // 4. Finally delete the center itself
         serviceCenterRepository.deleteById(id);
     }
@@ -297,6 +337,11 @@ public class ServiceCenterService {
         ServiceCenterDTO dto = new ServiceCenterDTO();
         BeanUtils.copyProperties(center, dto);
 
+        boolean[] eligibility = resolvePaymentEligibility(center);
+        dto.setStripeConnected(eligibility[0]);
+        dto.setPaymentEnabled(eligibility[1]);
+        dto.setCanAcceptPayments(eligibility[1]);
+
         if (center.getOwner() != null) {
             dto.setOwnerId(center.getOwner().getUserId());
             ownerRepository.findById(center.getOwner().getUserId()).ifPresent(owner -> {
@@ -312,7 +357,13 @@ public class ServiceCenterService {
 
         if (dto.getStripeConnected() == null) {
             dto.setStripeConnected(false);
-            dto.setStripeConnectionMessage("Stripe Connect is not completed yet. Connect Stripe to receive customer payments.");
+            dto.setStripeConnectionMessage(
+                    "Stripe Connect is not completed yet. Connect Stripe to receive customer payments.");
+        }
+
+        if (dto.getPaymentEnabled() == null) {
+            dto.setPaymentEnabled(false);
+            dto.setCanAcceptPayments(false);
         }
 
         // AGGREGATION: Pull related service packages and enrich their metadata
@@ -340,8 +391,10 @@ public class ServiceCenterService {
 
         // CAPACITY ESTIMATION: These provide realistic placeholders for operational
         // load metrics
-        dto.setMechanicsCount(AppConstants.BASE_MECHANICS_COUNT + (center.getName().length() % AppConstants.MECHANICS_VARIANCE_MODULO));
-        dto.setCurrentCapacity(AppConstants.BASE_CAPACITY + (center.getName().length() % AppConstants.CAPACITY_VARIANCE_MODULO));
+        dto.setMechanicsCount(AppConstants.BASE_MECHANICS_COUNT
+                + (center.getName().length() % AppConstants.MECHANICS_VARIANCE_MODULO));
+        dto.setCurrentCapacity(
+                AppConstants.BASE_CAPACITY + (center.getName().length() % AppConstants.CAPACITY_VARIANCE_MODULO));
 
         return dto;
     }
