@@ -211,8 +211,8 @@ public class BookingService {
             throw new RuntimeException("Cannot reschedule within 3 days of booking date");
         }
 
-        // Check if the new slot is available
-        if (isSlotTaken(booking.getCenterId(), newDate, newTime)) {
+        // Check if the new slot is available (excluding this booking's own record)
+        if (isSlotTakenExcludingBooking(booking.getCenterId(), newDate, newTime, booking.getBookingId())) {
             log.warn(">>> RESCHEDULE DENIED: Slot already taken at {}", newTime);
             throw new RuntimeException("The selected slot is no longer available");
         }
@@ -223,23 +223,32 @@ public class BookingService {
         booking.setRescheduleCount((booking.getRescheduleCount() == null ? 0 : booking.getRescheduleCount()) + 1);
         Booking saved = bookingRepository.save(booking);
 
-        // Send notifications
-        if (saved.getCustomerId() != null) {
-            customerRepository.findById(saved.getCustomerId()).ifPresent(customer -> {
-                notificationService.createNotificationSafe(customer, "Booking Rescheduled",
-                        "Your booking has been rescheduled to " + newDate + " at " + newTime + ".", "INFO",
-                        "/bookings");
-            });
-        }
-        if (saved.getCenterId() != null) {
-            serviceCenterRepository.findById(saved.getCenterId()).ifPresent(sc -> {
-                if (sc.getOwner() != null) {
-                    notificationService.createNotificationSafe(sc.getOwner(), "Booking Rescheduled",
-                            "A booking at " + sc.getName() + " was rescheduled to " + newDate + " at " + newTime + ".",
-                            "INFO", "/dashboard/company-owner/centers");
+        // Record history log
+        saveStatusHistory(saved, saved.getStatus(), "CUSTOMER_RESCHEDULE");
+
+        // Send notifications asynchronously
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                if (saved.getCustomerId() != null) {
+                    customerRepository.findById(saved.getCustomerId()).ifPresent(customer -> {
+                        notificationService.createNotificationSafe(customer, "Booking Rescheduled",
+                                "Your booking has been rescheduled to " + newDate + " at " + newTime + ".", "INFO",
+                                "/bookings");
+                    });
                 }
-            });
-        }
+                if (saved.getCenterId() != null) {
+                    serviceCenterRepository.findById(saved.getCenterId()).ifPresent(sc -> {
+                        if (sc.getOwner() != null) {
+                            notificationService.createNotificationSafe(sc.getOwner(), "Booking Rescheduled",
+                                    "A booking at " + sc.getName() + " was rescheduled to " + newDate + " at " + newTime + ".",
+                                    "INFO", "/dashboard/company-owner/centers");
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                log.error("Failed to send reschedule notifications asynchronously", e);
+            }
+        });
 
         return mapToResponseDTO(saved);
     }
@@ -260,7 +269,8 @@ public class BookingService {
         // Apply 5% penalty if within 3 days
         double penaltyPercent = 0.0;
         if (daysBetween < AppConstants.RESCHEDULE_MIN_DAYS_LEFT) {
-            BigDecimal fee = booking.getBookingFee() != null ? booking.getBookingFee() : BigDecimal.ZERO;
+            BigDecimal fee = booking.getBookingFee() != null ? booking.getBookingFee() : 
+                (booking.getEstimatedCost() != null ? booking.getEstimatedCost().multiply(new BigDecimal("0.40")) : BigDecimal.ZERO);
             BigDecimal penalty = fee.multiply(new BigDecimal(AppConstants.PENALTY_PERCENT_5));
             booking.setCancellationPenalty(penalty);
             penaltyPercent = 5.0;
@@ -277,8 +287,6 @@ public class BookingService {
             if (!refundSuccess) {
                 log.error(">>> STRIPE REFUND FAILED! Check Stripe Dashboard.");
             }
-        } else {
-            booking.setCancellationPenalty(BigDecimal.ZERO);
         }
 
         booking.setStatus(BookingStatus.CANCELLED);
@@ -286,34 +294,44 @@ public class BookingService {
         booking.setCancelledAt(java.time.LocalDateTime.now());
         Booking saved = bookingRepository.save(booking);
 
-        // Send notifications
-        if (saved.getCustomerId() != null) {
-            customerRepository.findById(saved.getCustomerId()).ifPresent(customer -> {
-                BigDecimal fee = saved.getBookingFee() != null ? saved.getBookingFee() : BigDecimal.ZERO;
-                BigDecimal penalty = saved.getCancellationPenalty() != null ? saved.getCancellationPenalty()
-                        : BigDecimal.ZERO;
-                BigDecimal refund = fee.subtract(penalty);
-                if (refund.compareTo(BigDecimal.ZERO) < 0)
-                    refund = BigDecimal.ZERO;
+        // Record history log
+        saveStatusHistory(saved, BookingStatus.CANCELLED, "CUSTOMER_CANCEL");
 
-                notificationService.createNotificationSafe(customer, "Booking Cancelled",
-                        "Your booking for " + saved.getBookingDate() + " has been cancelled. Refund: LKR " + refund,
-                        "WARNING", "/bookings");
+        // Send notifications and emails asynchronously
+        BigDecimal fee = saved.getBookingFee() != null ? saved.getBookingFee() : 
+            (saved.getEstimatedCost() != null ? saved.getEstimatedCost().multiply(new BigDecimal("0.40")) : BigDecimal.ZERO);
+        BigDecimal penalty = saved.getCancellationPenalty() != null ? saved.getCancellationPenalty() : BigDecimal.ZERO;
+        BigDecimal refundCalc = fee.subtract(penalty);
+        if (refundCalc.compareTo(BigDecimal.ZERO) < 0) refundCalc = BigDecimal.ZERO;
+        final BigDecimal finalRefund = refundCalc;
+        final BigDecimal finalPenalty = penalty;
 
-                // Send cancellation email
-                emailService.sendBookingCancellationEmail(customer.getEmail(), customer.getFullName(),
-                        saved.getBookingDate().toString(), refund, penalty);
-            });
-        }
-        if (saved.getCenterId() != null) {
-            serviceCenterRepository.findById(saved.getCenterId()).ifPresent(sc -> {
-                if (sc.getOwner() != null) {
-                    notificationService.createNotificationSafe(sc.getOwner(), "Booking Cancelled",
-                            "A booking at " + sc.getName() + " for " + saved.getBookingDate() + " was cancelled.",
-                            "WARNING", "/dashboard/company-owner/centers");
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                if (saved.getCustomerId() != null) {
+                    customerRepository.findById(saved.getCustomerId()).ifPresent(customer -> {
+                        notificationService.createNotificationSafe(customer, "Booking Cancelled",
+                                "Your booking for " + saved.getBookingDate() + " has been cancelled. Refund: LKR " + finalRefund,
+                                "WARNING", "/bookings");
+
+                        // Send cancellation email
+                        emailService.sendBookingCancellationEmail(customer.getEmail(), customer.getFullName(),
+                                saved.getBookingDate().toString(), finalRefund, finalPenalty);
+                    });
                 }
-            });
-        }
+                if (saved.getCenterId() != null) {
+                    serviceCenterRepository.findById(saved.getCenterId()).ifPresent(sc -> {
+                        if (sc.getOwner() != null) {
+                            notificationService.createNotificationSafe(sc.getOwner(), "Booking Cancelled",
+                                    "A booking at " + sc.getName() + " for " + saved.getBookingDate() + " was cancelled.",
+                                    "WARNING", "/dashboard/company-owner/centers");
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                log.error("Failed to send cancellation notifications/email asynchronously", e);
+            }
+        });
 
         return mapToResponseDTO(saved);
     }
@@ -398,6 +416,15 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isSlotTakenExcludingBooking(UUID centerId, LocalDate date, LocalTime time, UUID excludeBookingId) {
+        if (excludeBookingId == null) {
+            return isSlotTaken(centerId, date, time);
+        }
+        return bookingRepository.existsActiveSlotExcludingBooking(Objects.requireNonNull(centerId, "Center ID must not be null"), date,
+                time, excludeBookingId, java.time.LocalDateTime.now());
+    }
+
+    @Transactional(readOnly = true)
     public List<String> getAvailableSlots(UUID centerId, LocalDate date) {
         // Standard hours: 08:00 to 18:00 (hourly ranges)
         List<String> allSlots = List.of(
@@ -432,26 +459,30 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
-    public List<com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO> getBookingStatusHistory(UUID bookingId) {
+    public List<com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO> getBookingStatusHistory(
+            UUID bookingId) {
         Booking booking = bookingRepository.findById(bookingId).orElse(null);
-        List<com.fixzone.fixzon_backend.model.BookingStatusHistory> historyList = 
-            bookingStatusHistoryRepository.findByBookingIdOrderByChangedAtAsc(bookingId);
+        List<com.fixzone.fixzon_backend.model.BookingStatusHistory> historyList = bookingStatusHistoryRepository
+                .findByBookingIdOrderByChangedAtAsc(bookingId);
 
         List<com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO> dtos = new java.util.ArrayList<>();
 
+        // 1. If database status history entries exist, return them with their EXACT
+        // real changedAt timestamps
         if (historyList != null && !historyList.isEmpty()) {
-            dtos = historyList.stream().map(h -> {
-                com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO dto = 
-                    new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO();
+            return historyList.stream().map(h -> {
+                com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO dto = new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO();
                 dto.setId(h.getId());
                 dto.setBookingId(h.getBookingId());
                 dto.setStatus(h.getStatus());
-                
+
                 String display = h.getStatus().name().replace('_', ' ');
-                if (h.getStatus() == BookingStatus.CONFIRMED) {
+                if ("CUSTOMER_RESCHEDULE".equals(h.getChangedBy())) {
+                    display = "Booking Rescheduled";
+                } else if (h.getStatus() == BookingStatus.CONFIRMED) {
                     display = "Ready for Service";
                 } else if (h.getStatus() == BookingStatus.IN_PROGRESS) {
-                    display = "Service Started";
+                    display = "Service In Progress";
                 } else if (h.getStatus() == BookingStatus.COMPLETED) {
                     display = "Service Completed";
                 } else if (h.getStatus() == BookingStatus.PENDING_PAYMENT) {
@@ -460,43 +491,54 @@ public class BookingService {
                     display = "Booking Cancelled";
                 }
                 dto.setStatusDisplay(display);
-                dto.setChangedAt(h.getChangedAt());
+                dto.setChangedAt(h.getChangedAt()); // Exact real timestamp from DB
                 dto.setChangedBy(h.getChangedBy());
                 return dto;
             }).collect(Collectors.toList());
         }
 
-        // Only synthesize if DB history table has no entries for this booking
-        if (booking != null && dtos.isEmpty()) {
-            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        // 2. Fallback for legacy bookings where historyList is empty:
+        // Use real booking entity timestamps (createdAt, updatedAt, cancelledAt)
+        if (booking != null) {
+            java.time.LocalDateTime createdAt = booking.getCreatedAt() != null
+                    ? booking.getCreatedAt()
+                    : java.time.LocalDateTime.now();
+
+            java.time.LocalDateTime updatedAt = booking.getUpdatedAt() != null
+                    ? booking.getUpdatedAt()
+                    : createdAt;
+
             BookingStatus current = booking.getStatus() != null ? booking.getStatus() : BookingStatus.PENDING_PAYMENT;
-            
+
+            // Creation Event
             dtos.add(new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO(
-                UUID.randomUUID(), bookingId, BookingStatus.PENDING_PAYMENT, "Booking Created", now, "CUSTOMER"
-            ));
+                    UUID.randomUUID(), bookingId, BookingStatus.PENDING_PAYMENT, "Booking Created", createdAt,
+                    "CUSTOMER"));
 
-            if (current == BookingStatus.CONFIRMED || current == BookingStatus.IN_PROGRESS || current == BookingStatus.COMPLETED) {
+            if (booking.getRescheduleCount() != null && booking.getRescheduleCount() > 0) {
                 dtos.add(new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO(
-                    UUID.randomUUID(), bookingId, BookingStatus.CONFIRMED, "Ready for Service", now, "CUSTOMER_PAYMENT"
-                ));
+                        UUID.randomUUID(), bookingId, current, "Booking Rescheduled", updatedAt,
+                        "CUSTOMER_RESCHEDULE"));
             }
 
-            if (current == BookingStatus.IN_PROGRESS || current == BookingStatus.COMPLETED) {
+            if (current == BookingStatus.CONFIRMED) {
                 dtos.add(new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO(
-                    UUID.randomUUID(), bookingId, BookingStatus.IN_PROGRESS, "Service Started", now, "MANAGER"
-                ));
-            }
-
-            if (current == BookingStatus.COMPLETED) {
+                        UUID.randomUUID(), bookingId, BookingStatus.CONFIRMED, "Ready for Service", updatedAt,
+                        "CUSTOMER_PAYMENT"));
+            } else if (current == BookingStatus.IN_PROGRESS) {
                 dtos.add(new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO(
-                    UUID.randomUUID(), bookingId, BookingStatus.COMPLETED, "Service Completed", now, "MANAGER"
-                ));
-            }
-
-            if (current == BookingStatus.CANCELLED) {
+                        UUID.randomUUID(), bookingId, BookingStatus.IN_PROGRESS, "Service In Progress", updatedAt,
+                        "MANAGER"));
+            } else if (current == BookingStatus.COMPLETED) {
                 dtos.add(new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO(
-                    UUID.randomUUID(), bookingId, BookingStatus.CANCELLED, "Booking Cancelled", now, "USER"
-                ));
+                        UUID.randomUUID(), bookingId, BookingStatus.COMPLETED, "Service Completed", updatedAt,
+                        "MANAGER"));
+            } else if (current == BookingStatus.CANCELLED) {
+                java.time.LocalDateTime cancelledTime = booking.getCancelledAt() != null ? booking.getCancelledAt()
+                        : updatedAt;
+                dtos.add(new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO(
+                        UUID.randomUUID(), bookingId, BookingStatus.CANCELLED, "Booking Cancelled", cancelledTime,
+                        "USER"));
             }
         }
 
@@ -522,7 +564,8 @@ public class BookingService {
 
         if (saved.getCustomerId() != null) {
             com.fixzone.fixzon_backend.model.User recipient = userRepository.findById(saved.getCustomerId())
-                    .orElseGet(() -> customerRepository.findById(saved.getCustomerId()).map(c -> (com.fixzone.fixzon_backend.model.User) c).orElse(null));
+                    .orElseGet(() -> customerRepository.findById(saved.getCustomerId())
+                            .map(c -> (com.fixzone.fixzon_backend.model.User) c).orElse(null));
 
             if (recipient != null) {
                 log.info(">>> CREATING STATUS NOTIFICATION FOR USER {}: status = {}", recipient.getUserId(), newStatus);
@@ -540,7 +583,8 @@ public class BookingService {
                             "Your booking for " + saved.getBookingDate() + " was cancelled.", "WARNING", "/bookings");
                 }
             } else {
-                log.error(">>> FAILED TO CREATE STATUS NOTIFICATION: Customer/User ID {} not found!", saved.getCustomerId());
+                log.error(">>> FAILED TO CREATE STATUS NOTIFICATION: Customer/User ID {} not found!",
+                        saved.getCustomerId());
             }
         }
 
@@ -573,14 +617,16 @@ public class BookingService {
 
         if (saved.getCustomerId() != null) {
             com.fixzone.fixzon_backend.model.User recipient = userRepository.findById(saved.getCustomerId())
-                    .orElseGet(() -> customerRepository.findById(saved.getCustomerId()).map(c -> (com.fixzone.fixzon_backend.model.User) c).orElse(null));
+                    .orElseGet(() -> customerRepository.findById(saved.getCustomerId())
+                            .map(c -> (com.fixzone.fixzon_backend.model.User) c).orElse(null));
 
             if (recipient != null) {
                 log.info(">>> CREATING PAYMENT SUCCESSFUL NOTIFICATION FOR USER {}", recipient.getUserId());
                 notificationService.createNotificationSafe(recipient, "Payment Successful",
                         "Your booking payment has been confirmed.", "SUCCESS", "/bookings");
             } else {
-                log.error(">>> FAILED TO CREATE PAYMENT NOTIFICATION: Customer ID {} not found!", saved.getCustomerId());
+                log.error(">>> FAILED TO CREATE PAYMENT NOTIFICATION: Customer ID {} not found!",
+                        saved.getCustomerId());
             }
         }
 
@@ -609,6 +655,7 @@ public class BookingService {
             var pkgOpt = servicePackageRepository.findById(booking.getPackageId());
             if (pkgOpt.isPresent()) {
                 dto.setPackageName(pkgOpt.get().getName());
+                dto.setPackageDescription(pkgOpt.get().getDescription());
             } else {
                 dto.setPackageName("Package");
             }
@@ -628,6 +675,10 @@ public class BookingService {
             }
         } else {
             dto.setVehicleLabel("Registered Vehicle");
+        }
+
+        if (dto.getEstimatedCost() != null && dto.getBookingFee() == null) {
+            dto.setBookingFee(dto.getEstimatedCost().multiply(new java.math.BigDecimal("0.40")));
         }
 
         dto.setIsOnline(booking.getGatewaySessionId() != null && !booking.getGatewaySessionId().isEmpty());

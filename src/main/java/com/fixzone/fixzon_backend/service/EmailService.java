@@ -153,11 +153,17 @@ public class EmailService {
             helper.setTo(toEmail);
             helper.setSubject("FixZone - Booking Cancellation Confirmation");
 
+            java.math.BigDecimal penalty = penaltyAmount != null ? penaltyAmount : java.math.BigDecimal.ZERO;
+            java.math.BigDecimal refund = refundAmount != null ? refundAmount : java.math.BigDecimal.ZERO;
+
+            String penaltyFormatted = String.format("LKR %,.2f", penalty);
+            String refundFormatted = String.format("LKR %,.2f", refund);
+
             String content = "<h1>Booking Cancelled, " + customerName + "!</h1>" +
                     "<p>Your booking scheduled for <b>" + bookingDate + "</b> has been cancelled.</p>" +
-                    "<div style=\"background-color:#F3F4F6;padding:15px;border-radius:8px;margin:15px 0;\">" +
-                    "<p><b>Cancellation Penalty (5%):</b> LKR " + (penaltyAmount != null ? penaltyAmount : "0.00") + "</p>" +
-                    "<p><b>Refund Amount:</b> LKR " + (refundAmount != null ? refundAmount : "0.00") + "</p>" +
+                    "<div style=\"background-color:#F8FAFC;padding:16px;border-radius:8px;border:1px solid #E2E8F0;margin:15px 0;\">" +
+                    "<p style=\"margin:6px 0;\"><b>Cancellation Penalty (5%):</b> <span style=\"color:#EF4444;font-weight:bold;\">" + penaltyFormatted + "</span></p>" +
+                    "<p style=\"margin:6px 0;\"><b>Refund Amount:</b> <span style=\"color:#10B981;font-weight:bold;\">" + refundFormatted + "</span></p>" +
                     "</div>" +
                     "<p>Refunds usually process back to your card within 5-10 business days.</p>" +
                     "<p>Best regards,<br>The FixZone Team</p>";

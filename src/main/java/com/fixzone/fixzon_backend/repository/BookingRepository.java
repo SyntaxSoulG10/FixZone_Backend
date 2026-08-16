@@ -60,6 +60,29 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             @Param("now") LocalDateTime now
     );
 
+    @Query("""
+    SELECT COUNT(b) > 0 FROM Booking b
+    WHERE b.centerId = :centerId
+    AND b.bookingDate = :date
+    AND b.bookingTime = :time
+    AND b.bookingId <> :excludeBookingId
+    AND (
+        b.status = 'CONFIRMED'
+        OR b.status = 'COMPLETED'
+        OR (
+            b.status = 'PENDING_PAYMENT'
+            AND b.expiresAt > :now
+        )
+    )
+    """)
+    boolean existsActiveSlotExcludingBooking(
+            @Param("centerId") UUID centerId,
+            @Param("date") LocalDate date,
+            @Param("time") LocalTime time,
+            @Param("excludeBookingId") UUID excludeBookingId,
+            @Param("now") LocalDateTime now
+    );
+
     // OPTIONAL: Expired bookings finder (5-min payment window passed)
     @Query("""
     SELECT b FROM Booking b
