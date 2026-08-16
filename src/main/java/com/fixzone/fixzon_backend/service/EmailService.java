@@ -87,7 +87,7 @@ public class EmailService {
         }
     }
 
-    public void sendPasswordResetEmail(String toEmail, String resetLink) {
+    public void sendPasswordResetEmail(String toEmail, String resetLink, String otpCode) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
@@ -95,14 +95,22 @@ public class EmailService {
             String sender = (senderEmail != null && !senderEmail.isEmpty() && !senderEmail.contains("example.com")) ? senderEmail : fromEmail;
             helper.setFrom(sender, "FixZone Security");
             helper.setTo(toEmail);
-            helper.setSubject("FixZone - Password Recovery");
+            helper.setSubject("FixZone - Password Recovery Code");
 
-            String content = "<h1>FixZone Password Reset</h1>" +
-                    "<p>We received a request to reset your password.</p>" +
-                    "<p>Click the link below to set a new password. This link is valid for 15 minutes.</p>" +
-                    "<p><a href=\"" + resetLink + "\" style=\"display:inline-block;padding:10px 20px;color:white;background-color:#4F46E5;text-decoration:none;border-radius:5px;\">Reset My Password</a></p>" +
-                    "<p>If you did not request this, please ignore this email.</p>" +
-                    "<p>Best regards,<br>The FixZone Team</p>";
+            String content = "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;\">" +
+                    "<h2 style=\"color: #4F46E5; text-align: center;\">FixZone Password Recovery</h2>" +
+                    "<p>We received a request to reset the password for your account.</p>" +
+                    "<div style=\"background-color: #f4f5f7; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;\">" +
+                    "<p style=\"margin: 0 0 5px 0; color: #555; font-size: 14px;\">Mobile App Verification Code:</p>" +
+                    "<span style=\"font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #4F46E5;\">" + otpCode + "</span>" +
+                    "<p style=\"margin: 5px 0 0 0; color: #888; font-size: 12px;\">Valid for 15 minutes</p>" +
+                    "</div>" +
+                    "<p>Or if you are on a Web browser, click the link below to reset your password:</p>" +
+                    "<p style=\"text-align: center;\"><a href=\"" + resetLink + "\" style=\"display:inline-block;padding:12px 24px;color:white;background-color:#4F46E5;text-decoration:none;border-radius:6px;font-weight:bold;\">Reset My Password</a></p>" +
+                    "<p style=\"color: #777; font-size: 13px; margin-top: 25px;\">If you did not request a password reset, please ignore this email.</p>" +
+                    "<hr style=\"border: none; border-top: 1px solid #eee; margin: 20px 0;\">" +
+                    "<p style=\"color: #aaa; font-size: 12px; text-align: center;\">The FixZone Security Team</p>" +
+                    "</div>";
 
             helper.setText(content, true);
             mailSender.send(message);
@@ -111,6 +119,11 @@ public class EmailService {
             log.error("ERROR: Password reset email failed to send to {}: {}", toEmail, e.getMessage(), e);
             throw new RuntimeException("Failed to send reset email");
         }
+    }
+
+    public void sendPasswordResetEmail(String toEmail, String resetLink) {
+        String token = resetLink != null && resetLink.contains("token=") ? resetLink.substring(resetLink.indexOf("token=") + 6) : "";
+        sendPasswordResetEmail(toEmail, resetLink, token);
     }
 
     public void sendBookingConfirmationEmail(String toEmail, String customerName, String packageName, String serviceCenterName, String bookingDate, String bookingTime, java.math.BigDecimal amount) {
