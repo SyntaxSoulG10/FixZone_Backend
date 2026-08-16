@@ -50,28 +50,28 @@ class SuperAdminAnalyticsServiceTest {
         @BeforeEach
         void setUpCommonMocks() {
             // subscription_billing — safe defaults for revenue queries
-            when(subscriptionBillingRepository.findMonthlyRevenueSince(any(LocalDateTime.class)))
+            lenient().when(subscriptionBillingRepository.findMonthlyRevenueSince(any(LocalDateTime.class)))
                     .thenReturn(List.of());
-            when(subscriptionBillingRepository.findDailyRevenueBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
+            lenient().when(subscriptionBillingRepository.findDailyRevenueBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
                     .thenReturn(List.of());
 
             // service centers
-            when(serviceCenterRepository.count()).thenReturn(0L);
-            when(serviceCenterRepository.findByStatus("PENDING")).thenReturn(List.of());
+            lenient().when(serviceCenterRepository.count()).thenReturn(0L);
+            lenient().when(serviceCenterRepository.findByStatus("PENDING")).thenReturn(List.of());
 
             // subscriptions — stat card counts
-            when(subscriptionRepository.countByStatus("ACTIVE")).thenReturn(0L);
-            when(subscriptionRepository.countByStartDateAfter(any(LocalDate.class))).thenReturn(0L);
-            when(subscriptionRepository.countByStartDateBetween(any(), any())).thenReturn(0L);
+            lenient().when(subscriptionRepository.countByStatus("ACTIVE")).thenReturn(0L);
+            lenient().when(subscriptionRepository.countByStartDateAfter(any(LocalDate.class))).thenReturn(0L);
+            lenient().when(subscriptionRepository.countByStartDateBetween(any(), any())).thenReturn(0L);
 
             // subscriptions — trend chart counts
-            when(subscriptionRepository.countNewSubscribersPerDayOfWeek(any(LocalDate.class), any(LocalDate.class)))
+            lenient().when(subscriptionRepository.countNewSubscribersPerDayOfWeek(any(LocalDate.class), any(LocalDate.class)))
                     .thenReturn(List.of());
-            when(subscriptionRepository.countNewSubscribersPerMonth(any(LocalDate.class)))
+            lenient().when(subscriptionRepository.countNewSubscribersPerMonth(any(LocalDate.class)))
                     .thenReturn(List.of());
 
             // invoices — top stations only
-            when(invoiceRepository.findTopCentersByRevenue(any(PageRequest.class))).thenReturn(List.of());
+            lenient().when(invoiceRepository.findTopCentersByRevenue(any(PageRequest.class))).thenReturn(List.of());
         }
 
         @Test
