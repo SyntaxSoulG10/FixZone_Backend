@@ -18,9 +18,13 @@ public class SuperAdminAnalyticsDTO {
     private long activeSubscriptions;
     private String subscriptionChange;     // e.g., "+5.7%"
 
-    // Bar Charts
+    // Revenue Charts (from subscription_billing)
     private List<RevenueBarDTO> weeklyRevenue;
     private List<RevenueBarDTO> monthlyRevenue;
+
+    // Subscriber Trend Charts (new subscribers per day/month)
+    private List<SubscriberTrendDTO> weeklySubscribers;
+    private List<SubscriberTrendDTO> monthlySubscribers;
 
     // Tables
     private List<TopStationDTO> topStations;
@@ -32,6 +36,14 @@ public class SuperAdminAnalyticsDTO {
         private String label;          // "Mon", "Jan", etc.
         private BigDecimal amount;
         private int percentage;        // Relative to max bar
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SubscriberTrendDTO {
+        private String label;          // "Mon", "Jan", etc.
+        private long count;            // Number of new subscribers
     }
 
     @Data 
