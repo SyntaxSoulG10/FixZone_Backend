@@ -22,7 +22,7 @@ import com.stripe.model.Account;
 import com.stripe.model.AccountLink;
 import com.stripe.param.AccountCreateParams;
 import com.stripe.param.AccountLinkCreateParams;
-import com.stripe.net.RequestOptions;
+
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
@@ -66,19 +66,25 @@ public class PaymentService {
     private final AuthRepository authRepository;
     private final OwnerRepository ownerRepository;
     private final ServiceCenterRepository serviceCenterRepository;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     public PaymentService(PaymentRepository paymentRepository,
             ServicePackageRepository servicePackageRepository,
             BookingRepository bookingRepository,
             AuthRepository authRepository,
             OwnerRepository ownerRepository,
-            ServiceCenterRepository serviceCenterRepository) {
+            ServiceCenterRepository serviceCenterRepository,
+            NotificationService notificationService,
+            EmailService emailService) {
         this.paymentRepository = paymentRepository;
         this.servicePackageRepository = servicePackageRepository;
         this.bookingRepository = bookingRepository;
         this.authRepository = authRepository;
         this.ownerRepository = ownerRepository;
         this.serviceCenterRepository = serviceCenterRepository;
+        this.notificationService = notificationService;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -502,7 +508,9 @@ public class PaymentService {
 
                 booking.setStatus(BookingStatus.CONFIRMED);
                 booking.setBookingFeePaid(true);
-                bookingRepository.save(booking);
+                Booking savedBooking = bookingRepository.save(booking);
+
+                sendPaymentSuccessNotifications(savedBooking, payment);
                 return true;
             }
         } catch (StripeException e) {
@@ -704,7 +712,56 @@ public class PaymentService {
         }
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setBookingFeePaid(true);
-        bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+
+        sendPaymentSuccessNotifications(savedBooking, payment);
+    }
+
+    private void sendPaymentSuccessNotifications(Booking booking, Payment payment) {
+        if (booking == null) return;
+
+        // Send In-App Notification & Confirmation Email to Customer
+        if (booking.getCustomerId() != null) {
+            authRepository.findById(booking.getCustomerId()).ifPresent(customer -> {
+                log.info(">>> SENDING PAYMENT CONFIRMATION EMAIL & NOTIFICATION TO {}", customer.getEmail());
+                notificationService.createNotificationSafe(customer, "Payment Successful",
+                        "Your payment of LKR " + booking.getBookingFee() + " is confirmed for booking on " + booking.getBookingDate() + ".",
+                        "SUCCESS", "/bookings");
+
+                // Send Confirmation Email
+                String pkgName = "Service Package";
+                if (booking.getPackageId() != null) {
+                    var pkgOpt = servicePackageRepository.findById(booking.getPackageId());
+                    if (pkgOpt.isPresent()) pkgName = pkgOpt.get().getName();
+                }
+                String centerName = "Service Center";
+                if (booking.getCenterId() != null) {
+                    var centerOpt = serviceCenterRepository.findById(booking.getCenterId());
+                    if (centerOpt.isPresent()) centerName = centerOpt.get().getName();
+                }
+
+                emailService.sendBookingConfirmationEmail(
+                        customer.getEmail(),
+                        customer.getFullName(),
+                        pkgName,
+                        centerName,
+                        booking.getBookingDate() != null ? booking.getBookingDate().toString() : "",
+                        booking.getBookingTime() != null ? booking.getBookingTime().toString() : "",
+                        booking.getBookingFee() != null ? booking.getBookingFee() : BigDecimal.ZERO
+                );
+            });
+        }
+
+        // Send In-App Notification to Owner
+        if (booking.getCenterId() != null) {
+            serviceCenterRepository.findById(booking.getCenterId()).ifPresent(sc -> {
+                if (sc.getOwner() != null) {
+                    notificationService.createNotificationSafe(sc.getOwner(), "Booking Paid",
+                            "Payment confirmed for booking at " + sc.getName() + " on " + booking.getBookingDate() + ".",
+                            "SUCCESS", "/dashboard/company-owner/centers");
+                }
+            });
+        }
     }
 
     /**

@@ -16,9 +16,16 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final com.fixzone.fixzon_backend.service.ImageKitService imageKitService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, com.fixzone.fixzon_backend.service.ImageKitService imageKitService) {
         this.authService = authService;
+        this.imageKitService = imageKitService;
+    }
+
+    @GetMapping("/imagekit-auth")
+    public ResponseEntity<?> getImageKitAuth() {
+        return ResponseEntity.ok(imageKitService.getAuthenticationParameters());
     }
 
     @PostMapping("/login")

@@ -37,7 +37,11 @@ public class BookingService {
     private final VehicleRepository vehicleRepository;
     private final PaymentService paymentService;
     private final CustomerRepository customerRepository;
+    private final com.fixzone.fixzon_backend.repository.UserRepository userRepository;
     private final OwnerRepository ownerRepository;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
+    private final com.fixzone.fixzon_backend.repository.BookingStatusHistoryRepository bookingStatusHistoryRepository;
 
     public BookingService(BookingRepository bookingRepository,
             ServiceCenterRepository serviceCenterRepository,
@@ -45,14 +49,22 @@ public class BookingService {
             VehicleRepository vehicleRepository,
             PaymentService paymentService,
             CustomerRepository customerRepository,
-            OwnerRepository ownerRepository) {
+            com.fixzone.fixzon_backend.repository.UserRepository userRepository,
+            OwnerRepository ownerRepository,
+            NotificationService notificationService,
+            EmailService emailService,
+            com.fixzone.fixzon_backend.repository.BookingStatusHistoryRepository bookingStatusHistoryRepository) {
         this.bookingRepository = bookingRepository;
         this.serviceCenterRepository = serviceCenterRepository;
         this.servicePackageRepository = servicePackageRepository;
         this.vehicleRepository = vehicleRepository;
         this.paymentService = paymentService;
         this.customerRepository = customerRepository;
+        this.userRepository = userRepository;
         this.ownerRepository = ownerRepository;
+        this.notificationService = notificationService;
+        this.emailService = emailService;
+        this.bookingStatusHistoryRepository = bookingStatusHistoryRepository;
     }
 
     @Transactional(readOnly = true)
@@ -93,20 +105,24 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponseDTO createBooking(BookingRequestDTO request, org.springframework.security.core.Authentication authentication) {
+    public BookingResponseDTO createBooking(BookingRequestDTO request,
+            org.springframework.security.core.Authentication authentication) {
         Booking booking = new Booking();
         BeanUtils.copyProperties(Objects.requireNonNull(request, "Request must not be null"), booking);
 
         boolean isManager = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE_MANAGER") || a.getAuthority().equals("ROLE_COMPANY_OWNER") || a.getAuthority().equals("ROLE_SYSTEM_ADMIN"));
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE_MANAGER")
+                        || a.getAuthority().equals("ROLE_COMPANY_OWNER")
+                        || a.getAuthority().equals("ROLE_SYSTEM_ADMIN"));
 
         if (!isManager) {
-            // Resolve customer from JWT email — never trust customerId from the request body
+            // Resolve customer from JWT email — never trust customerId from the request
+            // body
             String customerEmail = authentication.getName();
             com.fixzone.fixzon_backend.model.Customer customer = customerRepository
                     .findByEmail(customerEmail)
                     .orElseThrow(() -> new RuntimeException("Customer not found: " + customerEmail));
-            
+
             // Always set customer from the authenticated user
             booking.setCustomerId(customer.getUserId());
         } else {
@@ -116,8 +132,10 @@ public class BookingService {
             booking.setCustomerId(request.getCustomerId());
         }
 
-        // Securely fetch centerId and tenantId from the ServicePackage → ServiceCenter → Owner chain.
-        // We always look up the Owner entity to ensure stripeAccountId / stripeOnboardingComplete
+        // Securely fetch centerId and tenantId from the ServicePackage → ServiceCenter
+        // → Owner chain.
+        // We always look up the Owner entity to ensure stripeAccountId /
+        // stripeOnboardingComplete
         // are read from the correct table, regardless of when the branch was created.
         if (booking.getPackageId() != null) {
             servicePackageRepository.findById(booking.getPackageId()).ifPresent(pkg -> {
@@ -126,15 +144,17 @@ public class BookingService {
                     if (pkg.getServiceCenter().getOwner() != null) {
                         UUID ownerId = pkg.getServiceCenter().getOwner().getUserId();
                         ownerRepository.findById(ownerId).ifPresent(owner -> {
-                            com.fixzone.fixzon_backend.enums.SubscriptionStatus status = com.fixzone.fixzon_backend.enums.SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus());
+                            com.fixzone.fixzon_backend.enums.SubscriptionStatus status = com.fixzone.fixzon_backend.enums.SubscriptionStatus
+                                    .fromLegacy(owner.getSubscriptionStatus());
                             if (!status.isAccessAllowed()) {
-                                throw new RuntimeException("Cannot create booking. The service center's subscription has expired.");
+                                throw new RuntimeException(
+                                        "Cannot create booking. The service center's subscription has expired.");
                             }
                             booking.setTenantId(owner.getUserId());
                         });
                     }
                 }
-                
+
                 // Set the estimated cost based on the package's base price
                 if (pkg.getBasePrice() != null) {
                     booking.setEstimatedCost(pkg.getBasePrice());
@@ -151,9 +171,29 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.PENDING_PAYMENT);
         Booking saved = bookingRepository.save(booking);
+
+        saveStatusHistory(saved, BookingStatus.PENDING_PAYMENT, "CUSTOMER");
+
+        // Send notifications
+        if (saved.getCustomerId() != null) {
+            userRepository.findById(saved.getCustomerId()).ifPresent(user -> {
+                notificationService.createNotificationSafe(user, "Booking Created",
+                        "Your booking has been created. Please complete payment to confirm your slot.", "INFO",
+                        "/bookings");
+            });
+        }
+        if (saved.getCenterId() != null) {
+            serviceCenterRepository.findById(saved.getCenterId()).ifPresent(sc -> {
+                if (sc.getOwner() != null) {
+                    notificationService.createNotificationSafe(sc.getOwner(), "New Booking Received",
+                            "A new booking was placed at " + sc.getName() + ".", "INFO",
+                            "/dashboard/company-owner/centers");
+                }
+            });
+        }
+
         return mapToResponseDTO(saved);
     }
-
 
     @Transactional
     public BookingResponseDTO rescheduleBooking(UUID id, LocalDate newDate, LocalTime newTime) {
@@ -181,8 +221,27 @@ public class BookingService {
         booking.setBookingDate(newDate);
         booking.setBookingTime(newTime);
         booking.setRescheduleCount((booking.getRescheduleCount() == null ? 0 : booking.getRescheduleCount()) + 1);
-        
-        return mapToResponseDTO(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+
+        // Send notifications
+        if (saved.getCustomerId() != null) {
+            customerRepository.findById(saved.getCustomerId()).ifPresent(customer -> {
+                notificationService.createNotificationSafe(customer, "Booking Rescheduled",
+                        "Your booking has been rescheduled to " + newDate + " at " + newTime + ".", "INFO",
+                        "/bookings");
+            });
+        }
+        if (saved.getCenterId() != null) {
+            serviceCenterRepository.findById(saved.getCenterId()).ifPresent(sc -> {
+                if (sc.getOwner() != null) {
+                    notificationService.createNotificationSafe(sc.getOwner(), "Booking Rescheduled",
+                            "A booking at " + sc.getName() + " was rescheduled to " + newDate + " at " + newTime + ".",
+                            "INFO", "/dashboard/company-owner/centers");
+                }
+            });
+        }
+
+        return mapToResponseDTO(saved);
     }
 
     @Transactional
@@ -191,12 +250,13 @@ public class BookingService {
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
         if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new RuntimeException("Booking is already cancelled");
+            log.info(">>> BOOKING IS ALREADY CANCELLED: {}", id);
+            return mapToResponseDTO(booking);
         }
 
         // Check how many days left
         long daysBetween = ChronoUnit.DAYS.between(LocalDate.now(), booking.getBookingDate());
-        
+
         // Apply 5% penalty if within 3 days
         double penaltyPercent = 0.0;
         if (daysBetween < AppConstants.RESCHEDULE_MIN_DAYS_LEFT) {
@@ -224,15 +284,45 @@ public class BookingService {
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setIsCancelled(true);
         booking.setCancelledAt(java.time.LocalDateTime.now());
-        
-        return mapToResponseDTO(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+
+        // Send notifications
+        if (saved.getCustomerId() != null) {
+            customerRepository.findById(saved.getCustomerId()).ifPresent(customer -> {
+                BigDecimal fee = saved.getBookingFee() != null ? saved.getBookingFee() : BigDecimal.ZERO;
+                BigDecimal penalty = saved.getCancellationPenalty() != null ? saved.getCancellationPenalty()
+                        : BigDecimal.ZERO;
+                BigDecimal refund = fee.subtract(penalty);
+                if (refund.compareTo(BigDecimal.ZERO) < 0)
+                    refund = BigDecimal.ZERO;
+
+                notificationService.createNotificationSafe(customer, "Booking Cancelled",
+                        "Your booking for " + saved.getBookingDate() + " has been cancelled. Refund: LKR " + refund,
+                        "WARNING", "/bookings");
+
+                // Send cancellation email
+                emailService.sendBookingCancellationEmail(customer.getEmail(), customer.getFullName(),
+                        saved.getBookingDate().toString(), refund, penalty);
+            });
+        }
+        if (saved.getCenterId() != null) {
+            serviceCenterRepository.findById(saved.getCenterId()).ifPresent(sc -> {
+                if (sc.getOwner() != null) {
+                    notificationService.createNotificationSafe(sc.getOwner(), "Booking Cancelled",
+                            "A booking at " + sc.getName() + " for " + saved.getBookingDate() + " was cancelled.",
+                            "WARNING", "/dashboard/company-owner/centers");
+                }
+            });
+        }
+
+        return mapToResponseDTO(saved);
     }
 
     @Transactional
     public BookingResponseDTO editExistingBooking(UUID id, BookingRequestDTO request) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
-        
+
         // Update fields based on request
         if (request.getBookingDate() != null) {
             booking.setBookingDate(request.getBookingDate());
@@ -243,7 +333,7 @@ public class BookingService {
         if (request.getSpecialRequest() != null) {
             booking.setSpecialRequest(request.getSpecialRequest());
         }
-        
+
         return mapToResponseDTO(bookingRepository.save(booking));
     }
 
@@ -281,13 +371,13 @@ public class BookingService {
         List<Booking> bookings;
         if (customerId != null) {
             bookings = bookingRepository.findByCustomerId(customerId).stream()
-                    .filter(b -> b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED || 
-                                 b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.PENDING_PAYMENT)
+                    .filter(b -> b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED ||
+                            b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.PENDING_PAYMENT)
                     .collect(Collectors.toList());
         } else {
             bookings = bookingRepository.findAll().stream()
-                    .filter(b -> b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED || 
-                                 b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.PENDING_PAYMENT)
+                    .filter(b -> b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED ||
+                            b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.PENDING_PAYMENT)
                     .collect(Collectors.toList());
         }
 
@@ -311,11 +401,10 @@ public class BookingService {
     public List<String> getAvailableSlots(UUID centerId, LocalDate date) {
         // Standard hours: 08:00 to 18:00 (hourly ranges)
         List<String> allSlots = List.of(
-            "08:00-09:00", "09:00-10:00", "10:00-11:00", "11:00-12:00", 
-            "12:00-13:00", "13:00-14:00", "14:00-15:00", "15:00-16:00", 
-            "16:00-17:00", "17:00-18:00"
-        );
-        
+                "08:00-09:00", "09:00-10:00", "10:00-11:00", "11:00-12:00",
+                "12:00-13:00", "13:00-14:00", "14:00-15:00", "15:00-16:00",
+                "16:00-17:00", "17:00-18:00");
+
         return allSlots.stream()
                 .filter(slotStr -> {
                     String startTime = slotStr.split("-")[0];
@@ -329,33 +418,173 @@ public class BookingService {
         bookingRepository.deleteById(Objects.requireNonNull(id, "ID must not be null"));
     }
 
+    private void saveStatusHistory(Booking booking, BookingStatus status, String changedBy) {
+        try {
+            com.fixzone.fixzon_backend.model.BookingStatusHistory history = new com.fixzone.fixzon_backend.model.BookingStatusHistory();
+            history.setBookingId(booking.getBookingId());
+            history.setStatus(status);
+            history.setChangedAt(java.time.LocalDateTime.now());
+            history.setChangedBy(changedBy != null ? changedBy : "SYSTEM");
+            bookingStatusHistoryRepository.save(history);
+        } catch (Exception e) {
+            log.error("Failed to save booking status history", e);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO> getBookingStatusHistory(UUID bookingId) {
+        Booking booking = bookingRepository.findById(bookingId).orElse(null);
+        List<com.fixzone.fixzon_backend.model.BookingStatusHistory> historyList = 
+            bookingStatusHistoryRepository.findByBookingIdOrderByChangedAtAsc(bookingId);
+
+        List<com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO> dtos = new java.util.ArrayList<>();
+
+        if (historyList != null && !historyList.isEmpty()) {
+            dtos = historyList.stream().map(h -> {
+                com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO dto = 
+                    new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO();
+                dto.setId(h.getId());
+                dto.setBookingId(h.getBookingId());
+                dto.setStatus(h.getStatus());
+                
+                String display = h.getStatus().name().replace('_', ' ');
+                if (h.getStatus() == BookingStatus.CONFIRMED) {
+                    display = "Ready for Service";
+                } else if (h.getStatus() == BookingStatus.IN_PROGRESS) {
+                    display = "Service Started";
+                } else if (h.getStatus() == BookingStatus.COMPLETED) {
+                    display = "Service Completed";
+                } else if (h.getStatus() == BookingStatus.PENDING_PAYMENT) {
+                    display = "Booking Created";
+                } else if (h.getStatus() == BookingStatus.CANCELLED) {
+                    display = "Booking Cancelled";
+                }
+                dto.setStatusDisplay(display);
+                dto.setChangedAt(h.getChangedAt());
+                dto.setChangedBy(h.getChangedBy());
+                return dto;
+            }).collect(Collectors.toList());
+        }
+
+        // Only synthesize if DB history table has no entries for this booking
+        if (booking != null && dtos.isEmpty()) {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            BookingStatus current = booking.getStatus() != null ? booking.getStatus() : BookingStatus.PENDING_PAYMENT;
+            
+            dtos.add(new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO(
+                UUID.randomUUID(), bookingId, BookingStatus.PENDING_PAYMENT, "Booking Created", now, "CUSTOMER"
+            ));
+
+            if (current == BookingStatus.CONFIRMED || current == BookingStatus.IN_PROGRESS || current == BookingStatus.COMPLETED) {
+                dtos.add(new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO(
+                    UUID.randomUUID(), bookingId, BookingStatus.CONFIRMED, "Ready for Service", now, "CUSTOMER_PAYMENT"
+                ));
+            }
+
+            if (current == BookingStatus.IN_PROGRESS || current == BookingStatus.COMPLETED) {
+                dtos.add(new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO(
+                    UUID.randomUUID(), bookingId, BookingStatus.IN_PROGRESS, "Service Started", now, "MANAGER"
+                ));
+            }
+
+            if (current == BookingStatus.COMPLETED) {
+                dtos.add(new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO(
+                    UUID.randomUUID(), bookingId, BookingStatus.COMPLETED, "Service Completed", now, "MANAGER"
+                ));
+            }
+
+            if (current == BookingStatus.CANCELLED) {
+                dtos.add(new com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO(
+                    UUID.randomUUID(), bookingId, BookingStatus.CANCELLED, "Booking Cancelled", now, "USER"
+                ));
+            }
+        }
+
+        return dtos;
+    }
+
     @Transactional
-    public BookingResponseDTO completeBooking(UUID id) {
+    public BookingResponseDTO updateBookingStatus(UUID id, BookingStatus newStatus) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
-        booking.setStatus(BookingStatus.COMPLETED);
-        return mapToResponseDTO(Objects.requireNonNull(bookingRepository.save(booking)));
+
+        // DUPLICATE PROTECTION: Skip if status hasn't changed
+        if (booking.getStatus() == newStatus) {
+            log.info(">>> STATUS UPDATE SKIPPED: Booking {} is already in status {}", id, newStatus);
+            return mapToResponseDTO(booking);
+        }
+
+        booking.setStatus(newStatus);
+        Booking saved = bookingRepository.save(booking);
+
+        // Record history log
+        saveStatusHistory(saved, newStatus, "MANAGER");
+
+        if (saved.getCustomerId() != null) {
+            com.fixzone.fixzon_backend.model.User recipient = userRepository.findById(saved.getCustomerId())
+                    .orElseGet(() -> customerRepository.findById(saved.getCustomerId()).map(c -> (com.fixzone.fixzon_backend.model.User) c).orElse(null));
+
+            if (recipient != null) {
+                log.info(">>> CREATING STATUS NOTIFICATION FOR USER {}: status = {}", recipient.getUserId(), newStatus);
+                if (newStatus == BookingStatus.IN_PROGRESS) {
+                    notificationService.createNotificationSafe(recipient, "Service Started",
+                            "Work has started on your vehicle service.", "INFO", "/bookings");
+                } else if (newStatus == BookingStatus.COMPLETED) {
+                    notificationService.createNotificationSafe(recipient, "Service Completed",
+                            "Your vehicle service is completed! Please collect your vehicle.", "SUCCESS", "/bookings");
+                } else if (newStatus == BookingStatus.CONFIRMED) {
+                    notificationService.createNotificationSafe(recipient, "Booking Confirmed",
+                            "Your booking has been confirmed and is ready for service.", "INFO", "/bookings");
+                } else if (newStatus == BookingStatus.CANCELLED) {
+                    notificationService.createNotificationSafe(recipient, "Booking Cancelled",
+                            "Your booking for " + saved.getBookingDate() + " was cancelled.", "WARNING", "/bookings");
+                }
+            } else {
+                log.error(">>> FAILED TO CREATE STATUS NOTIFICATION: Customer/User ID {} not found!", saved.getCustomerId());
+            }
+        }
+
+        return mapToResponseDTO(saved);
+    }
+
+    @Transactional
+    public BookingResponseDTO completeBooking(UUID id) {
+        return updateBookingStatus(id, BookingStatus.COMPLETED);
     }
 
     @Transactional
     public BookingResponseDTO startService(UUID id) {
-        Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
-        booking.setStatus(BookingStatus.IN_PROGRESS);
-        return mapToResponseDTO(Objects.requireNonNull(bookingRepository.save(booking)));
+        return updateBookingStatus(id, BookingStatus.IN_PROGRESS);
     }
 
     @Transactional
     public BookingResponseDTO completePayment(UUID id, String gatewaySessionId) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
-        
+
         // Update booking with payment info
         booking.setGatewaySessionId(gatewaySessionId);
         booking.setBookingFeePaid(true);
         booking.setStatus(BookingStatus.CONFIRMED); // Transitions to Upcoming
-        
-        return mapToResponseDTO(Objects.requireNonNull(bookingRepository.save(booking)));
+        Booking saved = bookingRepository.save(booking);
+
+        // Save status history record
+        saveStatusHistory(saved, BookingStatus.CONFIRMED, "CUSTOMER_PAYMENT");
+
+        if (saved.getCustomerId() != null) {
+            com.fixzone.fixzon_backend.model.User recipient = userRepository.findById(saved.getCustomerId())
+                    .orElseGet(() -> customerRepository.findById(saved.getCustomerId()).map(c -> (com.fixzone.fixzon_backend.model.User) c).orElse(null));
+
+            if (recipient != null) {
+                log.info(">>> CREATING PAYMENT SUCCESSFUL NOTIFICATION FOR USER {}", recipient.getUserId());
+                notificationService.createNotificationSafe(recipient, "Payment Successful",
+                        "Your booking payment has been confirmed.", "SUCCESS", "/bookings");
+            } else {
+                log.error(">>> FAILED TO CREATE PAYMENT NOTIFICATION: Customer ID {} not found!", saved.getCustomerId());
+            }
+        }
+
+        return mapToResponseDTO(saved);
     }
 
     private BookingResponseDTO mapToResponseDTO(@org.springframework.lang.NonNull Booking booking) {
@@ -391,7 +620,8 @@ public class BookingService {
             var vOpt = vehicleRepository.findById(booking.getVehicleId());
             if (vOpt.isPresent()) {
                 var v = vOpt.get();
-                String label = (v.getBrand() != null ? v.getBrand() : "") + (v.getPlateNumber() != null ? " - " + v.getPlateNumber() : "");
+                String label = (v.getBrand() != null ? v.getBrand() : "")
+                        + (v.getPlateNumber() != null ? " - " + v.getPlateNumber() : "");
                 dto.setVehicleLabel(label.isBlank() ? "Registered Vehicle" : label);
             } else {
                 dto.setVehicleLabel("Registered Vehicle");

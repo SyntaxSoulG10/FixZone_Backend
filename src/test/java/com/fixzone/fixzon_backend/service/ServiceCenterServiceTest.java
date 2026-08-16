@@ -25,7 +25,6 @@ import org.springframework.data.domain.Pageable;
 import com.fixzone.fixzon_backend.DTO.PagedResponse;
 
 @ExtendWith(MockitoExtension.class)
-
 class ServiceCenterServiceTest {
 
     @Mock private ServiceCenterRepository serviceCenterRepository;

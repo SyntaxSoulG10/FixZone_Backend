@@ -110,4 +110,47 @@ public class ImageKitService {
             throw new RuntimeException("ImageKit Upload Error: " + e.getMessage());
         }
     }
+
+    /**
+     * Generates authentication parameters for client-side uploads to ImageKit.
+     * @return Map containing token, expire, signature, publicKey, and urlEndpoint
+     */
+    public java.util.Map<String, Object> getAuthenticationParameters() {
+        String token = java.util.UUID.randomUUID().toString();
+        long expire = (System.currentTimeMillis() / 1000) + 1800; // 30 minutes expiration
+        String expireStr = String.valueOf(expire);
+
+        String secretKey = (privateKey != null && !privateKey.isBlank()) ? privateKey : "private_X2euwPcwdxMFfVlLG3czXOpbBiU=";
+        String pubKey = (publicKey != null && !publicKey.isBlank()) ? publicKey : "public_mUIp8QHQPIGtSt/Eobvt4AfeNGU=";
+        String endpoint = (urlEndpoint != null && !urlEndpoint.isBlank()) ? urlEndpoint : "https://ik.imagekit.io/fixzone";
+
+        String signature = calculateHmacSha1(token + expireStr, secretKey);
+
+        java.util.Map<String, Object> authParams = new java.util.HashMap<>();
+        authParams.put("token", token);
+        authParams.put("expire", expire);
+        authParams.put("signature", signature);
+        authParams.put("publicKey", pubKey);
+        authParams.put("urlEndpoint", endpoint);
+        return authParams;
+    }
+
+    private String calculateHmacSha1(String data, String key) {
+        try {
+            javax.crypto.spec.SecretKeySpec signingKey = new javax.crypto.spec.SecretKeySpec(key.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA1");
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA1");
+            mac.init(signingKey);
+            byte[] rawHmac = mac.doFinal(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : rawHmac) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            log.error("Error calculating HMAC-SHA1 signature for ImageKit", e);
+            throw new RuntimeException("Failed to calculate ImageKit upload signature", e);
+        }
+    }
 }

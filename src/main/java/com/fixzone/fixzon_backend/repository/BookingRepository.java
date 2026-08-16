@@ -12,7 +12,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-import com.fixzone.fixzon_backend.model.ServiceCenter;
 
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
     

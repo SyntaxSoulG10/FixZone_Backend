@@ -112,4 +112,62 @@ public class EmailService {
             throw new RuntimeException("Failed to send reset email");
         }
     }
+
+    public void sendBookingConfirmationEmail(String toEmail, String customerName, String packageName, String serviceCenterName, String bookingDate, String bookingTime, java.math.BigDecimal amount) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+
+            String sender = (senderEmail != null && !senderEmail.isEmpty() && !senderEmail.contains("example.com")) ? senderEmail : fromEmail;
+            helper.setFrom(sender, "FixZone Booking");
+            helper.setTo(toEmail);
+            helper.setSubject("FixZone - Booking Payment Confirmation");
+
+            String content = "<h1>Booking Confirmed, " + customerName + "!</h1>" +
+                    "<p>Thank you for choosing FixZone. Your service booking payment has been successfully received.</p>" +
+                    "<div style=\"background-color:#F3F4F6;padding:15px;border-radius:8px;margin:15px 0;\">" +
+                    "<p><b>Service Package:</b> " + packageName + "</p>" +
+                    "<p><b>Service Center:</b> " + serviceCenterName + "</p>" +
+                    "<p><b>Booking Date:</b> " + bookingDate + "</p>" +
+                    "<p><b>Time Slot:</b> " + bookingTime + "</p>" +
+                    "<p><b>Initial Fee Paid:</b> LKR " + amount + "</p>" +
+                    "</div>" +
+                    "<p>Please arrive 10 minutes prior to your scheduled time slot.</p>" +
+                    "<p>Best regards,<br>The FixZone Team</p>";
+
+            helper.setText(content, true);
+            mailSender.send(message);
+            log.info("Booking Confirmation Email SENT successfully to: {}", toEmail);
+        } catch (Exception e) {
+            log.error("ERROR: Booking confirmation email failed to send to {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
+
+    public void sendBookingCancellationEmail(String toEmail, String customerName, String bookingDate, java.math.BigDecimal refundAmount, java.math.BigDecimal penaltyAmount) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+
+            String sender = (senderEmail != null && !senderEmail.isEmpty() && !senderEmail.contains("example.com")) ? senderEmail : fromEmail;
+            helper.setFrom(sender, "FixZone Booking");
+            helper.setTo(toEmail);
+            helper.setSubject("FixZone - Booking Cancellation Confirmation");
+
+            String content = "<h1>Booking Cancelled, " + customerName + "!</h1>" +
+                    "<p>Your booking scheduled for <b>" + bookingDate + "</b> has been cancelled.</p>" +
+                    "<div style=\"background-color:#F3F4F6;padding:15px;border-radius:8px;margin:15px 0;\">" +
+                    "<p><b>Cancellation Penalty (5%):</b> LKR " + (penaltyAmount != null ? penaltyAmount : "0.00") + "</p>" +
+                    "<p><b>Refund Amount:</b> LKR " + (refundAmount != null ? refundAmount : "0.00") + "</p>" +
+                    "</div>" +
+                    "<p>Refunds usually process back to your card within 5-10 business days.</p>" +
+                    "<p>Best regards,<br>The FixZone Team</p>";
+
+            helper.setText(content, true);
+            mailSender.send(message);
+            log.info("Booking Cancellation Email SENT successfully to: {}", toEmail);
+        } catch (Exception e) {
+            log.error("ERROR: Booking cancellation email failed to send to {}: {}", toEmail, e.getMessage(), e);
+        }
+    }
 }
+
