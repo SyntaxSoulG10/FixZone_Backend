@@ -1,8 +1,10 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.model.Owner;
+import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.model.SubscriptionPlan;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.SubscriptionPlanRepository;
 
 import com.fixzone.fixzon_backend.repository.SubscriptionRepository;
@@ -35,17 +37,19 @@ public class SubscriptionService {
 
     private final OwnerRepository ownerRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
+    private final ServiceCenterRepository serviceCenterRepository;
 
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionBillingRepository subscriptionBillingRepository;
 
-    public SubscriptionService(OwnerRepository ownerRepository, 
-                               SubscriptionPlanRepository subscriptionPlanRepository, 
+    public SubscriptionService(OwnerRepository ownerRepository,
+                               SubscriptionPlanRepository subscriptionPlanRepository,
+                               ServiceCenterRepository serviceCenterRepository,
                                SubscriptionRepository subscriptionRepository,
                                SubscriptionBillingRepository subscriptionBillingRepository) {
         this.ownerRepository = ownerRepository;
         this.subscriptionPlanRepository = subscriptionPlanRepository;
-
+        this.serviceCenterRepository = serviceCenterRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionBillingRepository = subscriptionBillingRepository;
     }
@@ -142,6 +146,17 @@ public class SubscriptionService {
                     owner.setNextBillingDate(startDate.plusMonths(plan.getDurationMonths()));
                     ownerRepository.save(owner);
                     log.info("Subscription updated for owner {}", owner.getEmail());
+
+                    // Reactivate any SUSPENDED service centers for this owner
+                    List<ServiceCenter> ownerCenters = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
+                    for (ServiceCenter center : ownerCenters) {
+                        if ("SUSPENDED".equalsIgnoreCase(center.getStatus())) {
+                            center.setStatus("APPROVED");
+                            center.setIsActive(true);
+                            serviceCenterRepository.save(center);
+                            log.info("Reactivated service center '{}' for owner {}", center.getName(), owner.getEmail());
+                        }
+                    }
 
                     // Handle Subscription entity
                     Subscription subscription = subscriptionRepository.findByOwnerUserId(owner.getUserId())
