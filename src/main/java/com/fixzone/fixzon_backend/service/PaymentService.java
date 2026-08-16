@@ -3,6 +3,7 @@ package com.fixzone.fixzon_backend.service;
 import com.fixzone.fixzon_backend.DTO.InitPaymentRequest;
 import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.enums.PaymentStatus;
+import com.fixzone.fixzon_backend.enums.SubscriptionStatus;
 import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.model.Payment;
 import com.fixzone.fixzon_backend.model.ServicePackage;
@@ -179,14 +180,18 @@ public class PaymentService {
         boolean connected = Boolean.TRUE.equals(owner.getStripeOnboardingComplete())
                 && owner.getStripeAccountId() != null
                 && !owner.getStripeAccountId().isBlank();
+        boolean subscriptionAllowed = SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus()).isVisibleToCustomers();
+        boolean eligible = connected && subscriptionAllowed;
 
         return Map.of(
-                "eligible", connected,
+                "eligible", eligible,
                 "stripeConnected", connected,
                 "stripeAccountId", owner.getStripeAccountId() != null ? owner.getStripeAccountId() : "",
-                "message", connected
+                "message", eligible
                         ? "The branch owner is ready to receive online payments."
-                        : "This branch cannot accept online payments until the owner completes Stripe Connect onboarding."
+                        : (!connected
+                                ? "This branch cannot accept online payments until the owner completes Stripe Connect onboarding."
+                                : "This branch cannot accept online payments because the owner plan or trial is inactive.")
         );
     }
 
