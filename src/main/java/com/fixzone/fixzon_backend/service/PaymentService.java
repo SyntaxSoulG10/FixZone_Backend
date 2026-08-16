@@ -3,6 +3,7 @@ package com.fixzone.fixzon_backend.service;
 import com.fixzone.fixzon_backend.DTO.InitPaymentRequest;
 import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.enums.PaymentStatus;
+import com.fixzone.fixzon_backend.enums.SubscriptionStatus;
 import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.model.Payment;
 import com.fixzone.fixzon_backend.model.ServicePackage;
@@ -22,6 +23,12 @@ import com.stripe.model.Account;
 import com.stripe.model.AccountLink;
 import com.stripe.param.AccountCreateParams;
 import com.stripe.param.AccountLinkCreateParams;
+import com.stripe.model.PaymentIntent;
+import com.stripe.model.Event;
+import com.stripe.model.EventDataObjectDeserializer;
+import com.stripe.model.StripeObject;
+import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.net.Webhook;
 import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import org.slf4j.Logger;
@@ -49,6 +56,9 @@ public class PaymentService {
 
     @Value("${app.backend-url}")
     private String backendUrl;
+
+    @Value("${stripe.webhook.secret:whsec_test}")
+    private String endpointSecret;
 
     private final PaymentRepository paymentRepository;
     private final ServicePackageRepository servicePackageRepository;
@@ -170,14 +180,18 @@ public class PaymentService {
         boolean connected = Boolean.TRUE.equals(owner.getStripeOnboardingComplete())
                 && owner.getStripeAccountId() != null
                 && !owner.getStripeAccountId().isBlank();
+        boolean subscriptionAllowed = SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus()).isVisibleToCustomers();
+        boolean eligible = connected && subscriptionAllowed;
 
         return Map.of(
-                "eligible", connected,
+                "eligible", eligible,
                 "stripeConnected", connected,
                 "stripeAccountId", owner.getStripeAccountId() != null ? owner.getStripeAccountId() : "",
-                "message", connected
+                "message", eligible
                         ? "The branch owner is ready to receive online payments."
-                        : "This branch cannot accept online payments until the owner completes Stripe Connect onboarding."
+                        : (!connected
+                                ? "This branch cannot accept online payments until the owner completes Stripe Connect onboarding."
+                                : "This branch cannot accept online payments because the owner plan or trial is inactive.")
         );
     }
 
@@ -217,10 +231,12 @@ public class PaymentService {
                 throw new IllegalStateException("This branch cannot accept online payments until the owner completes Stripe Connect onboarding.");
             }
 
+            String frontendBaseUrl = resolveBaseUrl(null, frontendUrl, "http://localhost:3000");
+
             SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(frontendUrl + "/success?session_id={CHECKOUT_SESSION_ID}")
-                .setCancelUrl(frontendUrl + "/dashboard/customer/checkout")
+                .setSuccessUrl(frontendBaseUrl + "/success?session_id={CHECKOUT_SESSION_ID}")
+                .setCancelUrl(frontendBaseUrl + "/dashboard/customer/checkout")
                 .addLineItem(SessionCreateParams.LineItem.builder()
                     .setQuantity(1L)
                     .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
@@ -289,6 +305,142 @@ public class PaymentService {
         } catch (StripeException e) {
             log.error("STRIPE ERROR: {}", e.getMessage(), e);
             throw e;
+        }
+    }
+
+    @Transactional
+    public PaymentStatus getPaymentStatusById(Long paymentId) {
+        Payment payment = paymentRepository.findById(paymentId).orElse(null);
+        if (payment == null) return null;
+
+        if (payment.getStatus() == PaymentStatus.PENDING && payment.getGatewaySessionId() != null && payment.getGatewaySessionId().startsWith("pi_")) {
+            try {
+                Stripe.apiKey = stripeApiKey;
+                PaymentIntent intent = PaymentIntent.retrieve(payment.getGatewaySessionId());
+                if ("succeeded".equals(intent.getStatus())) {
+                    log.info(">>> FALLBACK CHECK: PaymentIntent {} succeeded. Updating DB.", intent.getId());
+                    payment.setStatus(PaymentStatus.PAID);
+                    paymentRepository.save(payment);
+
+                    confirmBookingForPayment(payment, payment.getGatewaySessionId());
+                }
+            } catch (StripeException e) {
+                log.error("Error retrieving PaymentIntent from Stripe during fallback check", e);
+            }
+        }
+        return payment.getStatus();
+    }
+
+    public Map<String, Object> createStripePaymentIntent(Long paymentId) throws StripeException {
+        Stripe.apiKey = stripeApiKey;
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Payment record not found"));
+
+        ensurePayoutReady(payment.getTenantId());
+
+        String stripeAccountId = resolveStripeAccountId(payment.getTenantId());
+        if (stripeAccountId == null) {
+            throw new IllegalStateException("This branch cannot accept online payments until the owner completes Stripe Connect onboarding.");
+        }
+
+        // Idempotency: If gatewaySessionId already exists and is a PaymentIntent
+        if (payment.getGatewaySessionId() != null && payment.getGatewaySessionId().startsWith("pi_")) {
+            log.info(">>> REUSING EXISTING PAYMENT INTENT: {}", payment.getGatewaySessionId());
+            PaymentIntent intent = PaymentIntent.retrieve(payment.getGatewaySessionId());
+            return Map.of(
+                    "paymentId", payment.getId(),
+                    "clientSecret", intent.getClientSecret(),
+                    "amount", payment.getAmount(),
+                    "currency", "LKR"
+            );
+        }
+
+        PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+                .setAmount((long) (payment.getAmount() * 100))
+                .setCurrency("lkr")
+                .putMetadata("paymentId", payment.getId().toString())
+                .putMetadata("bookingId", payment.getBookingId() != null ? payment.getBookingId().toString() : "")
+                .putMetadata("branchId", payment.getCenterId() != null ? payment.getCenterId().toString() : "")
+                .putMetadata("customerId", payment.getCustomerId() != null ? payment.getCustomerId().toString() : "")
+                .setTransferData(
+                        PaymentIntentCreateParams.TransferData.builder()
+                                .setDestination(stripeAccountId)
+                                .build()
+                )
+                .build();
+
+        log.info(">>> CREATING NEW PAYMENT INTENT (DESTINATION: {})", stripeAccountId);
+        PaymentIntent intent = PaymentIntent.create(params);
+
+        payment.setGatewaySessionId(intent.getId());
+        paymentRepository.save(payment);
+
+        linkPaymentToBooking(payment, intent.getId());
+
+        return Map.of(
+                "paymentId", payment.getId(),
+                "clientSecret", intent.getClientSecret(),
+                "amount", payment.getAmount(),
+                "currency", "LKR"
+        );
+    }
+
+    private void linkPaymentToBooking(Payment payment, String gatewayId) {
+        Optional<Booking> bookingOpt = bookingRepository.findAll().stream()
+                .filter(b -> {
+                    if (b.getBookingId() == null) return false;
+                    String bId = b.getBookingId().toString();
+                    String pId = payment.getBookingId() != null ? payment.getBookingId().toString() : "";
+                    if (bId.equalsIgnoreCase(pId)) return true;
+
+                    boolean packageMatch = b.getPackageId() != null && b.getPackageId().equals(payment.getServicePackageId());
+                    boolean vehicleMatch = b.getVehicleId() != null && b.getVehicleId().equals(payment.getVehicleId());
+                    boolean dateMatch = b.getBookingDate() != null && b.getBookingDate().toString().equals(payment.getDate());
+                    return packageMatch && vehicleMatch && dateMatch;
+                })
+                .findFirst();
+
+        if (bookingOpt.isPresent()) {
+            Booking booking = bookingOpt.get();
+            booking.setGatewaySessionId(gatewayId);
+            booking.setBookingFee(BigDecimal.valueOf(payment.getAmount()));
+            servicePackageRepository.findById(payment.getServicePackageId()).ifPresent(pkg -> {
+                booking.setEstimatedCost(pkg.getBasePrice());
+            });
+            bookingRepository.save(booking);
+        }
+    }
+
+    @Transactional
+    public void handleStripeWebhook(String payload, String sigHeader) throws Exception {
+        Stripe.apiKey = stripeApiKey;
+        Event event;
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
+        } catch (Exception e) {
+            log.error("Webhook signature verification failed.", e);
+            throw e;
+        }
+
+        EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+        StripeObject stripeObject = dataObjectDeserializer.getObject().orElse(null);
+
+        if ("payment_intent.succeeded".equals(event.getType()) && stripeObject instanceof PaymentIntent) {
+            PaymentIntent intent = (PaymentIntent) stripeObject;
+            String paymentIntentId = intent.getId();
+            log.info(">>> WEBHOOK: PaymentIntent Succeeded for {}", paymentIntentId);
+            
+            Optional<Payment> paymentOpt = paymentRepository.findAll().stream()
+                    .filter(p -> paymentIntentId.equals(p.getGatewaySessionId()))
+                    .findFirst();
+
+            if (paymentOpt.isPresent()) {
+                Payment payment = paymentOpt.get();
+                payment.setStatus(PaymentStatus.PAID);
+                paymentRepository.save(payment);
+
+                confirmBookingForPayment(payment, paymentIntentId);
+            }
         }
     }
 
@@ -406,12 +558,18 @@ public class PaymentService {
     }
 
     public String resolveBaseUrl(HttpServletRequest request, String configuredBaseUrl, String fallbackBaseUrl) {
-        if (configuredBaseUrl != null && !configuredBaseUrl.isBlank()) {
-            return configuredBaseUrl.replaceAll("/+$", "");
+        String base = configuredBaseUrl;
+        if (base != null && !base.isBlank()) {
+            base = base.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("/+$", "");
+            if (!base.startsWith("http://") && !base.startsWith("https://")) {
+                base = "https://" + base;
+            }
+            return base;
         }
 
         if (request == null) {
-            return fallbackBaseUrl != null ? fallbackBaseUrl.replaceAll("/+$", "") : "";
+            String fallback = fallbackBaseUrl != null ? fallbackBaseUrl.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("/+$", "") : "";
+            return fallback;
         }
 
         String forwardedProto = request.getHeader("X-Forwarded-Proto");
@@ -460,10 +618,21 @@ public class PaymentService {
         String frontendBaseUrl = resolveBaseUrl(request, frontendUrl, "http://localhost:3000");
         String backendBaseUrl = resolveBaseUrl(request, backendUrl, "http://localhost:8081");
 
+        String encodedAccountId = java.net.URLEncoder.encode(
+                owner.getStripeAccountId() != null ? owner.getStripeAccountId().trim() : "",
+                java.nio.charset.StandardCharsets.UTF_8
+        );
+
+        String refreshUrl = frontendBaseUrl + "/dashboard/company-owner/centers?stripe_refresh=true";
+        String returnUrl = backendBaseUrl + "/api/payments/connect/callback?accountId=" + encodedAccountId;
+
+        log.info("Generating Stripe Connect Link for account '{}': refreshUrl='{}', returnUrl='{}'", 
+                owner.getStripeAccountId(), refreshUrl, returnUrl);
+
         AccountLinkCreateParams linkParams = AccountLinkCreateParams.builder()
-                .setAccount(owner.getStripeAccountId())
-                .setRefreshUrl(frontendBaseUrl + "/dashboard/company-owner/centers?stripe_refresh=true")
-                .setReturnUrl(backendBaseUrl + "/api/payments/connect/callback?accountId=" + owner.getStripeAccountId())
+                .setAccount(owner.getStripeAccountId().trim())
+                .setRefreshUrl(refreshUrl)
+                .setReturnUrl(returnUrl)
                 .setType(AccountLinkCreateParams.Type.ACCOUNT_ONBOARDING)
                 .build();
 
@@ -516,12 +685,56 @@ public class PaymentService {
         ));
     }
 
+    private void confirmBookingForPayment(Payment payment, String gatewaySessionId) {
+        Optional<Booking> bookingOpt = bookingRepository.findAll().stream()
+                .filter(b -> gatewaySessionId.equals(b.getGatewaySessionId()))
+                .findFirst();
+
+        Booking booking;
+        if (bookingOpt.isPresent()) {
+            booking = bookingOpt.get();
+        } else {
+            booking = new Booking();
+            booking.setBookingId(UUID.randomUUID());
+            if (payment.getCustomerId() != null) {
+                booking.setCustomerId(payment.getCustomerId());
+            } else {
+                booking.setCustomerId(UUID.randomUUID());
+            }
+            booking.setTenantId(payment.getTenantId());
+            booking.setCenterId(payment.getCenterId());
+            booking.setVehicleId(payment.getVehicleId());
+            booking.setPackageId(payment.getServicePackageId());
+            if (payment.getDate() != null) {
+                booking.setBookingDate(java.time.LocalDate.parse(payment.getDate()));
+            }
+
+            String timeStr = payment.getTimeSlot();
+            if (timeStr != null) {
+                if (timeStr.contains("-")) {
+                    timeStr = timeStr.split("-")[0].trim();
+                }
+                booking.setBookingTime(java.time.LocalTime.parse(timeStr));
+            }
+            booking.setGatewaySessionId(gatewaySessionId);
+            booking.setBookingFee(BigDecimal.valueOf(payment.getAmount()));
+            
+            if (payment.getServicePackageId() != null) {
+                servicePackageRepository.findById(payment.getServicePackageId()).ifPresent(pkg -> {
+                    booking.setEstimatedCost(pkg.getBasePrice());
+                });
+            }
+        }
+        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setBookingFeePaid(true);
+        bookingRepository.save(booking);
+    }
+
     /**
      * Finds the internal payment record ID for a given booking UUID.
      * Strategy:
      *  1. If the booking has a gatewaySessionId, find the payment by that session ID.
-     *  2. Otherwise, find the most recent PENDING payment that matches the booking's
-     *     servicePackageId, vehicleId, and date.
+     *  2. Otherwise, find the most recent payment matching package + vehicle + date.
      */
     public Long findPaymentIdByBookingUUID(UUID bookingUUID) {
         Booking booking = bookingRepository.findById(bookingUUID)
@@ -552,4 +765,3 @@ public class PaymentService {
         return null;
     }
 }
-

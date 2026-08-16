@@ -34,8 +34,9 @@ public class GlobalExceptionHandler {
         log.warn("Illegal argument: {}", ex.getMessage());
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
-                "Invalid input",
-                ex.getMessage()
+                //"Invalid input",
+                ex.getMessage(),
+                null
         );
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }

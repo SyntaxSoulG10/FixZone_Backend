@@ -80,6 +80,52 @@ public class PaymentController {
         }
     }
 
+    @PostMapping("/stripe/mobile-sheet")
+    public ResponseEntity<?> createMobilePaymentSheet(@RequestBody java.util.Map<String, Long> payload) {
+        Long paymentId = payload.get("paymentId");
+        if (paymentId == null) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "Payment ID is required"));
+        }
+        try {
+            log.info(">>> HIT STRIPE MOBILE SHEET FOR PAYMENT ID: {}", paymentId);
+            java.util.Map<String, Object> result = paymentService.createStripePaymentIntent(paymentId);
+            return ResponseEntity.ok(result);
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of(
+                    "error", ex.getMessage(),
+                    "requiresStripeConnect", true
+            ));
+        } catch (StripeException ex) {
+            log.error("Stripe payment intent creation failed", ex);
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(java.util.Map.of(
+                    "error", "Stripe payment intent could not be created right now.",
+                    "details", ex.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/payment-status/{paymentId}")
+    public ResponseEntity<?> getPaymentStatusById(@PathVariable Long paymentId) {
+        com.fixzone.fixzon_backend.enums.PaymentStatus status = paymentService.getPaymentStatusById(paymentId);
+        if (status != null) {
+            return ResponseEntity.ok(java.util.Map.of("status", status.name()));
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @PostMapping("/webhook")
+    public ResponseEntity<String> handleStripeWebhook(
+            @RequestBody String payload,
+            @RequestHeader("Stripe-Signature") String sigHeader) {
+        try {
+            paymentService.handleStripeWebhook(payload, sigHeader);
+            return ResponseEntity.ok("Success");
+        } catch (Exception e) {
+            log.error("Webhook error: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Webhook handling failed");
+        }
+    }
+
     @GetMapping("/success")
     public ResponseEntity<String> paymentSuccess(@RequestParam("session_id") String sessionId) {
         boolean success = paymentService.handleSuccess(sessionId);
@@ -171,16 +217,21 @@ public class PaymentController {
 
     @GetMapping("/connect/callback")
     public ResponseEntity<Void> handleConnectCallback(@RequestParam("accountId") String accountId) {
+        String cleanFrontendUrl = frontendUrl != null ? frontendUrl.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("/+$", "") : "http://localhost:3000";
+        if (!cleanFrontendUrl.startsWith("http://") && !cleanFrontendUrl.startsWith("https://")) {
+            cleanFrontendUrl = "https://" + cleanFrontendUrl;
+        }
+
         try {
             paymentService.handleConnectCallback(accountId);
             // Redirect back to branch creation page with success flag
             return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create(frontendUrl + "/dashboard/company-owner/centers?connect=success"))
+                    .location(URI.create(cleanFrontendUrl + "/dashboard/company-owner/centers?connect=success"))
                     .build();
         } catch (Exception e) {
             log.error("Stripe Connect Callback Error: ", e);
             return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create(frontendUrl + "/dashboard/company-owner/centers?connect=error"))
+                    .location(URI.create(cleanFrontendUrl + "/dashboard/company-owner/centers?connect=error"))
                     .build();
         }
     }

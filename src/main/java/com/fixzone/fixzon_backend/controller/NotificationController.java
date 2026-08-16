@@ -11,7 +11,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/notifications")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class NotificationController {
 
     private final NotificationService notificationService;

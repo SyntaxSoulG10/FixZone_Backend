@@ -18,6 +18,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import com.fixzone.fixzon_backend.DTO.PagedResponse;
+
 @ExtendWith(MockitoExtension.class)
 
 class ServiceCenterServiceTest {
@@ -53,16 +59,17 @@ class ServiceCenterServiceTest {
 
     @Test
     void getAllServiceCenters_ShouldReturnList() {
-        when(serviceCenterRepository.findByIsActive(true)).thenReturn(Collections.singletonList(center));
+        Page<ServiceCenter> page = new PageImpl<>(Collections.singletonList(center));
+        when(serviceCenterRepository.findActiveAndValidSubscription(any(Pageable.class))).thenReturn(page);
         // Mocking bulk data fetching used in mapEntitiesToDtos
         when(invoiceRepository.sumTotalByCenterIdIn(anyList())).thenReturn(new ArrayList<>());
         when(servicePackageRepository.findByServiceCenter_CenterIdInAndIsActiveTrue(anyList())).thenReturn(new ArrayList<>());
         when(managerRepository.findByManagedCenterIdIn(anyList())).thenReturn(new ArrayList<>());
 
-        List<ServiceCenterDTO> result = serviceCenterService.getAllServiceCenters();
+        PagedResponse<ServiceCenterDTO> result = serviceCenterService.getAllServiceCenters(PageRequest.of(0, 10));
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getName()).isEqualTo("Test Center");
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getName()).isEqualTo("Test Center");
     }
 
     @Test
@@ -91,6 +98,55 @@ class ServiceCenterServiceTest {
 
         assertThat(result).isNotNull();
         verify(serviceCenterRepository, times(1)).save(any(ServiceCenter.class));
+    }
+
+    @Test
+    void getServiceCenterById_ShouldReturnSingleConsistentPaymentEligibility() {
+        Owner owner = new Owner();
+        owner.setUserId(ownerId);
+        owner.setStripeOnboardingComplete(true);
+        owner.setStripeAccountId("acct_123");
+        owner.setSubscriptionStatus("PREMIUM_ACTIVE");
+
+        center.setOwner(owner);
+        center.setStatus("APPROVED");
+        center.setIsActive(true);
+
+        when(serviceCenterRepository.findById(centerId)).thenReturn(Optional.of(center));
+        when(ownerRepository.findById(ownerId)).thenReturn(Optional.of(owner));
+        when(servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(centerId)).thenReturn(new ArrayList<>());
+        when(invoiceRepository.sumTotalByCenterId(centerId)).thenReturn(BigDecimal.ZERO);
+        when(managerRepository.findByManagedCenterId(centerId)).thenReturn(new ArrayList<>());
+
+        ServiceCenterDTO result = serviceCenterService.getServiceCenterById(centerId);
+
+        assertThat(result.getCanAcceptPayments()).isTrue();
+        assertThat(result.getPaymentEnabled()).isTrue();
+        assertThat(result.getStripeConnected()).isTrue();
+    }
+
+    @Test
+    void getServiceCenterById_ShouldRejectPaymentWhenAnyRequiredConditionIsFalse() {
+        Owner owner = new Owner();
+        owner.setUserId(ownerId);
+        owner.setStripeOnboardingComplete(false);
+        owner.setSubscriptionStatus("PREMIUM_ACTIVE");
+
+        center.setOwner(owner);
+        center.setStatus("APPROVED");
+        center.setIsActive(true);
+
+        when(serviceCenterRepository.findById(centerId)).thenReturn(Optional.of(center));
+        when(ownerRepository.findById(ownerId)).thenReturn(Optional.of(owner));
+        when(servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(centerId)).thenReturn(new ArrayList<>());
+        when(invoiceRepository.sumTotalByCenterId(centerId)).thenReturn(BigDecimal.ZERO);
+        when(managerRepository.findByManagedCenterId(centerId)).thenReturn(new ArrayList<>());
+
+        ServiceCenterDTO result = serviceCenterService.getServiceCenterById(centerId);
+
+        assertThat(result.getCanAcceptPayments()).isFalse();
+        assertThat(result.getPaymentEnabled()).isFalse();
+        assertThat(result.getStripeConnected()).isFalse();
     }
 
     @Test

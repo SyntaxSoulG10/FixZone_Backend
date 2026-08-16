@@ -13,11 +13,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * Real-time safety net that blocks API access for owners with expired subscriptions.
+ * Real-time safety net that blocks API access for owners with expired
+ * subscriptions.
  *
- * The daily cron job (SubscriptionScheduler) is the primary mechanism for status
- * transitions, but this interceptor catches any expiry that happens between cron runs.
- * If it detects an expired owner, it persists the new status and returns HTTP 402.
+ * The daily cron job (SubscriptionScheduler) is the primary mechanism for
+ * status
+ * transitions, but this interceptor catches any expiry that happens between
+ * cron runs.
+ * If it detects an expired owner, it persists the new status and returns HTTP
+ * 402.
  */
 @Component
 public class SubscriptionInterceptor implements HandlerInterceptor {
@@ -31,7 +35,8 @@ public class SubscriptionInterceptor implements HandlerInterceptor {
     }
 
     @Override
-    public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) throws Exception {
+    public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+            @NonNull Object handler) throws Exception {
         // Only block specific write operations, allow all GET requests
         String method = request.getMethod();
         if ("GET".equalsIgnoreCase(method)) {
@@ -39,16 +44,20 @@ public class SubscriptionInterceptor implements HandlerInterceptor {
         }
 
         String path = request.getRequestURI();
-        
+
         // Define paths that are blocked for expired subscriptions
-        boolean isBlockedWriteAction = 
-            (path.startsWith("/api/service-centers") && ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method))) ||
-            (path.startsWith("/api/service-packages") && ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method))) ||
-            (path.startsWith("/api/managers") && ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method))) ||
-            (path.matches("^/api/bookings/[^/]+/cancel$") && "PUT".equalsIgnoreCase(method)) ||
-            (path.equals("/api/payments/init") && "POST".equalsIgnoreCase(method)) ||
-            (path.equals("/api/payments/stripe") && "POST".equalsIgnoreCase(method)) ||
-            (path.equals("/api/payments/connect") && "POST".equalsIgnoreCase(method));
+        boolean isBlockedWriteAction = (path.startsWith("/api/service-centers") && ("POST".equalsIgnoreCase(method)
+                || "PUT".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method))) ||
+                (path.startsWith("/api/service-packages") && ("POST".equalsIgnoreCase(method)
+                        || "PUT".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method)))
+                ||
+                (path.startsWith("/api/managers") && ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)
+                        || "DELETE".equalsIgnoreCase(method)))
+                ||
+                (path.matches("^/api/bookings/[^/]+/cancel$") && "PUT".equalsIgnoreCase(method)) ||
+                (path.equals("/api/payments/init") && "POST".equalsIgnoreCase(method)) ||
+                (path.equals("/api/payments/stripe") && "POST".equalsIgnoreCase(method)) ||
+                (path.equals("/api/payments/connect") && "POST".equalsIgnoreCase(method));
 
         if (!isBlockedWriteAction) {
             return true;
@@ -83,7 +92,8 @@ public class SubscriptionInterceptor implements HandlerInterceptor {
 
                     response.setStatus(HttpServletResponse.SC_PAYMENT_REQUIRED);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"error\":\"SUBSCRIPTION_EXPIRED\",\"message\":\"Your subscription has expired. Please upgrade your plan to continue.\"}");
+                    response.getWriter().write(
+                            "{\"error\":\"SUBSCRIPTION_EXPIRED\",\"message\":\"Your subscription has expired. Please upgrade your plan to continue.\"}");
                     return false;
                 }
 
@@ -117,7 +127,8 @@ public class SubscriptionInterceptor implements HandlerInterceptor {
     private boolean blockWithPaymentRequired(HttpServletResponse response) throws Exception {
         response.setStatus(HttpServletResponse.SC_PAYMENT_REQUIRED);
         response.setContentType("application/json");
-        response.getWriter().write("{\"error\":\"SUBSCRIPTION_EXPIRED\",\"message\":\"Your subscription has expired. Please upgrade your plan to continue.\"}");
+        response.getWriter().write(
+                "{\"error\":\"SUBSCRIPTION_EXPIRED\",\"message\":\"Your subscription has expired. Please upgrade your plan to continue.\"}");
         return false;
     }
 }

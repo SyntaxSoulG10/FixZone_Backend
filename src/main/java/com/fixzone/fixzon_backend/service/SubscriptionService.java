@@ -1,8 +1,10 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.model.Owner;
+import com.fixzone.fixzon_backend.model.ServiceCenter;
 import com.fixzone.fixzon_backend.model.SubscriptionPlan;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.SubscriptionPlanRepository;
 
 import com.fixzone.fixzon_backend.repository.SubscriptionRepository;
@@ -35,19 +37,33 @@ public class SubscriptionService {
 
     private final OwnerRepository ownerRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
+    private final ServiceCenterRepository serviceCenterRepository;
 
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionBillingRepository subscriptionBillingRepository;
 
-    public SubscriptionService(OwnerRepository ownerRepository, 
-                               SubscriptionPlanRepository subscriptionPlanRepository, 
+    public SubscriptionService(OwnerRepository ownerRepository,
+                               SubscriptionPlanRepository subscriptionPlanRepository,
+                               ServiceCenterRepository serviceCenterRepository,
                                SubscriptionRepository subscriptionRepository,
                                SubscriptionBillingRepository subscriptionBillingRepository) {
         this.ownerRepository = ownerRepository;
         this.subscriptionPlanRepository = subscriptionPlanRepository;
-
+        this.serviceCenterRepository = serviceCenterRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionBillingRepository = subscriptionBillingRepository;
+    }
+
+    private String resolveFrontendUrl() {
+        String base = frontendUrl;
+        if (base != null && !base.isBlank()) {
+            base = base.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("/+$", "");
+            if (!base.startsWith("http://") && !base.startsWith("https://")) {
+                base = "https://" + base;
+            }
+            return base;
+        }
+        return "http://localhost:3000";
     }
 
     public String createSubscriptionCheckout(String ownerEmail, UUID planId, boolean autoRenew) throws StripeException {
@@ -59,10 +75,17 @@ public class SubscriptionService {
         SubscriptionPlan plan = subscriptionPlanRepository.findById(planId)
                 .orElseThrow(() -> new RuntimeException("Plan not found"));
 
+        String baseUrl = resolveFrontendUrl();
+        String successUrl = baseUrl + "/dashboard/company-owner/profile?tab=billing&sub_success=true&session_id={CHECKOUT_SESSION_ID}";
+        String cancelUrl = baseUrl + "/dashboard/company-owner/profile?tab=billing&sub_canceled=true";
+
+        log.info("Creating Stripe Subscription Checkout for owner '{}', plan '{}': successUrl='{}', cancelUrl='{}'",
+                owner.getEmail(), plan.getName(), successUrl, cancelUrl);
+
         SessionCreateParams.Builder paramsBuilder = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(frontendUrl + "/dashboard/company-owner/profile?tab=billing&sub_success=true&session_id={CHECKOUT_SESSION_ID}")
-                .setCancelUrl(frontendUrl + "/dashboard/company-owner/profile?tab=billing&sub_canceled=true")
+                .setSuccessUrl(successUrl)
+                .setCancelUrl(cancelUrl)
                 .setClientReferenceId(owner.getUserId().toString() + "_" + planId.toString() + "_" + autoRenew)
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)
@@ -125,6 +148,17 @@ public class SubscriptionService {
                     owner.setNextBillingDate(startDate.plusMonths(plan.getDurationMonths()));
                     ownerRepository.save(owner);
                     log.info("Subscription updated for owner {}", owner.getEmail());
+
+                    // Reactivate any SUSPENDED service centers for this owner
+                    List<ServiceCenter> ownerCenters = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
+                    for (ServiceCenter center : ownerCenters) {
+                        if ("SUSPENDED".equalsIgnoreCase(center.getStatus())) {
+                            center.setStatus("APPROVED");
+                            center.setIsActive(true);
+                            serviceCenterRepository.save(center);
+                            log.info("Reactivated service center '{}' for owner {}", center.getName(), owner.getEmail());
+                        }
+                    }
 
                     // Handle Subscription entity
                     Subscription subscription = subscriptionRepository.findByOwnerUserId(owner.getUserId())

@@ -54,7 +54,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/customers/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "CUSTOMER")
                         .requestMatchers("/api/customer/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "CUSTOMER")
                         .requestMatchers("/api/bookings/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "ROLE_SERVICE_MANAGER", "CUSTOMER", "OWNER", "MANAGER")
-                        .requestMatchers("/api/notifications/**").authenticated()
+                        .requestMatchers("/api/notifications", "/api/notifications/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "ROLE_SERVICE_MANAGER", "ROLE_SUPER_ADMIN", "CUSTOMER", "OWNER", "MANAGER", "SUPER_ADMIN")
                         .requestMatchers("/api/invoices/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "ROLE_SUPER_ADMIN", "ROLE_SERVICE_MANAGER", "CUSTOMER", "OWNER", "MANAGER")
                         .requestMatchers("/api/service-packages", "/api/service-packages/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "ROLE_SERVICE_MANAGER", "CUSTOMER", "OWNER", "MANAGER")
                         .requestMatchers("/api/service-centers", "/api/service-centers/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "ROLE_SERVICE_MANAGER", "CUSTOMER", "OWNER", "MANAGER")
@@ -72,14 +72,21 @@ public class SecurityConfig {
      * We explicitly whitelist local development origins to allow the Next.js frontend
      * to communicate with this Spring Boot server without being blocked by browser security.
      */
+    @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
+
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        // Allow common local development origins
-        configuration.setAllowedOrigins(java.util.List.of(
-                "http://localhost:3000",
-                "http://127.0.0.1:3000"
-        ));
+        
+        java.util.List<String> origins = new java.util.ArrayList<>();
+        origins.add("http://localhost:3000");
+        origins.add("http://127.0.0.1:3000");
+        if (frontendUrl != null && !frontendUrl.isBlank() && !origins.contains(frontendUrl.trim())) {
+            origins.add(frontendUrl.trim());
+        }
+        
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(java.util.Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
         configuration.setExposedHeaders(java.util.List.of("Authorization"));

@@ -8,6 +8,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import java.util.List;
 import java.util.UUID;
 
@@ -59,6 +61,16 @@ public class ServiceCenter {
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "supported_vehicle_brands", columnDefinition = "text[]")
     private String[] supportedVehicleBrands;
+
+    @DecimalMin("-90.0")
+    @DecimalMax("90.0")
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @DecimalMin("-180.0")
+    @DecimalMax("180.0")
+    @Column(name = "longitude")
+    private Double longitude;
 
     @Column(name = "status", length = 30)
     private String status = "PENDING";

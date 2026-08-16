@@ -29,6 +29,14 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     // For user booking history/tabs (pending / completed / active)
     List<Booking> findByCustomerIdAndStatus(UUID customerId, BookingStatus status);
 
+    @Query("""
+    SELECT DISTINCT b.centerId 
+    FROM Booking b 
+    WHERE b.customerId = :customerId 
+    AND b.status = 'COMPLETED'
+    """)
+    List<UUID> findTrustedCenterIds(@Param("customerId") UUID customerId);
+
     // NEW: Smart slot locking (with expiry)
     @Query("""
     SELECT COUNT(b) > 0 FROM Booking b

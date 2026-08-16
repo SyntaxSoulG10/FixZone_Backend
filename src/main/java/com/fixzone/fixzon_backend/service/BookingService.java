@@ -134,6 +134,11 @@ public class BookingService {
                         });
                     }
                 }
+                
+                // Set the estimated cost based on the package's base price
+                if (pkg.getBasePrice() != null) {
+                    booking.setEstimatedCost(pkg.getBasePrice());
+                }
             });
         }
         if (booking.getBookingId() == null) {
