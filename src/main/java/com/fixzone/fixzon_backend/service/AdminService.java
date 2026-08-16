@@ -83,32 +83,22 @@ public class AdminService {
         return convertToDTO(serviceCenterRepository.save(sc));
     }
 
-    @Transactional
-    public ServiceCenterDTO updateServiceCenterStatus(UUID id, String status) {
-        Objects.requireNonNull(id, "ID must not be null");
-        ServiceCenter sc = serviceCenterRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Service Center not found"));
-        sc.setStatus(status); // SUSPENDED, ACTIVE
-
-        // Notify Owner of the service center status update
-        String title = "Service Center " + (status.equalsIgnoreCase("ACTIVE") ? "Reactivated" : "Suspended");
-        String message = "Your service center '" + sc.getName() + "' status has been changed to " + status + " by the administrator.";
-        String type = status.equalsIgnoreCase("ACTIVE") ? "SUCCESS" : "WARNING";
-        createNotification(sc.getOwner(), title, message, type, "/dashboard/company-owner/centers");
-
-        return convertToDTO(serviceCenterRepository.save(sc));
-    }
-
     // --- User Account Management & Platform Security ---
     // Methods for managing global user access, status transitions, and
     // administrative oversight.
 
     @Transactional
-    public UserDTO updateUserStatus(UUID id, String status) {
+    public UserDTO updateUserStatus(UUID id, String status, String reason) {
         Objects.requireNonNull(id, "ID must not be null");
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setStatus(status); // Active, Suspended
+        
+        if ("Suspended".equalsIgnoreCase(status)) {
+            user.setSuspensionReason(reason != null && !reason.trim().isEmpty() ? reason : "Violation of platform policies");
+        } else {
+            user.setSuspensionReason(null);
+        }
 
         // Notify User about status update
         String title = "Account " + (status.equalsIgnoreCase("Active") ? "Activated" : "Suspended");

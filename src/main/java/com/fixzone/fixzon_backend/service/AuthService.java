@@ -90,6 +90,11 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid email or password");
         }
 
+        if ("Suspended".equalsIgnoreCase(user.getStatus())) {
+            String reason = user.getSuspensionReason() != null ? user.getSuspensionReason() : "Contact support.";
+            throw new IllegalArgumentException("Your account has been suspended by an administrator. Reason: " + reason);
+        }
+
         user.setLastLoginAt(LocalDateTime.now());
         authRepository.save(user);
 

@@ -138,7 +138,7 @@ class AdminServiceTest {
             when(userRepository.findById(id)).thenReturn(Optional.of(user));
             when(userRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            UserDTO result = adminService.updateUserStatus(id, "Suspended");
+            UserDTO result = adminService.updateUserStatus(id, "Suspended", "Violation of policy");
 
             assertThat(result.getStatus()).isEqualTo("Suspended");
             verify(notificationRepository, times(1)).save(any(Notification.class));
@@ -152,7 +152,7 @@ class AdminServiceTest {
             when(userRepository.findById(id)).thenReturn(Optional.of(user));
             when(userRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            UserDTO result = adminService.updateUserStatus(id, "Active");
+            UserDTO result = adminService.updateUserStatus(id, "Active", null);
 
             assertThat(result.getStatus()).isEqualTo("Active");
         }
@@ -163,7 +163,7 @@ class AdminServiceTest {
             UUID id = UUID.randomUUID();
             when(userRepository.findById(id)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> adminService.updateUserStatus(id, "Suspended"))
+            assertThatThrownBy(() -> adminService.updateUserStatus(id, "Suspended", null))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("User not found");
         }
@@ -171,7 +171,7 @@ class AdminServiceTest {
         @Test
         @DisplayName("TC-BE-10: updateUserStatus with null id throws NullPointerException")
         void updateUserStatus_nullId_throwsNPE() {
-            assertThatThrownBy(() -> adminService.updateUserStatus(null, "Active"))
+            assertThatThrownBy(() -> adminService.updateUserStatus(null, "Active", null))
                     .isInstanceOf(NullPointerException.class);
         }
     }
@@ -252,18 +252,7 @@ class AdminServiceTest {
             assertThat(result.getRejectionReason()).isEqualTo("Incomplete documents");
         }
 
-        @Test
-        @DisplayName("TC-BE-16: updateServiceCenterStatus suspends an active center")
-        void updateServiceCenterStatus_suspends() {
-            UUID id = UUID.randomUUID();
-            ServiceCenter sc = createServiceCenter(id, "ActiveCenter", "APPROVED");
-            when(serviceCenterRepository.findById(id)).thenReturn(Optional.of(sc));
-            when(serviceCenterRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            ServiceCenterDTO result = adminService.updateServiceCenterStatus(id, "SUSPENDED");
-
-            assertThat(result.getStatus()).isEqualTo("SUSPENDED");
-        }
 
         @Test
         @DisplayName("TC-BE-17: approveServiceCenter throws when center not found")

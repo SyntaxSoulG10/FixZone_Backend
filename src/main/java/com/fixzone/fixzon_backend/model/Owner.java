@@ -71,7 +71,7 @@ public class Owner extends User {
             String stripeAccountId, Boolean stripeOnboardingComplete, String subscriptionStatus, LocalDateTime trialEndsAt, 
             LocalDateTime nextBillingDate, UUID currentPlanId, String stripeCustomerId, Boolean autoRenewEnabled) {
         super(userId, fullName, email, phone, passwordHash, role, emailVerified, lastLoginAt, createdAt, createdBy,
-                updatedAt, updatedBy, "Active", profilePictureUrl, null, null);
+                updatedAt, updatedBy, "Active", profilePictureUrl, null, null, null);
         this.ownerCode = ownerCode;
         this.companyName = companyName;
         this.companyEmail = companyEmail;

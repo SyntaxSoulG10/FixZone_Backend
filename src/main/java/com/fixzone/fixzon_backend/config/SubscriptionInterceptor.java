@@ -62,6 +62,13 @@ public class SubscriptionInterceptor implements HandlerInterceptor {
             Object userObj = authRepository.findByEmail(email).orElse(null);
 
             if (userObj instanceof Owner owner) {
+                if ("Suspended".equalsIgnoreCase(owner.getStatus())) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"ACCOUNT_SUSPENDED\",\"message\":\"Your account has been suspended by an administrator.\"}");
+                    return false;
+                }
+
                 // Use the enum's fromLegacy() to handle both old and new status strings
                 SubscriptionStatus status = SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus());
 

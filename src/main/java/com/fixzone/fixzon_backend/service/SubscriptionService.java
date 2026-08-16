@@ -106,7 +106,9 @@ public class SubscriptionService {
                     SubscriptionPlan plan = planOpt.get();
 
                     owner.setSubscriptionStatus("PREMIUM_ACTIVE");
-                    owner.setStatus("Active"); // Reactivate owner account on successful subscription
+                    if (!"Suspended".equalsIgnoreCase(owner.getStatus())) {
+                        owner.setStatus("Active"); // Reactivate owner account on successful subscription if not manually suspended
+                    }
                     owner.setCurrentPlanId(planId);
                     owner.setAutoRenewEnabled(autoRenew);
                     

@@ -57,6 +57,9 @@ public class User {
     @Column(name = "profile_picture_url", columnDefinition = "TEXT")
     private String profilePictureUrl;
 
+    @Column(name = "suspension_reason", columnDefinition = "TEXT")
+    private String suspensionReason;
+
     @Column(name = "reset_token")
     private String resetToken;
 
