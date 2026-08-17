@@ -69,7 +69,7 @@ public class ManagerController {
         OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
         if (owner == null) {
             log.warn("Owner not found for email: {}", email);
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Owner not found");
+            return ResponseEntity.ok(List.of());
         }
 
         return ResponseEntity.ok(managerService.getManagersByOwnerCode(owner.getOwnerCode()));

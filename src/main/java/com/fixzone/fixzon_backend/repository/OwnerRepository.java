@@ -10,6 +10,7 @@ import java.util.Optional;
 public interface OwnerRepository extends JpaRepository<Owner, UUID> {
     Optional<Owner> findByOwnerCode(String ownerCode);
     Optional<Owner> findByEmail(String email);
+    Optional<Owner> findByEmailIgnoreCase(String email);
 
     /** Finds owners whose trial period has expired (for cron job). */
     List<Owner> findBySubscriptionStatusAndTrialEndsAtBefore(String status, LocalDateTime date);
