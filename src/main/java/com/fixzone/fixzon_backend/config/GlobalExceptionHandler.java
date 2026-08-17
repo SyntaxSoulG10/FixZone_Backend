@@ -18,8 +18,21 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler({
+            org.apache.catalina.connector.ClientAbortException.class,
+            org.springframework.web.context.request.async.AsyncRequestNotUsableException.class
+    })
+    public void handleClientAbortException(Exception ex) {
+        // Normal client disconnect (user refreshed page or switched tab while server was sending response)
+        log.debug("Client aborted connection while response was writing: {}", ex.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex, WebRequest request) {
+        if (ex.getMessage() != null && ex.getMessage().contains("connection was aborted")) {
+            log.debug("Client closed connection: {}", ex.getMessage());
+            return null;
+        }
         log.error("Unexpected error occurred: ", ex);
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
