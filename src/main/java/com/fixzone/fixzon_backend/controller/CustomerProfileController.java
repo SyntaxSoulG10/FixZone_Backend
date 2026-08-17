@@ -134,6 +134,7 @@ public class CustomerProfileController {
         String vehicleType = request.get("vehicleType"); // e.g. "CAR", "BIKE"
         String model = request.get("model");             // e.g. "Corolla"
         String imageData = request.get("imageData");     // optional base64 image
+        String imageUrlReq = request.get("imageUrl");    // optional CDN image URL
 
         if (brand == null || brand.isBlank()) {
             throw new IllegalArgumentException("Brand is required");
@@ -150,8 +151,10 @@ public class CustomerProfileController {
         vehicle.setVehicleType(vehicleType != null ? vehicleType.toUpperCase() : null);
         vehicle.setLastServiceDate(java.time.LocalDate.now());
 
-        // Upload vehicle image to ImageKit if provided
-        if (imageData != null && !imageData.isBlank()) {
+        // Set vehicle image URL (direct CDN URL or Base64 upload)
+        if (imageUrlReq != null && !imageUrlReq.isBlank()) {
+            vehicle.setImageUrl(imageUrlReq);
+        } else if (imageData != null && !imageData.isBlank()) {
             String imageUrl = imageKitService.uploadImage(imageData, "vehicle-" + plateNumber);
             vehicle.setImageUrl(imageUrl);
         }
@@ -160,8 +163,44 @@ public class CustomerProfileController {
     }
 
     /**
+     * Updates an existing vehicle's information and/or image.
+     */
+    @PutMapping("/vehicle/{id}")
+    public ResponseEntity<Vehicle> updateVehicle(@PathVariable UUID id,
+                                                 org.springframework.security.core.Authentication authentication,
+                                                 @RequestBody Map<String, String> request) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(401).build();
+        }
+        Vehicle vehicle = vehicleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+
+        Customer customer = customerRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        if (!vehicle.getCustomerId().equals(customer.getUserId())) {
+            return ResponseEntity.status(403).build();
+        }
+
+        if (request.containsKey("brand") && request.get("brand") != null) vehicle.setBrand(request.get("brand"));
+        if (request.containsKey("model")) vehicle.setModel(request.get("model"));
+        if (request.containsKey("plateNumber") && request.get("plateNumber") != null) vehicle.setPlateNumber(request.get("plateNumber"));
+        if (request.containsKey("vehicleType") && request.get("vehicleType") != null) vehicle.setVehicleType(request.get("vehicleType").toUpperCase());
+
+        String imageUrlReq = request.get("imageUrl");
+        String imageData = request.get("imageData");
+
+        if (imageUrlReq != null && !imageUrlReq.isBlank()) {
+            vehicle.setImageUrl(imageUrlReq);
+        } else if (imageData != null && !imageData.isBlank()) {
+            String imageUrl = imageKitService.uploadImage(imageData, "vehicle-" + vehicle.getPlateNumber());
+            vehicle.setImageUrl(imageUrl);
+        }
+
+        return ResponseEntity.ok(vehicleRepository.save(vehicle));
+    }
+
+    /**
      * Upload or update a vehicle's image using ImageKit.
-     * Expects: { "imageData": "data:image/jpeg;base64,..." }
      */
     @PostMapping("/vehicle/{id}/image")
     public ResponseEntity<?> uploadVehicleImage(@PathVariable UUID id,
@@ -179,12 +218,18 @@ public class CustomerProfileController {
             return ResponseEntity.status(403).body(Map.of("error", "Not your vehicle"));
         }
 
+        String imageUrlReq = request.get("imageUrl");
         String imageData = request.get("imageData");
-        if (imageData == null || imageData.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "imageData is required"));
+        String imageUrl = imageUrlReq;
+
+        if (imageUrl == null || imageUrl.isBlank()) {
+            if (imageData != null && !imageData.isBlank()) {
+                imageUrl = imageKitService.uploadImage(imageData, "vehicle-" + vehicle.getPlateNumber());
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("error", "imageUrl or imageData is required"));
+            }
         }
 
-        String imageUrl = imageKitService.uploadImage(imageData, "vehicle-" + vehicle.getPlateNumber());
         vehicle.setImageUrl(imageUrl);
         vehicleRepository.save(vehicle);
 

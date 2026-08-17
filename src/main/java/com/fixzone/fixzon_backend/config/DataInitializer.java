@@ -104,8 +104,10 @@ public class DataInitializer implements CommandLineRunner {
         try (java.sql.Connection conn = dataSource.getConnection()) {
             java.sql.Statement stmt = conn.createStatement();
             stmt.execute("ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS model VARCHAR(100)");
+            stmt.execute(
+                    "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE");
         } catch (Exception e) {
-            log.info("Vehicle model column migration note: {}", e.getMessage());
+            log.info("Column migration note: {}", e.getMessage());
         }
 
         // DATA REPAIR: Fix any owners in DB who have null subscription_status

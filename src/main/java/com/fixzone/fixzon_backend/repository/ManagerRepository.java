@@ -9,6 +9,7 @@ import java.util.List;
 public interface ManagerRepository extends JpaRepository<Manager, UUID> {
     Optional<Manager> findByManagerCode(String managerCode);
     Optional<Manager> findByEmail(String email);
+    Optional<Manager> findByEmailIgnoreCase(String email);
     List<Manager> findByManagedCenterIdIn(List<UUID> centerIds);
     List<Manager> findByManagedCenterId(UUID managedCenterId);
 }

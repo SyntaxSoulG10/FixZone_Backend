@@ -48,13 +48,17 @@ public class CustomerController {
      */
     @GetMapping("/current")
     public ResponseEntity<List<CustomerDTO>> getCurrentOwnerCustomers() {
-        // Get the current authenticated user's email from the SecurityContext
-        String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        String email = auth.getName();
 
         // Retrieve the owner to get their ownerCode
         OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
         if (owner == null) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).build();
+            return ResponseEntity.ok(List.of());
         }
 
         return ResponseEntity.ok(customerService.getCustomersByOwnerCode(owner.getOwnerCode()));

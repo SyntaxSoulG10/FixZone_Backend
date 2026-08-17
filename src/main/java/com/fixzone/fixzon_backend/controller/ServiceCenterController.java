@@ -16,6 +16,9 @@ import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import org.springframework.http.HttpStatus;
 
+import com.fixzone.fixzon_backend.service.ManagerService;
+import com.fixzone.fixzon_backend.DTO.ManagerDTO;
+
 @RestController
 @RequestMapping("/api/service-centers")
 public class ServiceCenterController {
@@ -24,12 +27,14 @@ public class ServiceCenterController {
     private final ServiceCenterService serviceCenterService;
     private final OwnerService ownerService;
     private final OwnerRepository ownerRepository;
+    private final ManagerService managerService;
 
     public ServiceCenterController(ServiceCenterService serviceCenterService, OwnerService ownerService,
-            OwnerRepository ownerRepository) {
+            OwnerRepository ownerRepository, ManagerService managerService) {
         this.serviceCenterService = serviceCenterService;
         this.ownerService = ownerService;
         this.ownerRepository = ownerRepository;
+        this.managerService = managerService;
     }
 
     @GetMapping
@@ -65,13 +70,36 @@ public class ServiceCenterController {
 
     @GetMapping("/current")
     public ResponseEntity<List<ServiceCenterDTO>> getCurrentOwnerCenters() {
-        // Get the current authenticated user's email from the SecurityContext
-        String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        boolean isSuperAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_SUPER_ADMIN") || a.getAuthority().equalsIgnoreCase("SUPER_ADMIN"));
+        if (isSuperAdmin) {
+            return ResponseEntity.ok(serviceCenterService.getAllServiceCenters(PageRequest.of(0, 1000)).getContent());
+        }
+
+        String email = auth.getName();
+
+        boolean isManager = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_SERVICE_MANAGER") || a.getAuthority().equalsIgnoreCase("MANAGER") || a.getAuthority().equalsIgnoreCase("ROLE_MANAGER"));
+        if (isManager) {
+            ManagerDTO manager = managerService.getManagerByEmail(email);
+            if (manager != null && manager.getManagedCenterId() != null) {
+                ServiceCenterDTO center = serviceCenterService.getServiceCenterById(manager.getManagedCenterId());
+                if (center != null) {
+                    return ResponseEntity.ok(List.of(center));
+                }
+            }
+            return ResponseEntity.ok(List.of());
+        }
 
         // Retrieve the owner to get their ownerCode
         OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
         if (owner == null) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).build();
+            return ResponseEntity.ok(List.of());
         }
 
         return ResponseEntity.ok(serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode()));

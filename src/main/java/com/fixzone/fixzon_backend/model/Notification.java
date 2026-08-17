@@ -19,6 +19,8 @@ public class Notification {
 
     private String type; // INFO, WARNING, SUCCESS
     private boolean isRead;
+    @Column(name = "is_archived", nullable = false)
+    private boolean isArchived = false;
     private LocalDateTime createdAt;
     private String targetUrl;
 
@@ -35,6 +37,7 @@ public class Notification {
         if (this.id == null) this.id = UUID.randomUUID();
         this.createdAt = LocalDateTime.now();
         this.isRead = false;
+        this.isArchived = false;
     }
 
     // Getters and Setters
@@ -48,6 +51,8 @@ public class Notification {
     public void setType(String type) { this.type = type; }
     public boolean isRead() { return isRead; }
     public void setRead(boolean read) { isRead = read; }
+    public boolean isArchived() { return isArchived; }
+    public void setArchived(boolean archived) { isArchived = archived; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public User getRecipient() { return recipient; }
     public void setRecipient(User recipient) { this.recipient = recipient; }

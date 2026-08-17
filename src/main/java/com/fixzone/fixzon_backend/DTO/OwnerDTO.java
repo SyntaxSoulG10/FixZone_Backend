@@ -13,7 +13,10 @@ public class OwnerDTO extends UserDTO {
     @jakarta.validation.constraints.Size(min = 3, max = 150, message = "Company name must be 3-150 characters")
     private String companyName;
 
-    @jakarta.validation.constraints.Email(message = "Invalid company email format")
+    @jakarta.validation.constraints.Pattern(
+        regexp = "^$|^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+        message = "Invalid company email format (e.g. name@example.com)"
+    )
     private String companyEmail;
 
     @jakarta.validation.constraints.Pattern(regexp = "^$|^[0-9+]{10,15}$", message = "Company phone must be 10-15 digits")

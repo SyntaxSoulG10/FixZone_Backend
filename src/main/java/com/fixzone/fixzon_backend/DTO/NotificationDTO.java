@@ -13,6 +13,8 @@ public class NotificationDTO {
     private String type;
     @JsonProperty("isRead")
     private boolean isRead;
+    @JsonProperty("isArchived")
+    private boolean isArchived;
     private LocalDateTime createdAt;
     private UUID recipientId;
     private String targetUrl;

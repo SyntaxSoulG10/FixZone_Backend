@@ -29,8 +29,11 @@ public class OwnerController {
      */
     @GetMapping("/current")
     public ResponseEntity<OwnerDTO> fetchCurrentOwner() {
-        // Retrieve current authenticated user's email from SecurityContext
-        String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String email = auth.getName();
 
         OwnerDTO retrievedOwner = ownerService.retrieveOwnerByEmail(email);
         if (retrievedOwner == null) {
@@ -72,7 +75,7 @@ public class OwnerController {
     @PutMapping("/{ownerId}")
     public ResponseEntity<OwnerDTO> modifyOwnerDetails(@PathVariable UUID ownerId,
             @jakarta.validation.Valid @RequestBody OwnerDTO updatedOwnerData) {
-        String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
         OwnerDTO currentOwner = ownerService.retrieveOwnerByEmail(email);
 
         if (currentOwner == null || !currentOwner.getUserId().equals(ownerId)) {
@@ -90,7 +93,7 @@ public class OwnerController {
 
     @DeleteMapping("/{ownerId}")
     public ResponseEntity<Void> removeOwnerRecord(@PathVariable UUID ownerId) {
-        String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
         OwnerDTO currentOwner = ownerService.retrieveOwnerByEmail(email);
 
         if (currentOwner == null || !currentOwner.getUserId().equals(ownerId)) {

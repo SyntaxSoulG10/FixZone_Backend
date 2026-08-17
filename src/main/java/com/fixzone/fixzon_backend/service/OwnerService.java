@@ -82,7 +82,8 @@ public class OwnerService {
             throw new IllegalArgumentException("Email must not be null or empty.");
         }
         try {
-            return ownerRepository.findByEmail(email)
+            return ownerRepository.findByEmailIgnoreCase(email.trim())
+                .or(() -> ownerRepository.findByEmail(email.trim()))
                 .map(this::transformToDataTransferObject)
                 .orElse(null);
         } catch (Exception e) {

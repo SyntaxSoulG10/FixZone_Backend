@@ -16,9 +16,16 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final com.fixzone.fixzon_backend.service.ImageKitService imageKitService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, com.fixzone.fixzon_backend.service.ImageKitService imageKitService) {
         this.authService = authService;
+        this.imageKitService = imageKitService;
+    }
+
+    @GetMapping("/imagekit-auth")
+    public ResponseEntity<?> getImageKitAuth() {
+        return ResponseEntity.ok(imageKitService.getAuthenticationParameters());
     }
 
     @PostMapping("/login")
@@ -58,6 +65,34 @@ public class AuthController {
             authService.resendOtp(request.getEmail());
             return ResponseEntity.ok(Map.of("message", "Verification code resent successfully"));
         } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/validate-email")
+    public ResponseEntity<?> validateEmail(@RequestParam String email) {
+        boolean isValid = com.fixzone.fixzon_backend.util.EmailValidator.isValidRealEmail(email);
+        if (isValid) {
+            return ResponseEntity.ok(Map.of("valid", true, "message", "Email domain has active mail servers."));
+        } else {
+            return ResponseEntity.badRequest().body(Map.of(
+                "valid", false, 
+                "message", "Invalid email: The email domain does not have an active mail server (MX record) or does not exist."
+            ));
+        }
+    }
+
+    @PostMapping("/activate-manager")
+    public ResponseEntity<?> activateManager(@RequestBody Map<String, String> request) {
+        try {
+            String token = request.get("token");
+            String password = request.get("password");
+            if (token == null || password == null) {
+                throw new IllegalArgumentException("Token and password are required");
+            }
+            authService.activateAccount(token, password);
+            return ResponseEntity.ok(Map.of("message", "Account activated successfully! You can now log in."));
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
