@@ -50,6 +50,7 @@ public class BookingResponseDTO {
     private String serviceCenterName;
     private String centerAddress;
     private String packageName;
+    private String packageDescription;
     private Boolean isOnline;
     private String vehicleLabel;
 }

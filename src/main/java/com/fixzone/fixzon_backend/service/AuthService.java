@@ -39,14 +39,14 @@ public class AuthService {
     private String frontendUrl;
 
     public AuthService(AuthRepository authRepository,
-                       CustomerRepository customerRepository,
-                       OwnerRepository ownerRepository,
-                       SuperAdminRepository superAdminRepository,
-                       NotificationService notificationService,
-                       PasswordEncoder passwordEncoder,
-                       OtpService otpService,
-                       JwtUtil jwtUtil,
-                       EmailService emailService) {
+            CustomerRepository customerRepository,
+            OwnerRepository ownerRepository,
+            SuperAdminRepository superAdminRepository,
+            NotificationService notificationService,
+            PasswordEncoder passwordEncoder,
+            OtpService otpService,
+            JwtUtil jwtUtil,
+            EmailService emailService) {
         this.authRepository = authRepository;
         this.customerRepository = customerRepository;
         this.ownerRepository = ownerRepository;
@@ -60,9 +60,10 @@ public class AuthService {
 
     public void forgotPassword(String email) {
         User user = authRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("If the email is registered, a reset link will be sent."));
+                .orElseThrow(
+                        () -> new IllegalArgumentException("If the email is registered, a reset link will be sent."));
 
-        String token = UUID.randomUUID().toString();
+        String token = String.format("%05d", new java.util.Random().nextInt(100000));
         user.setResetToken(token);
         user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
         authRepository.save(user);
@@ -73,7 +74,10 @@ public class AuthService {
         }
 
         String resetLink = cleanFrontendUrl + "/reset-password?token=" + token;
-        emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
+        emailService.sendPasswordResetEmail(user.getEmail(), resetLink, token);
+
+        notificationService.createNotificationSafe(user, "Password Reset Requested",
+                "A password recovery verification code was requested for your account.", "INFO", null);
     }
 
     public void resetPassword(String token, String newPassword) {
@@ -88,6 +92,9 @@ public class AuthService {
         user.setResetToken(null);
         user.setResetTokenExpiry(null);
         authRepository.save(user);
+
+        notificationService.createNotificationSafe(user, "Password Changed Successfully",
+                "Your password has been reset successfully. If you did not perform this action, please contact support immediately.", "WARNING", null);
     }
 
     public AuthResponseDTO login(AuthRequestDTO request) {
@@ -134,8 +141,7 @@ public class AuthService {
                 user.getFullName(),
                 user.getProfilePictureUrl(),
                 user.getPhone(),
-                user.getEmailVerified() != null ? user.getEmailVerified() : false
-        );
+                user.getEmailVerified() != null ? user.getEmailVerified() : false);
     }
 
     public AuthResponseDTO registerCustomer(RegisterCustomerDTO request) {
@@ -147,6 +153,9 @@ public class AuthService {
         customer.setUserId(UUID.randomUUID());
         customer.setFullName(request.getFullName());
         customer.setEmail(request.getEmail());
+        if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
+            customer.setPhone(request.getPhone());
+        }
         customer.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         customer.setRole(Role.ROLE_CUSTOMER.name());
         customer.setEmailVerified(false);
@@ -171,8 +180,7 @@ public class AuthService {
                 customer.getFullName(),
                 customer.getProfilePictureUrl(),
                 customer.getPhone(),
-                customer.getEmailVerified() != null ? customer.getEmailVerified() : false
-        );
+                customer.getEmailVerified() != null ? customer.getEmailVerified() : false);
     }
 
     public AuthResponseDTO registerOwner(RegisterOwnerDTO request) {
@@ -212,8 +220,7 @@ public class AuthService {
                 owner.getFullName(),
                 owner.getProfilePictureUrl(),
                 owner.getPhone(),
-                owner.getEmailVerified() != null ? owner.getEmailVerified() : false
-        );
+                owner.getEmailVerified() != null ? owner.getEmailVerified() : false);
     }
 
     public void changePassword(String email, String currentPassword, String newPassword) {
@@ -226,19 +233,25 @@ public class AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         authRepository.save(user);
+
+        notificationService.createNotificationSafe(user, "Password Updated",
+                "Your password was updated successfully from account settings.", "INFO", null);
     }
 
     private void triggerSignupNotifications(User user, String roleLabel) {
         try {
-            String dashboardUrl = roleLabel.equalsIgnoreCase("Owner") ? "/dashboard/company-owner" : "/dashboard/customer";
-            notificationService.createNotificationSafe(user, "Welcome to FixZone!", 
-                "Hi " + user.getFullName() + ", welcome to FixZone! Your " + roleLabel.toLowerCase() + " account has been registered successfully.", 
-                "SUCCESS", dashboardUrl);
+            String dashboardUrl = roleLabel.equalsIgnoreCase("Owner") ? "/dashboard/company-owner"
+                    : "/dashboard/customer";
+            notificationService.createNotificationSafe(user, "Welcome to FixZone!",
+                    "Hi " + user.getFullName() + ", welcome to FixZone! Your " + roleLabel.toLowerCase()
+                            + " account has been registered successfully.",
+                    "SUCCESS", dashboardUrl);
 
             List<SuperAdmin> admins = superAdminRepository.findAll();
-            notificationService.broadcastNotificationSafe(admins, "New User Registration", 
-                "A new " + roleLabel.toLowerCase() + " has registered: " + user.getFullName() + " (" + user.getEmail() + ").", 
-                "INFO", null);
+            notificationService.broadcastNotificationSafe(admins, "New User Registration",
+                    "A new " + roleLabel.toLowerCase() + " has registered: " + user.getFullName() + " ("
+                            + user.getEmail() + ").",
+                    "INFO", null);
         } catch (Exception e) {
             System.err.println("Error triggering signup notifications: " + e.getMessage());
         }
@@ -258,7 +271,7 @@ public class AuthService {
 
     public void resendOtp(String email) {
         User user = authRepository.findByEmail(email)
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
         otpService.generateAndSendOtp(user.getEmail(), user.getFullName());
     }
 

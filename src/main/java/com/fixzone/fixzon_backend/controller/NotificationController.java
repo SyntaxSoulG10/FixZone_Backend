@@ -28,6 +28,33 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getNotificationsForUser(email));
     }
 
+    @GetMapping("/archived")
+    public ResponseEntity<List<NotificationDTO>> getArchivedNotifications(Authentication authentication) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return ResponseEntity.status(401).build();
+        }
+        String email = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(notificationService.getArchivedNotificationsForUser(email));
+    }
+
+    @PatchMapping("/{id}/archive")
+    public ResponseEntity<NotificationDTO> archiveNotification(@PathVariable UUID id, Authentication authentication) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return ResponseEntity.status(401).build();
+        }
+        String email = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(notificationService.archiveNotification(id, email));
+    }
+
+    @PatchMapping("/{id}/unarchive")
+    public ResponseEntity<NotificationDTO> unarchiveNotification(@PathVariable UUID id, Authentication authentication) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return ResponseEntity.status(401).build();
+        }
+        String email = (String) authentication.getPrincipal();
+        return ResponseEntity.ok(notificationService.unarchiveNotification(id, email));
+    }
+
     @PatchMapping("/{id}/read")
     public ResponseEntity<NotificationDTO> markAsRead(@PathVariable UUID id, Authentication authentication) {
         if (authentication == null || authentication.getPrincipal() == null) {

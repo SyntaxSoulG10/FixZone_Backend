@@ -163,11 +163,24 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.startService(id));
     }
 
+    @PutMapping("/{id}/status")
+    public ResponseEntity<BookingResponseDTO> updateBookingStatus(
+            @PathVariable UUID id,
+            @RequestParam com.fixzone.fixzon_backend.enums.BookingStatus status
+    ) {
+        return ResponseEntity.ok(bookingService.updateBookingStatus(id, status));
+    }
+
     @PutMapping("/{id}/edit")
     public ResponseEntity<BookingResponseDTO> editExistingBooking(
             @PathVariable UUID id, 
             @RequestBody BookingRequestDTO request) {
         return ResponseEntity.ok(bookingService.editExistingBooking(id, request));
+    }
+
+    @GetMapping("/{id}/status-history")
+    public ResponseEntity<List<com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO>> getBookingStatusHistory(@PathVariable UUID id) {
+        return ResponseEntity.ok(bookingService.getBookingStatusHistory(id));
     }
 
     // Legacy endpoints removed

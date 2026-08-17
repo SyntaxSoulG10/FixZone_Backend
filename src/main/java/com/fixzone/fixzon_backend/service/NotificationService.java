@@ -30,9 +30,39 @@ public class NotificationService {
     public List<NotificationDTO> getNotificationsForUser(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
-        return notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(user.getUserId()).stream()
+        return notificationRepository.findByRecipientUserIdAndIsArchivedFalseOrderByCreatedAtDesc(user.getUserId()).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    public List<NotificationDTO> getArchivedNotificationsForUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        return notificationRepository.findByRecipientUserIdAndIsArchivedTrueOrderByCreatedAtDesc(user.getUserId()).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public NotificationDTO archiveNotification(UUID notificationId, String email) {
+        Notification note = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new RuntimeException("Notification not found"));
+        if (!note.getRecipient().getEmail().equalsIgnoreCase(email)) {
+            throw new RuntimeException("Unauthorized access to notification");
+        }
+        note.setArchived(true);
+        return convertToDTO(notificationRepository.save(note));
+    }
+
+    @Transactional
+    public NotificationDTO unarchiveNotification(UUID notificationId, String email) {
+        Notification note = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new RuntimeException("Notification not found"));
+        if (!note.getRecipient().getEmail().equalsIgnoreCase(email)) {
+            throw new RuntimeException("Unauthorized access to notification");
+        }
+        note.setArchived(false);
+        return convertToDTO(notificationRepository.save(note));
     }
 
     @Transactional
@@ -50,7 +80,7 @@ public class NotificationService {
     public void markAllAsRead(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        List<Notification> unread = notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(user.getUserId())
+        List<Notification> unread = notificationRepository.findByRecipientUserIdAndIsArchivedFalseOrderByCreatedAtDesc(user.getUserId())
                 .stream()
                 .filter(n -> !n.isRead())
                 .collect(Collectors.toList());
