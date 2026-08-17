@@ -125,6 +125,9 @@ public class AuthService {
         customer.setUserId(UUID.randomUUID());
         customer.setFullName(request.getFullName());
         customer.setEmail(request.getEmail());
+        if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
+            customer.setPhone(request.getPhone());
+        }
         customer.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         customer.setRole(Role.ROLE_CUSTOMER.name());
         customer.setEmailVerified(false);

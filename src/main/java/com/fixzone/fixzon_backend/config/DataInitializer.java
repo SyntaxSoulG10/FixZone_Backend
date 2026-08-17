@@ -55,7 +55,7 @@ public class DataInitializer implements CommandLineRunner {
             NotificationRepository notificationRepository, SubscriptionRepository subscriptionRepository,
             SubscriptionPlanRepository planRepository,
             AnalyticsRepository analyticsRepository, BookingHistoryRepository bookingHistoryRepository,
-            PaymentRepository paymentRepository, PasswordEncoder passwordEncoder, 
+            PaymentRepository paymentRepository, PasswordEncoder passwordEncoder,
             DataSource dataSource, SubscriptionBillingRepository subscriptionBillingRepository) {
         this.userRepository = userRepository;
         this.ownerRepository = ownerRepository;
@@ -95,8 +95,10 @@ public class DataInitializer implements CommandLineRunner {
         try (java.sql.Connection conn = dataSource.getConnection()) {
             java.sql.Statement stmt = conn.createStatement();
             stmt.execute("ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS model VARCHAR(100)");
+            stmt.execute(
+                    "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE");
         } catch (Exception e) {
-            log.info("Vehicle model column migration note: {}", e.getMessage());
+            log.info("Column migration note: {}", e.getMessage());
         }
 
         // DATA REPAIR: Fix any owners in DB who have null subscription_status
@@ -113,13 +115,13 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Subscription status repair note: {}", e.getMessage());
         }
 
-        // CLEAR DUMMY PROFILE PHOTO: Remove the bearded man placeholder from existing test accounts
+        // CLEAR DUMMY PROFILE PHOTO: Remove the bearded man placeholder from existing
+        // test accounts
         try (java.sql.Connection conn = dataSource.getConnection()) {
             java.sql.Statement stmt = conn.createStatement();
             int fixed = stmt.executeUpdate(
-                "UPDATE users SET profile_picture_url = NULL " +
-                "WHERE profile_picture_url LIKE '%unsplash.com/photo-1472099645785%'"
-            );
+                    "UPDATE users SET profile_picture_url = NULL " +
+                            "WHERE profile_picture_url LIKE '%unsplash.com/photo-1472099645785%'");
             if (fixed > 0) {
                 log.info(">>> REPAIRED {} user(s) with dummy bearded man profile photo → set to NULL <<<", fixed);
             }
@@ -251,7 +253,8 @@ public class DataInitializer implements CommandLineRunner {
             UUID scId = UUID.fromString("11111111-1111-1111-1111-11111111111" + (i + 1));
             ServiceCenter sc = new ServiceCenter(scId, owner, owner.getCompanyName() + " HQ", "Colombo",
                     "+9411400", "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
-                    LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, null, null, "APPROVED", null, null, null,
+                    LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, null, null, "APPROVED", null,
+                    null, null,
                     null, null);
             serviceCenterRepository.save(sc);
 
@@ -395,9 +398,9 @@ public class DataInitializer implements CommandLineRunner {
                     "contact@rajamotors.lk",
                     "+94112000000",
                     "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab",
-                    "https://facebook.com/rajamotors", "https://twitter.com/rajamotors", "https://instagram.com/rajamotors",
-                    null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false
-            );
+                    "https://facebook.com/rajamotors", "https://twitter.com/rajamotors",
+                    "https://instagram.com/rajamotors",
+                    null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false);
             ownerRepository.save(rajaOwner);
             seedRajaMotorsBranchesAndData(rajaOwner);
             log.info(">>> Raja Motors created and seeded successfully <<<");
@@ -433,7 +436,8 @@ public class DataInitializer implements CommandLineRunner {
                 // Always sync password so raja@motors.lk / pass123 always works
                 owner.setPasswordHash(passwordEncoder.encode("pass123"));
                 // Ensure subscription is active so the owner can log in and use the dashboard
-                if (owner.getSubscriptionStatus() == null || "INACTIVE".equals(owner.getSubscriptionStatus()) || "EXPIRED".equals(owner.getSubscriptionStatus())) {
+                if (owner.getSubscriptionStatus() == null || "INACTIVE".equals(owner.getSubscriptionStatus())
+                        || "EXPIRED".equals(owner.getSubscriptionStatus())) {
                     owner.setSubscriptionStatus("ACTIVE");
                     owner.setTrialEndsAt(LocalDateTime.now().plusDays(335));
                 }
@@ -715,24 +719,24 @@ public class DataInitializer implements CommandLineRunner {
             log.error("[ERROR] Failed to update manager images: {}", e.getMessage(), e);
         }
     }
+
     private void ensureSuperAdmins() {
         if (!userRepository.existsByEmail("admin1@fixzone.lk")) {
             SuperAdmin admin = new SuperAdmin(
-                UUID.randomUUID(),
-                "Super Admin 1",
-                "admin1@fixzone.lk",
-                "+94770000001",
-                passwordEncoder.encode("FixzoneAdmin!2026"),
-                "ROLE_SUPER_ADMIN",
-                true,
-                LocalDateTime.now(),
-                LocalDateTime.now(),
-                "system",
-                LocalDateTime.now(),
-                "system",
-                null,
-                "SA-001"
-            );
+                    UUID.randomUUID(),
+                    "Super Admin 1",
+                    "admin1@fixzone.lk",
+                    "+94770000001",
+                    passwordEncoder.encode("FixzoneAdmin!2026"),
+                    "ROLE_SUPER_ADMIN",
+                    true,
+                    LocalDateTime.now(),
+                    LocalDateTime.now(),
+                    "system",
+                    LocalDateTime.now(),
+                    "system",
+                    null,
+                    "SA-001");
             superAdminRepository.save(admin);
             log.info(">>> Mock Super Admin created successfully <<<");
         }

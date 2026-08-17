@@ -7,9 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Async;
 
 @Service
-
 public class EmailService {
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
@@ -36,6 +36,7 @@ public class EmailService {
         }
     }
 
+    @Async
     public void sendWelcomeEmail(String toEmail, String fullName, String temporaryPassword) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -62,6 +63,7 @@ public class EmailService {
         }
     }
 
+    @Async
     public void sendVerificationOtpEmail(String toEmail, String fullName, String otp) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -87,6 +89,7 @@ public class EmailService {
         }
     }
 
+    @Async
     public void sendPasswordResetEmail(String toEmail, String resetLink, String otpCode) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
