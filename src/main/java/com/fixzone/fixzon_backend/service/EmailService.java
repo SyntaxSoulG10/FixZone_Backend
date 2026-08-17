@@ -15,10 +15,10 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:}")
     private String fromEmail;
 
-    @Value("${mail.sender:${MAIL_SENDER:dinithi1625403@gmail.com}}")
+    @Value("${mail.sender:}")
     private String senderEmail;
 
     public EmailService(JavaMailSender mailSender) {
@@ -26,10 +26,13 @@ public class EmailService {
     }
 
     public String getSenderEmail() {
-        if (senderEmail != null && !senderEmail.trim().isEmpty() && !senderEmail.contains("example.com")) {
+        if (senderEmail != null && !senderEmail.trim().isEmpty()) {
             return senderEmail.trim();
         }
-        return "dinithi1625403@gmail.com";
+        if (fromEmail != null && !fromEmail.trim().isEmpty()) {
+            return fromEmail.trim();
+        }
+        return "info@fixzone.com";
     }
 
     @jakarta.annotation.PostConstruct
