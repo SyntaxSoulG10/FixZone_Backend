@@ -61,17 +61,14 @@ public class Owner extends User {
     @Column(name = "stripe_customer_id", length = 100)
     private String stripeCustomerId;
 
-    @Column(name = "auto_renew_enabled")
-    private Boolean autoRenewEnabled = false;
-
     public Owner(UUID userId, String fullName, String email, String phone, String passwordHash, String role,
             Boolean emailVerified, LocalDateTime lastLoginAt, LocalDateTime createdAt, String createdBy,
             LocalDateTime updatedAt, String updatedBy, String profilePictureUrl, String ownerCode, String companyName, String companyEmail,
             String companyNumber, String bannerImageUrl, String facebookUrl, String twitterUrl, String instagramUrl,
             String stripeAccountId, Boolean stripeOnboardingComplete, String subscriptionStatus, LocalDateTime trialEndsAt, 
-            LocalDateTime nextBillingDate, UUID currentPlanId, String stripeCustomerId, Boolean autoRenewEnabled) {
+            LocalDateTime nextBillingDate, UUID currentPlanId, String stripeCustomerId) {
         super(userId, fullName, email, phone, passwordHash, role, emailVerified, lastLoginAt, createdAt, createdBy,
-                updatedAt, updatedBy, "Active", profilePictureUrl, null, null);
+                updatedAt, updatedBy, "Active", profilePictureUrl, null, null, null);
         this.ownerCode = ownerCode;
         this.companyName = companyName;
         this.companyEmail = companyEmail;
@@ -87,7 +84,6 @@ public class Owner extends User {
         this.nextBillingDate = nextBillingDate;
         this.currentPlanId = currentPlanId;
         this.stripeCustomerId = stripeCustomerId;
-        this.autoRenewEnabled = autoRenewEnabled;
     }
 
 }

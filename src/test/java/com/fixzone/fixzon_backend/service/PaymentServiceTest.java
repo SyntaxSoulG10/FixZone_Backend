@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -73,6 +74,7 @@ class PaymentServiceTest {
         owner.setUserId(UUID.randomUUID());
         owner.setStripeOnboardingComplete(true);
         owner.setStripeAccountId("acct_123");
+        owner.setSubscriptionStatus("PREMIUM_ACTIVE");
         when(ownerRepository.findById(any())).thenReturn(Optional.of(owner));
         
         // Mock service center
@@ -89,6 +91,22 @@ class PaymentServiceTest {
         // 40% of 1000.00 should be 400.0
         assertThat(result.getAmount()).isEqualTo(400.0);
         verify(paymentRepository, times(1)).save(any(Payment.class));
+    }
+
+    @Test
+    void validatePayoutEligibility_ShouldRejectInactiveSubscriptionEvenWhenStripeConnected() {
+        com.fixzone.fixzon_backend.model.Owner owner = new com.fixzone.fixzon_backend.model.Owner();
+        owner.setUserId(UUID.randomUUID());
+        owner.setStripeOnboardingComplete(true);
+        owner.setStripeAccountId("acct_123");
+        owner.setSubscriptionStatus("INACTIVE");
+
+        when(ownerRepository.findById(owner.getUserId())).thenReturn(Optional.of(owner));
+
+        Map<String, Object> result = paymentService.validatePayoutEligibility(owner.getUserId());
+
+        assertThat(Boolean.TRUE.equals(result.get("eligible"))).isFalse();
+        assertThat(result.get("message")).asString().contains("plan or trial is inactive");
     }
 
     @Test

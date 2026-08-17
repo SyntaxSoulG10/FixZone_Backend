@@ -15,7 +15,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class AdminController {
 
     private final AdminService adminService;
@@ -43,8 +42,8 @@ public class AdminController {
 
     @PostMapping("/users/{id}/status")
     public ResponseEntity<UserDTO> updateUserStatus(
-            @PathVariable UUID id, @RequestParam String status) {
-        return ResponseEntity.ok(adminService.updateUserStatus(id, status));
+            @PathVariable UUID id, @RequestParam String status, @RequestParam(required = false) String reason) {
+        return ResponseEntity.ok(adminService.updateUserStatus(id, status, reason));
     }
 
     @GetMapping("/service-centers")
@@ -68,11 +67,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.rejectServiceCenter(id, reason));
     }
 
-    @PostMapping("/service-centers/{id}/status")
-    public ResponseEntity<ServiceCenterDTO> updateServiceCenterStatus(
-            @PathVariable UUID id, @RequestParam String status) {
-        return ResponseEntity.ok(adminService.updateServiceCenterStatus(id, status));
-    }
+
 
     @GetMapping("/notifications")
     public ResponseEntity<List<NotificationDTO>> getNotifications() {

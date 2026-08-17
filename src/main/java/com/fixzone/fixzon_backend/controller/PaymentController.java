@@ -217,16 +217,21 @@ public class PaymentController {
 
     @GetMapping("/connect/callback")
     public ResponseEntity<Void> handleConnectCallback(@RequestParam("accountId") String accountId) {
+        String cleanFrontendUrl = frontendUrl != null ? frontendUrl.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("/+$", "") : "http://localhost:3000";
+        if (!cleanFrontendUrl.startsWith("http://") && !cleanFrontendUrl.startsWith("https://")) {
+            cleanFrontendUrl = "https://" + cleanFrontendUrl;
+        }
+
         try {
             paymentService.handleConnectCallback(accountId);
             // Redirect back to branch creation page with success flag
             return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create(frontendUrl + "/dashboard/company-owner/centers?connect=success"))
+                    .location(URI.create(cleanFrontendUrl + "/dashboard/company-owner/centers?connect=success"))
                     .build();
         } catch (Exception e) {
             log.error("Stripe Connect Callback Error: ", e);
             return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create(frontendUrl + "/dashboard/company-owner/centers?connect=error"))
+                    .location(URI.create(cleanFrontendUrl + "/dashboard/company-owner/centers?connect=error"))
                     .build();
         }
     }

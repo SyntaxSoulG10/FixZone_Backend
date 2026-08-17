@@ -79,12 +79,12 @@ public class SubscriptionScheduler {
     }
 
     /**
-     * Expire PREMIUM_ACTIVE owners whose nextBillingDate has passed and auto-renew is off.
+     * Expire PREMIUM_ACTIVE owners whose nextBillingDate has passed.
      */
     private int expirePremiums() {
         LocalDateTime now = LocalDateTime.now();
-        List<Owner> expiredPremiums = ownerRepository.findBySubscriptionStatusAndNextBillingDateBeforeAndAutoRenewEnabled(
-                SubscriptionStatus.PREMIUM_ACTIVE.name(), now, false);
+        List<Owner> expiredPremiums = ownerRepository.findBySubscriptionStatusAndNextBillingDateBefore(
+                SubscriptionStatus.PREMIUM_ACTIVE.name(), now);
 
         for (Owner owner : expiredPremiums) {
             owner.setSubscriptionStatus(SubscriptionStatus.PREMIUM_EXPIRED.name());

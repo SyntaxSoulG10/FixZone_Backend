@@ -55,9 +55,8 @@ public class SubscriptionController {
         }
         try {
             UUID planId = UUID.fromString((String) payload.get("planId"));
-            boolean autoRenew = payload.containsKey("autoRenew") && (Boolean) payload.get("autoRenew");
 
-            String url = subscriptionService.createSubscriptionCheckout(principal.getName(), planId, autoRenew);
+            String url = subscriptionService.createSubscriptionCheckout(principal.getName(), planId);
             return ResponseEntity.ok(Map.of("checkoutUrl", url));
         } catch (StripeException e) {
             log.error("Stripe Subscription Error: ", e);

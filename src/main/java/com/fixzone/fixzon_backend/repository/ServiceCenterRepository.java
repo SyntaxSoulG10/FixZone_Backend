@@ -1,5 +1,5 @@
 package com.fixzone.fixzon_backend.repository;
- 
+
 import com.fixzone.fixzon_backend.model.ServiceCenter;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.UUID;
@@ -8,11 +8,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
- 
+
 public interface ServiceCenterRepository extends JpaRepository<ServiceCenter, UUID> {
-    List<ServiceCenter> findByIsActive(Boolean isActive);
-    List<ServiceCenter> findByOwner_UserId(UUID userId);
-    List<ServiceCenter> findByStatus(String status);
+       List<ServiceCenter> findByIsActive(Boolean isActive);
+
+       List<ServiceCenter> findByOwner_UserId(UUID userId);
+
+       List<ServiceCenter> findByStatus(String status);
 
     @Query("SELECT s FROM ServiceCenter s JOIN Owner o ON s.owner.userId = o.userId " +
            "WHERE s.isActive = true AND (s.status IS NULL OR s.status IN ('APPROVED', 'ACTIVE')) " +
@@ -36,4 +38,3 @@ public interface ServiceCenterRepository extends JpaRepository<ServiceCenter, UU
            nativeQuery = true)
     Page<ServiceCenter> findNearbyServiceCenters(@Param("lat") Double lat, @Param("lng") Double lng, @Param("radius") Double radius, Pageable pageable);
 }
-

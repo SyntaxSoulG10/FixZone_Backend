@@ -100,6 +100,55 @@ class ServiceCenterServiceTest {
     }
 
     @Test
+    void getServiceCenterById_ShouldReturnSingleConsistentPaymentEligibility() {
+        Owner owner = new Owner();
+        owner.setUserId(ownerId);
+        owner.setStripeOnboardingComplete(true);
+        owner.setStripeAccountId("acct_123");
+        owner.setSubscriptionStatus("PREMIUM_ACTIVE");
+
+        center.setOwner(owner);
+        center.setStatus("APPROVED");
+        center.setIsActive(true);
+
+        when(serviceCenterRepository.findById(centerId)).thenReturn(Optional.of(center));
+        when(ownerRepository.findById(ownerId)).thenReturn(Optional.of(owner));
+        when(servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(centerId)).thenReturn(new ArrayList<>());
+        when(invoiceRepository.sumTotalByCenterId(centerId)).thenReturn(BigDecimal.ZERO);
+        when(managerRepository.findByManagedCenterId(centerId)).thenReturn(new ArrayList<>());
+
+        ServiceCenterDTO result = serviceCenterService.getServiceCenterById(centerId);
+
+        assertThat(result.getCanAcceptPayments()).isTrue();
+        assertThat(result.getPaymentEnabled()).isTrue();
+        assertThat(result.getStripeConnected()).isTrue();
+    }
+
+    @Test
+    void getServiceCenterById_ShouldRejectPaymentWhenAnyRequiredConditionIsFalse() {
+        Owner owner = new Owner();
+        owner.setUserId(ownerId);
+        owner.setStripeOnboardingComplete(false);
+        owner.setSubscriptionStatus("PREMIUM_ACTIVE");
+
+        center.setOwner(owner);
+        center.setStatus("APPROVED");
+        center.setIsActive(true);
+
+        when(serviceCenterRepository.findById(centerId)).thenReturn(Optional.of(center));
+        when(ownerRepository.findById(ownerId)).thenReturn(Optional.of(owner));
+        when(servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(centerId)).thenReturn(new ArrayList<>());
+        when(invoiceRepository.sumTotalByCenterId(centerId)).thenReturn(BigDecimal.ZERO);
+        when(managerRepository.findByManagedCenterId(centerId)).thenReturn(new ArrayList<>());
+
+        ServiceCenterDTO result = serviceCenterService.getServiceCenterById(centerId);
+
+        assertThat(result.getCanAcceptPayments()).isFalse();
+        assertThat(result.getPaymentEnabled()).isFalse();
+        assertThat(result.getStripeConnected()).isFalse();
+    }
+
+    @Test
     void deleteServiceCenter_ShouldPerformCascadingCleanup() {
         when(serviceCenterRepository.existsById(centerId)).thenReturn(true);
         when(servicePackageRepository.findByServiceCenter_CenterId(centerId)).thenReturn(new ArrayList<>());

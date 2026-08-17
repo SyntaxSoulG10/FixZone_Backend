@@ -91,6 +91,15 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Schema migration note: {}", e.getMessage());
         }
 
+        // DROP auto_renew_enabled column if it exists
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            stmt.execute("ALTER TABLE owner DROP COLUMN IF EXISTS auto_renew_enabled");
+            log.info(">>> Dropped auto_renew_enabled column from owner table <<<");
+        } catch (Exception e) {
+            log.info("Drop auto_renew_enabled column note: {}", e.getMessage());
+        }
+
         // Add model column to vehicles table if it doesn't exist
         try (java.sql.Connection conn = dataSource.getConnection()) {
             java.sql.Statement stmt = conn.createStatement();
@@ -199,7 +208,7 @@ public class DataInitializer implements CommandLineRunner {
                 "+94112000000",
                 "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab",
                 "https://facebook.com/rajamotors", "https://twitter.com/rajamotors", "https://instagram.com/rajamotors",
-                null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false);
+                null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null);
         owners.add(rajaOwner);
 
         // Tharindu Perera
@@ -209,7 +218,7 @@ public class DataInitializer implements CommandLineRunner {
                 "contact@perera.lk", "+94112000001", "https://images.unsplash.com",
                 "https://facebook.com/pereramotors", "https://twitter.com/pereramotors",
                 "https://instagram.com/pereramotors",
-                null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false));
+                null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null));
 
         ownerRepository.saveAll(owners);
 
@@ -400,7 +409,7 @@ public class DataInitializer implements CommandLineRunner {
                     "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab",
                     "https://facebook.com/rajamotors", "https://twitter.com/rajamotors",
                     "https://instagram.com/rajamotors",
-                    null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null, false);
+                    null, false, "ACTIVE", LocalDateTime.now().plusDays(335), null, null, null);
             ownerRepository.save(rajaOwner);
             seedRajaMotorsBranchesAndData(rajaOwner);
             log.info(">>> Raja Motors created and seeded successfully <<<");

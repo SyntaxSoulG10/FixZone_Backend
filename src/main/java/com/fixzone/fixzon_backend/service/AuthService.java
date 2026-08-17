@@ -68,7 +68,12 @@ public class AuthService {
         user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
         authRepository.save(user);
 
-        String resetLink = frontendUrl + "/reset-password?token=" + token;
+        String cleanFrontendUrl = frontendUrl != null ? frontendUrl.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("/+$", "") : "http://localhost:3000";
+        if (!cleanFrontendUrl.startsWith("http://") && !cleanFrontendUrl.startsWith("https://")) {
+            cleanFrontendUrl = "https://" + cleanFrontendUrl;
+        }
+
+        String resetLink = cleanFrontendUrl + "/reset-password?token=" + token;
         emailService.sendPasswordResetEmail(user.getEmail(), resetLink, token);
 
         notificationService.createNotificationSafe(user, "Password Reset Requested",
@@ -98,6 +103,11 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        if ("Suspended".equalsIgnoreCase(user.getStatus())) {
+            String reason = user.getSuspensionReason() != null ? user.getSuspensionReason() : "Contact support.";
+            throw new IllegalArgumentException("Your account has been suspended by an administrator. Reason: " + reason);
         }
 
         user.setLastLoginAt(LocalDateTime.now());
@@ -173,7 +183,6 @@ public class AuthService {
         owner.setCompanyNumber(request.getCompanyNumber());
         owner.setSubscriptionStatus("TRIAL_ACTIVE");
         owner.setTrialEndsAt(LocalDateTime.now().plusDays(30));
-        owner.setAutoRenewEnabled(false);
 
         Owner savedOwner = ownerRepository.save(owner);
 

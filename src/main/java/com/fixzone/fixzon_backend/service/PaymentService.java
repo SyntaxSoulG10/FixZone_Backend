@@ -3,6 +3,7 @@ package com.fixzone.fixzon_backend.service;
 import com.fixzone.fixzon_backend.DTO.InitPaymentRequest;
 import com.fixzone.fixzon_backend.enums.BookingStatus;
 import com.fixzone.fixzon_backend.enums.PaymentStatus;
+import com.fixzone.fixzon_backend.enums.SubscriptionStatus;
 import com.fixzone.fixzon_backend.model.Booking;
 import com.fixzone.fixzon_backend.model.Payment;
 import com.fixzone.fixzon_backend.model.ServicePackage;
@@ -22,7 +23,6 @@ import com.stripe.model.Account;
 import com.stripe.model.AccountLink;
 import com.stripe.param.AccountCreateParams;
 import com.stripe.param.AccountLinkCreateParams;
-
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
@@ -186,14 +186,18 @@ public class PaymentService {
         boolean connected = Boolean.TRUE.equals(owner.getStripeOnboardingComplete())
                 && owner.getStripeAccountId() != null
                 && !owner.getStripeAccountId().isBlank();
+        boolean subscriptionAllowed = SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus()).isVisibleToCustomers();
+        boolean eligible = connected && subscriptionAllowed;
 
         return Map.of(
-                "eligible", connected,
+                "eligible", eligible,
                 "stripeConnected", connected,
                 "stripeAccountId", owner.getStripeAccountId() != null ? owner.getStripeAccountId() : "",
-                "message", connected
+                "message", eligible
                         ? "The branch owner is ready to receive online payments."
-                        : "This branch cannot accept online payments until the owner completes Stripe Connect onboarding."
+                        : (!connected
+                                ? "This branch cannot accept online payments until the owner completes Stripe Connect onboarding."
+                                : "This branch cannot accept online payments because the owner plan or trial is inactive.")
         );
     }
 
@@ -233,10 +237,12 @@ public class PaymentService {
                 throw new IllegalStateException("This branch cannot accept online payments until the owner completes Stripe Connect onboarding.");
             }
 
+            String frontendBaseUrl = resolveBaseUrl(null, frontendUrl, "http://localhost:3000");
+
             SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(frontendUrl + "/success?session_id={CHECKOUT_SESSION_ID}")
-                .setCancelUrl(frontendUrl + "/dashboard/customer/checkout")
+                .setSuccessUrl(frontendBaseUrl + "/success?session_id={CHECKOUT_SESSION_ID}")
+                .setCancelUrl(frontendBaseUrl + "/dashboard/customer/checkout")
                 .addLineItem(SessionCreateParams.LineItem.builder()
                     .setQuantity(1L)
                     .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
@@ -560,12 +566,18 @@ public class PaymentService {
     }
 
     public String resolveBaseUrl(HttpServletRequest request, String configuredBaseUrl, String fallbackBaseUrl) {
-        if (configuredBaseUrl != null && !configuredBaseUrl.isBlank()) {
-            return configuredBaseUrl.replaceAll("/+$", "");
+        String base = configuredBaseUrl;
+        if (base != null && !base.isBlank()) {
+            base = base.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("/+$", "");
+            if (!base.startsWith("http://") && !base.startsWith("https://")) {
+                base = "https://" + base;
+            }
+            return base;
         }
 
         if (request == null) {
-            return fallbackBaseUrl != null ? fallbackBaseUrl.replaceAll("/+$", "") : "";
+            String fallback = fallbackBaseUrl != null ? fallbackBaseUrl.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("/+$", "") : "";
+            return fallback;
         }
 
         String forwardedProto = request.getHeader("X-Forwarded-Proto");
@@ -614,10 +626,21 @@ public class PaymentService {
         String frontendBaseUrl = resolveBaseUrl(request, frontendUrl, "http://localhost:3000");
         String backendBaseUrl = resolveBaseUrl(request, backendUrl, "http://localhost:8081");
 
+        String encodedAccountId = java.net.URLEncoder.encode(
+                owner.getStripeAccountId() != null ? owner.getStripeAccountId().trim() : "",
+                java.nio.charset.StandardCharsets.UTF_8
+        );
+
+        String refreshUrl = frontendBaseUrl + "/dashboard/company-owner/centers?stripe_refresh=true";
+        String returnUrl = backendBaseUrl + "/api/payments/connect/callback?accountId=" + encodedAccountId;
+
+        log.info("Generating Stripe Connect Link for account '{}': refreshUrl='{}', returnUrl='{}'", 
+                owner.getStripeAccountId(), refreshUrl, returnUrl);
+
         AccountLinkCreateParams linkParams = AccountLinkCreateParams.builder()
-                .setAccount(owner.getStripeAccountId())
-                .setRefreshUrl(frontendBaseUrl + "/dashboard/company-owner/centers?stripe_refresh=true")
-                .setReturnUrl(backendBaseUrl + "/api/payments/connect/callback?accountId=" + owner.getStripeAccountId())
+                .setAccount(owner.getStripeAccountId().trim())
+                .setRefreshUrl(refreshUrl)
+                .setReturnUrl(returnUrl)
                 .setType(AccountLinkCreateParams.Type.ACCOUNT_ONBOARDING)
                 .build();
 
