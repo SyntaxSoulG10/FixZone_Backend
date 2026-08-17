@@ -33,6 +33,9 @@ public class EmailService {
     @Value("${spring.mail.password:}")
     private String mailPassword;
 
+    @Value("${brevo.api-key:${BREVO_API_KEY:}}")
+    private String brevoApiKey;
+
     @Value("${spring.mail.host:}")
     private String mailHost;
 
@@ -86,7 +89,11 @@ public class EmailService {
     }
 
     private boolean sendViaBrevoHttpApi(String toEmail, String recipientName, String subject, String htmlContent) {
-        if (mailPassword == null || mailPassword.trim().isEmpty()) {
+        String effectiveApiKey = (brevoApiKey != null && !brevoApiKey.isBlank()) 
+                ? brevoApiKey.trim() 
+                : (mailPassword != null ? mailPassword.trim() : "");
+
+        if (effectiveApiKey.isEmpty()) {
             return false;
         }
 
@@ -117,7 +124,7 @@ public class EmailService {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://api.brevo.com/v3/smtp/email"))
                     .header("accept", "application/json")
-                    .header("api-key", mailPassword.trim())
+                    .header("api-key", effectiveApiKey)
                     .header("content-type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8))
                     .timeout(Duration.ofSeconds(15))
