@@ -66,7 +66,7 @@ public class SubscriptionService {
         return "http://localhost:3000";
     }
 
-    public String createSubscriptionCheckout(String ownerEmail, UUID planId, boolean autoRenew) throws StripeException {
+    public String createSubscriptionCheckout(String ownerEmail, UUID planId) throws StripeException {
         Stripe.apiKey = stripeApiKey;
 
         Owner owner = ownerRepository.findByEmail(ownerEmail)
@@ -86,7 +86,7 @@ public class SubscriptionService {
                 .setMode(SessionCreateParams.Mode.PAYMENT)
                 .setSuccessUrl(successUrl)
                 .setCancelUrl(cancelUrl)
-                .setClientReferenceId(owner.getUserId().toString() + "_" + planId.toString() + "_" + autoRenew)
+                .setClientReferenceId(owner.getUserId().toString() + "_" + planId.toString())
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
@@ -97,13 +97,6 @@ public class SubscriptionService {
                                         .build())
                                 .build())
                         .build());
-
-        // Save card details for future off-session charging if auto-renew is selected
-        if (autoRenew) {
-            paramsBuilder.setPaymentIntentData(SessionCreateParams.PaymentIntentData.builder()
-                    .setSetupFutureUsage(SessionCreateParams.PaymentIntentData.SetupFutureUsage.OFF_SESSION)
-                    .build());
-        }
 
         Session session = Session.create(paramsBuilder.build());
         return session.getUrl();
@@ -119,7 +112,6 @@ public class SubscriptionService {
                 String[] parts = clientReferenceId.split("_");
                 UUID ownerId = UUID.fromString(parts[0]);
                 UUID planId = UUID.fromString(parts[1]);
-                boolean autoRenew = Boolean.parseBoolean(parts[2]);
 
                 Optional<Owner> ownerOpt = ownerRepository.findById(ownerId);
                 Optional<SubscriptionPlan> planOpt = subscriptionPlanRepository.findById(planId);
@@ -133,7 +125,6 @@ public class SubscriptionService {
                         owner.setStatus("Active"); // Reactivate owner account on successful subscription if not manually suspended
                     }
                     owner.setCurrentPlanId(planId);
-                    owner.setAutoRenewEnabled(autoRenew);
                     
                     if (session.getCustomer() != null) {
                         owner.setStripeCustomerId(session.getCustomer());
@@ -211,8 +202,8 @@ public class SubscriptionService {
             ownerRepository.save(owner);
         }
 
-        // Expire premium plans where auto-renew is false
-        List<Owner> expiredPremiums = ownerRepository.findBySubscriptionStatusAndNextBillingDateBeforeAndAutoRenewEnabled("PREMIUM_ACTIVE", now, false);
+        // Expire premium plans
+        List<Owner> expiredPremiums = ownerRepository.findBySubscriptionStatusAndNextBillingDateBefore("PREMIUM_ACTIVE", now);
         for (Owner owner : expiredPremiums) {
             log.info("Premium subscription expired for owner: {}", owner.getEmail());
             owner.setSubscriptionStatus("PREMIUM_EXPIRED");

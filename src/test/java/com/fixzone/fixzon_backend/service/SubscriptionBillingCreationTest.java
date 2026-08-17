@@ -77,7 +77,6 @@ class SubscriptionBillingCreationTest {
         owner.setSubscriptionStatus("PREMIUM_ACTIVE");
         owner.setStatus("Active");
         owner.setCurrentPlanId(planId);
-        owner.setAutoRenewEnabled(false);
         owner.setNextBillingDate(java.time.LocalDateTime.now().plusMonths(plan.getDurationMonths()));
         ownerRepository.save(owner);
 

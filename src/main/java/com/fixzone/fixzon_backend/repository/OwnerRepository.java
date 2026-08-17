@@ -14,6 +14,8 @@ public interface OwnerRepository extends JpaRepository<Owner, UUID> {
     /** Finds owners whose trial period has expired (for cron job). */
     List<Owner> findBySubscriptionStatusAndTrialEndsAtBefore(String status, LocalDateTime date);
 
-    /** Finds owners whose premium billing date has passed and auto-renew is off (for cron job). */
-    List<Owner> findBySubscriptionStatusAndNextBillingDateBeforeAndAutoRenewEnabled(String status, LocalDateTime date, Boolean autoRenew);
+    /** Finds owners whose premium billing date has passed (for cron job). */
+    List<Owner> findBySubscriptionStatusAndNextBillingDateBefore(String status, LocalDateTime date);
+
+    Optional<Owner> findByStripeCustomerId(String stripeCustomerId);
 }

@@ -52,7 +52,6 @@ class SubscriptionExpirationTest {
         expiredPremiumOwner.setEmail("premium@expired.com");
         expiredPremiumOwner.setSubscriptionStatus(SubscriptionStatus.PREMIUM_ACTIVE.name());
         expiredPremiumOwner.setNextBillingDate(LocalDateTime.now().minusDays(1));
-        expiredPremiumOwner.setAutoRenewEnabled(false);
     }
 
     @Test
@@ -61,8 +60,8 @@ class SubscriptionExpirationTest {
         when(ownerRepository.findBySubscriptionStatusAndTrialEndsAtBefore(
                 eq(SubscriptionStatus.TRIAL_ACTIVE.name()), any(LocalDateTime.class)))
                 .thenReturn(Arrays.asList(expiredTrialOwner));
-        when(ownerRepository.findBySubscriptionStatusAndNextBillingDateBeforeAndAutoRenewEnabled(
-                anyString(), any(LocalDateTime.class), eq(false)))
+        when(ownerRepository.findBySubscriptionStatusAndNextBillingDateBefore(
+                anyString(), any(LocalDateTime.class)))
                 .thenReturn(List.of());
 
         // Act
@@ -79,8 +78,8 @@ class SubscriptionExpirationTest {
         when(ownerRepository.findBySubscriptionStatusAndTrialEndsAtBefore(
                 anyString(), any(LocalDateTime.class)))
                 .thenReturn(List.of());
-        when(ownerRepository.findBySubscriptionStatusAndNextBillingDateBeforeAndAutoRenewEnabled(
-                eq(SubscriptionStatus.PREMIUM_ACTIVE.name()), any(LocalDateTime.class), eq(false)))
+        when(ownerRepository.findBySubscriptionStatusAndNextBillingDateBefore(
+                eq(SubscriptionStatus.PREMIUM_ACTIVE.name()), any(LocalDateTime.class)))
                 .thenReturn(Arrays.asList(expiredPremiumOwner));
 
         // Act
@@ -96,7 +95,7 @@ class SubscriptionExpirationTest {
         // Arrange
         when(ownerRepository.findBySubscriptionStatusAndTrialEndsAtBefore(anyString(), any()))
                 .thenReturn(List.of());
-        when(ownerRepository.findBySubscriptionStatusAndNextBillingDateBeforeAndAutoRenewEnabled(anyString(), any(), eq(false)))
+        when(ownerRepository.findBySubscriptionStatusAndNextBillingDateBefore(anyString(), any()))
                 .thenReturn(List.of());
 
         // Act
@@ -117,8 +116,8 @@ class SubscriptionExpirationTest {
         when(ownerRepository.findBySubscriptionStatusAndTrialEndsAtBefore(
                 eq(SubscriptionStatus.TRIAL_ACTIVE.name()), any(LocalDateTime.class)))
                 .thenReturn(Arrays.asList(expiredTrialOwner, second));
-        when(ownerRepository.findBySubscriptionStatusAndNextBillingDateBeforeAndAutoRenewEnabled(
-                anyString(), any(), eq(false)))
+        when(ownerRepository.findBySubscriptionStatusAndNextBillingDateBefore(
+                anyString(), any()))
                 .thenReturn(List.of());
 
         // Act

@@ -175,7 +175,6 @@ public class AuthService {
         owner.setCompanyNumber(request.getCompanyNumber());
         owner.setSubscriptionStatus("TRIAL_ACTIVE");
         owner.setTrialEndsAt(LocalDateTime.now().plusDays(30));
-        owner.setAutoRenewEnabled(false);
 
         Owner savedOwner = ownerRepository.save(owner);
 

@@ -29,5 +29,4 @@ public class OwnerDTO extends UserDTO {
     private String subscriptionStatus;
     private java.time.LocalDateTime trialEndsAt;
     private java.time.LocalDateTime nextBillingDate;
-    private Boolean autoRenewEnabled;
 }

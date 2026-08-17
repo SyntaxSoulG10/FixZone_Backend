@@ -54,13 +54,11 @@ public class SubscriptionSchedulerTest {
         activePremiumOwner.setEmail("active@premium.com");
         activePremiumOwner.setSubscriptionStatus(SubscriptionStatus.PREMIUM_ACTIVE.name());
         activePremiumOwner.setNextBillingDate(LocalDateTime.now().plusDays(10));
-        activePremiumOwner.setAutoRenewEnabled(false);
 
         expiredPremiumOwner = new Owner();
         expiredPremiumOwner.setEmail("expired@premium.com");
         expiredPremiumOwner.setSubscriptionStatus(SubscriptionStatus.PREMIUM_ACTIVE.name());
         expiredPremiumOwner.setNextBillingDate(LocalDateTime.now().minusDays(1));
-        expiredPremiumOwner.setAutoRenewEnabled(false);
     }
 
     @Test
@@ -70,8 +68,8 @@ public class SubscriptionSchedulerTest {
                 eq(SubscriptionStatus.TRIAL_ACTIVE.name()), any(LocalDateTime.class)))
                 .thenReturn(Arrays.asList(expiredTrialOwner));
                 
-        when(ownerRepository.findBySubscriptionStatusAndNextBillingDateBeforeAndAutoRenewEnabled(
-                anyString(), any(LocalDateTime.class), eq(false)))
+        when(ownerRepository.findBySubscriptionStatusAndNextBillingDateBefore(
+                anyString(), any(LocalDateTime.class)))
                 .thenReturn(List.of());
 
         // Act
@@ -92,8 +90,8 @@ public class SubscriptionSchedulerTest {
                 anyString(), any(LocalDateTime.class)))
                 .thenReturn(List.of());
                 
-        when(ownerRepository.findBySubscriptionStatusAndNextBillingDateBeforeAndAutoRenewEnabled(
-                eq(SubscriptionStatus.PREMIUM_ACTIVE.name()), any(LocalDateTime.class), eq(false)))
+        when(ownerRepository.findBySubscriptionStatusAndNextBillingDateBefore(
+                eq(SubscriptionStatus.PREMIUM_ACTIVE.name()), any(LocalDateTime.class)))
                 .thenReturn(Arrays.asList(expiredPremiumOwner));
 
         // Act
