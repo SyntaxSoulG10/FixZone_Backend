@@ -39,6 +39,15 @@ public class FixzonBackendApplication {
                 "created_at TIMESTAMP" +
             ")");
             log.info("Payments table verified/created successfully!");
+
+            try {
+                jdbcTemplate.execute("ALTER TABLE service_centers ALTER COLUMN business_reg_url TYPE TEXT;");
+                jdbcTemplate.execute("ALTER TABLE service_centers ALTER COLUMN tax_id_url TYPE TEXT;");
+                jdbcTemplate.execute("ALTER TABLE service_centers ALTER COLUMN nic_url TYPE TEXT;");
+                log.info("service_centers columns successfully altered to TEXT!");
+            } catch (Exception e) {
+                log.warn("Could not alter service_centers columns to TEXT (may already be TEXT): " + e.getMessage());
+            }
         };
     }
 }
