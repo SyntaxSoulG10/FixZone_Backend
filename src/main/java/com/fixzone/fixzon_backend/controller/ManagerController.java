@@ -1,10 +1,10 @@
 package com.fixzone.fixzon_backend.controller;
 
 import com.fixzone.fixzon_backend.DTO.ManagerDTO;
+import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 import com.fixzone.fixzon_backend.service.ManagerService;
 import com.fixzone.fixzon_backend.service.OwnerService;
 import com.fixzone.fixzon_backend.service.ServiceCenterService;
-import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -91,58 +91,92 @@ public class ManagerController {
      * This creates a specialized user role capable of overseeing operations at a specific service center.
      */
     @PostMapping
-    public ResponseEntity<ManagerDTO> createManager(@Valid @RequestBody ManagerDTO managerDTO) {
-        String email = getCurrentUserEmail();
-        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
-        
-        if (owner != null && managerDTO.getManagedCenterId() != null) {
-            boolean ownsCenter = serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode())
-                .stream().anyMatch(c -> c.getCenterId().equals(managerDTO.getManagedCenterId()));
-            if (!ownsCenter) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You do not own this service center");
+    public ResponseEntity<?> createManager(@Valid @RequestBody ManagerDTO managerDTO) {
+        try {
+            String email = getCurrentUserEmail();
+            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+            
+            if (owner != null && managerDTO.getManagedCenterId() != null) {
+                boolean ownsCenter = serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode())
+                    .stream().anyMatch(c -> c.getCenterId().equals(managerDTO.getManagedCenterId()));
+                if (!ownsCenter) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You do not own this service center");
+                }
             }
+            
+            log.info("Creating new manager: {}", managerDTO.getEmail());
+            ManagerDTO newManager = managerService.createManager(managerDTO);
+
+            URI location = ServletUriComponentsBuilder
+                    .fromCurrentRequest()
+                    .path("/{id}")
+                    .buildAndExpand(newManager.getUserId())
+                    .toUri();
+
+            return ResponseEntity.created(location).body(newManager);
+        } catch (IllegalArgumentException e) {
+            log.warn("Manager creation rejected: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", e.getMessage()));
         }
-        
-        log.info("Creating new manager: {}", managerDTO.getEmail());
-        ManagerDTO newManager = managerService.createManager(managerDTO);
-
-        URI location = ServletUriComponentsBuilder
-                .fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(newManager.getUserId())
-                .toUri();
-
-        return ResponseEntity.created(location).body(newManager);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ManagerDTO> updateManager(@PathVariable UUID id, @Valid @RequestBody ManagerDTO managerDTO) {
-        String email = getCurrentUserEmail();
-        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
-        
-        ManagerDTO existing = managerService.getManagerById(id);
-        if (existing == null) {
-            return ResponseEntity.notFound().build();
-        }
-        
-        if (owner != null) {
-            boolean ownsCenter = serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode())
-                .stream().anyMatch(c -> c.getCenterId().equals(existing.getManagedCenterId()));
-            if (!ownsCenter) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You do not own this manager");
+    public ResponseEntity<?> updateManager(@PathVariable UUID id, @RequestBody ManagerDTO managerDTO) {
+        try {
+            String email = getCurrentUserEmail();
+            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+            
+            ManagerDTO existing = managerService.getManagerById(id);
+            if (existing == null) {
+                return ResponseEntity.notFound().build();
             }
-            if (managerDTO.getManagedCenterId() != null && !managerDTO.getManagedCenterId().equals(existing.getManagedCenterId())) {
-                boolean ownsNewCenter = serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode())
-                    .stream().anyMatch(c -> c.getCenterId().equals(managerDTO.getManagedCenterId()));
-                if (!ownsNewCenter) {
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You do not own the target service center");
+            
+            if (owner != null) {
+                boolean ownsCenter = serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode())
+                    .stream().anyMatch(c -> c.getCenterId().equals(existing.getManagedCenterId()));
+                if (!ownsCenter) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You do not own this manager");
+                }
+                if (managerDTO.getManagedCenterId() != null && !managerDTO.getManagedCenterId().equals(existing.getManagedCenterId())) {
+                    boolean ownsNewCenter = serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode())
+                        .stream().anyMatch(c -> c.getCenterId().equals(managerDTO.getManagedCenterId()));
+                    if (!ownsNewCenter) {
+                        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You do not own the target service center");
+                    }
                 }
             }
+            
+            log.info("Updating manager ID: {}", id);
+            ManagerDTO updatedManager = managerService.updateManager(id, managerDTO);
+            return ResponseEntity.ok(updatedManager);
+        } catch (IllegalArgumentException e) {
+            log.warn("Manager update rejected: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", e.getMessage()));
         }
-        
-        log.info("Updating manager ID: {}", id);
-        ManagerDTO updatedManager = managerService.updateManager(id, managerDTO);
-        return ResponseEntity.ok(updatedManager);
+    }
+
+    @PostMapping("/{id}/resend-invite")
+    public ResponseEntity<?> resendInvite(@PathVariable UUID id) {
+        try {
+            String email = getCurrentUserEmail();
+            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+            ManagerDTO existing = managerService.getManagerById(id);
+            if (existing == null) {
+                return ResponseEntity.notFound().build();
+            }
+            if (owner != null) {
+                boolean ownsCenter = serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode())
+                    .stream().anyMatch(c -> c.getCenterId().equals(existing.getManagedCenterId()));
+                if (!ownsCenter) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You do not own this manager");
+                }
+            }
+            managerService.resendInvitation(id);
+            return ResponseEntity.ok(java.util.Map.of("message", "Invitation resent successfully"));
+        } catch (Exception e) {
+            log.error("Failed to resend invite: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", e.getMessage()));
+        }
     }
 
     @DeleteMapping("/{id}")

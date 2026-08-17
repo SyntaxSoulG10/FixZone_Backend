@@ -91,16 +91,34 @@ public class AuthService {
     }
 
     public AuthResponseDTO login(AuthRequestDTO request) {
-        User user = authRepository.findByEmail(request.getEmail())
+        if (request == null || request.getEmail() == null || request.getPassword() == null) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        String rawEmail = request.getEmail().trim();
+        String cleanEmail = rawEmail.toLowerCase();
+        
+        User user = authRepository.findByEmailIgnoreCase(cleanEmail)
+                .or(() -> authRepository.findByEmail(rawEmail))
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        String rawPassword = request.getPassword();
+        boolean matches = passwordEncoder.matches(rawPassword, user.getPasswordHash())
+                || passwordEncoder.matches(rawPassword.trim(), user.getPasswordHash());
+
+        if (!matches) {
             throw new IllegalArgumentException("Invalid email or password");
         }
 
         if ("Suspended".equalsIgnoreCase(user.getStatus())) {
             String reason = user.getSuspensionReason() != null ? user.getSuspensionReason() : "Contact support.";
             throw new IllegalArgumentException("Your account has been suspended by an administrator. Reason: " + reason);
+        }
+
+        // Automatically activate account on first successful login
+        if ("INVITED".equalsIgnoreCase(user.getStatus()) || "Pending".equalsIgnoreCase(user.getStatus())) {
+            user.setStatus(AppConstants.STATUS_ACTIVE);
+            user.setEmailVerified(true);
         }
 
         user.setLastLoginAt(LocalDateTime.now());
@@ -242,5 +260,29 @@ public class AuthService {
         User user = authRepository.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
         otpService.generateAndSendOtp(user.getEmail(), user.getFullName());
+    }
+
+    public void activateAccount(String token, String newPassword) {
+        if (token == null || token.trim().isEmpty()) {
+            throw new IllegalArgumentException("Activation token is required");
+        }
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters");
+        }
+
+        User user = authRepository.findByResetToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired invitation link"));
+
+        if (user.getResetTokenExpiry() == null || user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("This invitation link has expired. Please request a new invitation from your company owner.");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setStatus(AppConstants.STATUS_ACTIVE);
+        user.setEmailVerified(true);
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        user.setUpdatedAt(LocalDateTime.now());
+        authRepository.save(user);
     }
 }

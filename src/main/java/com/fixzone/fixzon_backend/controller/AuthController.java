@@ -62,6 +62,34 @@ public class AuthController {
         }
     }
 
+    @GetMapping("/validate-email")
+    public ResponseEntity<?> validateEmail(@RequestParam String email) {
+        boolean isValid = com.fixzone.fixzon_backend.util.EmailValidator.isValidRealEmail(email);
+        if (isValid) {
+            return ResponseEntity.ok(Map.of("valid", true, "message", "Email domain has active mail servers."));
+        } else {
+            return ResponseEntity.badRequest().body(Map.of(
+                "valid", false, 
+                "message", "Invalid email: The email domain does not have an active mail server (MX record) or does not exist."
+            ));
+        }
+    }
+
+    @PostMapping("/activate-manager")
+    public ResponseEntity<?> activateManager(@RequestBody Map<String, String> request) {
+        try {
+            String token = request.get("token");
+            String password = request.get("password");
+            if (token == null || password == null) {
+                throw new IllegalArgumentException("Token and password are required");
+            }
+            authService.activateAccount(token, password);
+            return ResponseEntity.ok(Map.of("message", "Account activated successfully! You can now log in."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/change-password")
     public ResponseEntity<java.util.Map<String, String>> changePassword(
             @jakarta.validation.Valid @RequestBody com.fixzone.fixzon_backend.DTO.ChangePasswordRequestDTO request) {

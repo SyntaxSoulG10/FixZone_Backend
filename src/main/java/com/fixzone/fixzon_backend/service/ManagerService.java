@@ -35,6 +35,7 @@ public class ManagerService {
     private final OwnerRepository ownerRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final com.fixzone.fixzon_backend.repository.AuthRepository authRepository;
     
     @Value("${app.manager.default-password}")
     private String defaultPassword;
@@ -47,12 +48,14 @@ public class ManagerService {
             ServiceCenterRepository serviceCenterRepository,
             OwnerRepository ownerRepository,
             PasswordEncoder passwordEncoder,
-            EmailService emailService) {
+            EmailService emailService,
+            com.fixzone.fixzon_backend.repository.AuthRepository authRepository) {
         this.managerRepository = managerRepository;
         this.serviceCenterRepository = serviceCenterRepository;
         this.ownerRepository = ownerRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.authRepository = authRepository;
     }
 
     /**
@@ -113,14 +116,15 @@ public class ManagerService {
 
     public ManagerDTO getManagerByEmail(String email) {
         Objects.requireNonNull(email, "Email cannot be null");
-        return managerRepository.findByEmail(email)
+        return managerRepository.findByEmailIgnoreCase(email.trim())
+                .or(() -> managerRepository.findByEmail(email.trim()))
                 .map(this::mapEntityToDto)
                 .orElse(null);
     }
 
     /**
      * CREATION WORKFLOW: Initializes a new manager account.
-     * Enforces default values, hashes passwords, and optionally sends an invitation.
+     * Enforces default values, generates a unique secure password, hashes it, and optionally sends an invitation.
      */
     public ManagerDTO createManager(ManagerDTO managerDTO) {
         if (managerDTO == null) {
@@ -130,8 +134,18 @@ public class ManagerService {
             throw new IllegalArgumentException("Manager email is required");
         }
         
+        String cleanEmail = managerDTO.getEmail().trim().toLowerCase();
+        if (!com.fixzone.fixzon_backend.util.EmailValidator.isValidRealEmail(cleanEmail)) {
+            throw new IllegalArgumentException("Invalid email: The email domain does not have an active mail server (MX record) or is not recognized.");
+        }
+
+        if (authRepository.findByEmailIgnoreCase(cleanEmail).isPresent()) {
+            throw new IllegalArgumentException("An account with this email address already exists in the system");
+        }
+
         try {
             Manager manager = mapDtoToEntity(managerDTO);
+            manager.setEmail(cleanEmail);
             
             // INITIALIZATION: Setup critical fields if they are missing
             if (manager.getUserId() == null) {
@@ -139,24 +153,43 @@ public class ManagerService {
             }
             
             manager.setRole(AppConstants.ROLE_SERVICE_MANAGER);
-            manager.setStatus(manager.getStatus() != null ? manager.getStatus() : AppConstants.STATUS_ACTIVE);
+            
+            boolean shouldSendInvite = managerDTO.getSendInvite() == null || managerDTO.getSendInvite();
+            manager.setStatus(shouldSendInvite ? "INVITED" : (managerDTO.getStatus() != null ? managerDTO.getStatus() : AppConstants.STATUS_ACTIVE));
+            manager.setEmailVerified(!shouldSendInvite);
             
             // UNIQUE IDENTIFIER: Create a human-readable manager code for internal tracking
             if (manager.getManagerCode() == null || manager.getManagerCode().isEmpty()) {
                 manager.setManagerCode(AppConstants.MANAGER_PREFIX + manager.getUserId().toString().substring(0, 8).toUpperCase());
             }
 
-            // SECURITY: Never store raw passwords. Hashing prevents leaks if the DB is compromised.
-            String rawPassword = (managerDTO.getPasswordHash() != null && !managerDTO.getPasswordHash().isEmpty()) 
-                    ? managerDTO.getPasswordHash() : defaultPassword;
+            // Generate unique secure temporary password for each manager
+            String rawPassword = (managerDTO.getPasswordHash() != null && !managerDTO.getPasswordHash().trim().isEmpty()) 
+                    ? managerDTO.getPasswordHash().trim() 
+                    : com.fixzone.fixzon_backend.util.PasswordGenerator.generateUniquePassword(10);
             manager.setPasswordHash(passwordEncoder.encode(rawPassword));
             
             Manager savedManager = managerRepository.save(manager);
 
-            // NOTIFICATION: Trigger welcome email to help user onboard immediately
-            boolean shouldSendInvite = managerDTO.getSendInvite() == null || managerDTO.getSendInvite();
+            // Fetch center & company name for rich email template
+            String centerName = null;
+            String companyName = null;
+            if (savedManager.getManagedCenterId() != null) {
+                var centerOpt = serviceCenterRepository.findById(savedManager.getManagedCenterId());
+                if (centerOpt.isPresent()) {
+                    centerName = centerOpt.get().getName();
+                    if (centerOpt.get().getOwner() != null) {
+                        var ownerOpt = ownerRepository.findById(centerOpt.get().getOwner().getUserId());
+                        if (ownerOpt.isPresent()) {
+                            companyName = ownerOpt.get().getCompanyName();
+                        }
+                    }
+                }
+            }
+
+            // NOTIFICATION: Trigger credentials email with the unique password
             if (shouldSendInvite) {
-                emailService.sendWelcomeEmail(savedManager.getEmail(), savedManager.getFullName(), rawPassword);
+                emailService.sendManagerCredentialsEmail(savedManager.getEmail(), savedManager.getFullName(), rawPassword, centerName, companyName);
             }
 
             ManagerDTO response = mapEntityToDto(savedManager);
@@ -166,6 +199,42 @@ public class ManagerService {
             log.error("Database error while creating manager: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to create manager", e);
         }
+    }
+
+    /**
+     * Resends manager login credentials email with a newly generated unique password.
+     */
+    public void resendInvitation(UUID managerId) {
+        if (managerId == null) {
+            throw new IllegalArgumentException("Manager ID cannot be null");
+        }
+        Manager manager = managerRepository.findById(managerId)
+                .orElseThrow(() -> new IllegalArgumentException("Manager not found"));
+        
+        // Generate a new unique password on resend
+        String newPassword = com.fixzone.fixzon_backend.util.PasswordGenerator.generateUniquePassword(10);
+        manager.setPasswordHash(passwordEncoder.encode(newPassword));
+        manager.setStatus("INVITED");
+        manager.setEmailVerified(false);
+        manager.setUpdatedAt(LocalDateTime.now());
+        managerRepository.save(manager);
+
+        String centerName = null;
+        String companyName = null;
+        if (manager.getManagedCenterId() != null) {
+            var centerOpt = serviceCenterRepository.findById(manager.getManagedCenterId());
+            if (centerOpt.isPresent()) {
+                centerName = centerOpt.get().getName();
+                if (centerOpt.get().getOwner() != null) {
+                    var ownerOpt = ownerRepository.findById(centerOpt.get().getOwner().getUserId());
+                    if (ownerOpt.isPresent()) {
+                        companyName = ownerOpt.get().getCompanyName();
+                    }
+                }
+            }
+        }
+
+        emailService.sendManagerCredentialsEmail(manager.getEmail(), manager.getFullName(), newPassword, centerName, companyName);
     }
 
     /**
@@ -180,10 +249,21 @@ public class ManagerService {
             throw new IllegalArgumentException("Manager data cannot be null");
         }
         
+        if (dto.getEmail() != null && !dto.getEmail().trim().isEmpty()) {
+            String cleanEmail = dto.getEmail().trim().toLowerCase();
+            if (!com.fixzone.fixzon_backend.util.EmailValidator.isValidRealEmail(cleanEmail)) {
+                throw new IllegalArgumentException("Invalid email: The email domain does not have an active mail server (MX record) or is not recognized.");
+            }
+            java.util.Optional<com.fixzone.fixzon_backend.model.User> existingUser = authRepository.findByEmail(cleanEmail);
+            if (existingUser.isPresent() && !existingUser.get().getUserId().equals(id)) {
+                throw new IllegalArgumentException("An account with this email address already exists in the system");
+            }
+        }
+        
         try {
             return managerRepository.findById(id).map(existing -> {
                 if (dto.getFullName() != null) existing.setFullName(dto.getFullName());
-                if (dto.getEmail() != null) existing.setEmail(dto.getEmail());
+                if (dto.getEmail() != null) existing.setEmail(dto.getEmail().trim().toLowerCase());
                 if (dto.getPhone() != null) existing.setPhone(dto.getPhone());
                 if (dto.getManagedCenterId() != null) existing.setManagedCenterId(dto.getManagedCenterId());
                 if (dto.getStatus() != null) existing.setStatus(dto.getStatus());
