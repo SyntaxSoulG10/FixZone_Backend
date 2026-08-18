@@ -321,13 +321,6 @@ public class DataInitializer implements CommandLineRunner {
             charlie.setCustomerCode("CUST-MOCK");
             customerRepository.save(charlie);
             log.info(">>> Mock Charlie Customer created successfully <<<");
-        } else {
-            // Ensure password is always in sync with what the code expects
-            userRepository.findById(charlieId).ifPresent(u -> {
-                u.setPasswordHash(passwordEncoder.encode("FixZone@2026!Secure"));
-                userRepository.save(u);
-                log.info(">>> Mock Charlie password synced <<<");
-            });
         }
     }
 
@@ -412,8 +405,6 @@ public class DataInitializer implements CommandLineRunner {
                 owner.setFacebookUrl("https://facebook.com/rajamotors");
                 owner.setTwitterUrl("https://twitter.com/rajamotors");
                 owner.setInstagramUrl("https://instagram.com/rajamotors");
-                // Always sync password so raja@motors.lk / pass123 always works
-                owner.setPasswordHash(passwordEncoder.encode("pass123"));
                 // Ensure subscription is active so the owner can log in and use the dashboard
                 String currentSubStatus = owner.getSubscriptionStatus();
                 if (currentSubStatus == null || "INACTIVE".equals(currentSubStatus) || "EXPIRED".equals(currentSubStatus) 

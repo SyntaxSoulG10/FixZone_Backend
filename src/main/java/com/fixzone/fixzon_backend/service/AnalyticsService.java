@@ -94,6 +94,16 @@ public class AnalyticsService {
 
         Set<UUID> targetIds = filterCenterId != null ? Set.of(filterCenterId) : centersMap.keySet();
         
+        if (targetIds == null || targetIds.isEmpty()) {
+            return new AnalyticsDTO(
+                    BigDecimal.ZERO, "+0%", 0L, "+0%",
+                    0L, "+0%", BigDecimal.ZERO, "+0%",
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("hh:mm a")),
+                    BigDecimal.ZERO, BigDecimal.ZERO,
+                    List.of(), List.of(), List.of(), List.of(), List.of()
+            );
+        }
+        
         // 3. BULK DATA FETCHING (Optimization: Filter at DB level)
         // Fetches only what's necessary for the calculation using targetIds.
         List<Invoice> finalInvoices = invoiceRepository.findByCenterIdInAndIssuedAtBetween(

@@ -145,6 +145,29 @@ public class ManagerController {
         return ResponseEntity.ok(updatedManager);
     }
 
+    @PostMapping("/{id}/resend-invite")
+    public ResponseEntity<Void> resendInvite(@PathVariable UUID id) {
+        String email = getCurrentUserEmail();
+        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+        
+        ManagerDTO existing = managerService.getManagerById(id);
+        if (existing == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        if (owner != null) {
+            boolean ownsCenter = serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode())
+                .stream().anyMatch(c -> c.getCenterId().equals(existing.getManagedCenterId()));
+            if (!ownsCenter) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You do not own this manager");
+            }
+        }
+        
+        log.info("Resending invite to manager ID: {}", id);
+        managerService.resendInvite(id);
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteManager(@PathVariable UUID id) {
         try {
