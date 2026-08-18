@@ -4,10 +4,14 @@ import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 import com.fixzone.fixzon_backend.config.AppConstants;
 import com.fixzone.fixzon_backend.model.Owner;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import com.fixzone.fixzon_backend.repository.NotificationRepository;
+import com.fixzone.fixzon_backend.repository.SubscriptionBillingRepository;
+import com.fixzone.fixzon_backend.repository.SubscriptionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -19,19 +23,28 @@ import java.util.stream.Collectors;
  * Handles the lifecycle of owner data, including registration, updates, and retrieval.
  */
 @Service
-
 public class OwnerService {
     private static final Logger log = LoggerFactory.getLogger(OwnerService.class);
 
     private final OwnerRepository ownerRepository;
     private final ImageKitService imageKitService;
+    private final NotificationRepository notificationRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionBillingRepository subscriptionBillingRepository;
 
     /**
      * Constructor injection for required dependencies.
      */
-    public OwnerService(OwnerRepository ownerRepository, ImageKitService imageKitService) {
+    public OwnerService(OwnerRepository ownerRepository, 
+                        ImageKitService imageKitService,
+                        NotificationRepository notificationRepository,
+                        SubscriptionRepository subscriptionRepository,
+                        SubscriptionBillingRepository subscriptionBillingRepository) {
         this.ownerRepository = ownerRepository;
         this.imageKitService = imageKitService;
+        this.notificationRepository = notificationRepository;
+        this.subscriptionRepository = subscriptionRepository;
+        this.subscriptionBillingRepository = subscriptionBillingRepository;
     }
 
     /**
@@ -212,6 +225,7 @@ public class OwnerService {
         }
     }
 
+    @Transactional
     public void removeOwner(UUID targetOwnerId) {
         if (targetOwnerId == null) {
             throw new IllegalArgumentException("The Owner ID parameter must not be null.");
@@ -220,6 +234,22 @@ public class OwnerService {
             if (!ownerRepository.existsById(targetOwnerId)) {
                 throw new IllegalStateException("Cannot delete owner because no owner was found with ID: " + targetOwnerId);
             }
+            // 1. Delete notifications sent to this owner
+            if (notificationRepository != null) {
+                notificationRepository.deleteByRecipientUserId(targetOwnerId);
+            }
+
+            // 2. Delete subscription and associated billing records if present
+            if (subscriptionRepository != null) {
+                subscriptionRepository.findByOwnerUserId(targetOwnerId).ifPresent(sub -> {
+                    if (subscriptionBillingRepository != null) {
+                        subscriptionBillingRepository.deleteBySubscriptionId(sub.getId());
+                    }
+                    subscriptionRepository.delete(sub);
+                });
+            }
+
+            // 3. Delete owner record
             ownerRepository.deleteById(targetOwnerId);
         } catch (IllegalStateException e) {
             throw e;

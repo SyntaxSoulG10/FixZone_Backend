@@ -10,4 +10,9 @@ import java.util.UUID;
 @Repository
 public interface SubscriptionBillingRepository extends JpaRepository<SubscriptionBilling, UUID> {
     List<SubscriptionBilling> findBySubscriptionIdOrderByPaymentDateDesc(UUID subscriptionId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query("DELETE FROM SubscriptionBilling b WHERE b.subscriptionId = :subscriptionId")
+    void deleteBySubscriptionId(UUID subscriptionId);
 }

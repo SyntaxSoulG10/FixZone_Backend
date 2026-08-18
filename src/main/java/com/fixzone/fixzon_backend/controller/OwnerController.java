@@ -72,11 +72,17 @@ public class OwnerController {
     @PutMapping("/{ownerId}")
     public ResponseEntity<OwnerDTO> modifyOwnerDetails(@PathVariable UUID ownerId,
             @jakarta.validation.Valid @RequestBody OwnerDTO updatedOwnerData) {
-        String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        OwnerDTO currentOwner = ownerService.retrieveOwnerByEmail(email);
+        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isSuperAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN") || a.getAuthority().equals("SUPER_ADMIN"));
 
-        if (currentOwner == null || !currentOwner.getUserId().equals(ownerId)) {
-            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You cannot modify another owner's profile");
+        if (!isSuperAdmin) {
+            String email = (String) auth.getPrincipal();
+            OwnerDTO currentOwner = ownerService.retrieveOwnerByEmail(email);
+
+            if (currentOwner == null || !currentOwner.getUserId().equals(ownerId)) {
+                throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You cannot modify another owner's profile");
+            }
         }
 
         OwnerDTO modifiedOwner = ownerService.modifyOwner(ownerId, updatedOwnerData);
@@ -88,13 +94,32 @@ public class OwnerController {
         return ResponseEntity.ok(modifiedOwner);
     }
 
-    @DeleteMapping("/{ownerId}")
-    public ResponseEntity<Void> removeOwnerRecord(@PathVariable UUID ownerId) {
+    @DeleteMapping("/current")
+    public ResponseEntity<Void> removeCurrentOwner() {
         String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         OwnerDTO currentOwner = ownerService.retrieveOwnerByEmail(email);
 
-        if (currentOwner == null || !currentOwner.getUserId().equals(ownerId)) {
-            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You cannot delete another owner's profile");
+        if (currentOwner == null) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND, "Owner profile not found");
+        }
+
+        ownerService.removeOwner(currentOwner.getUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{ownerId}")
+    public ResponseEntity<Void> removeOwnerRecord(@PathVariable UUID ownerId) {
+        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isSuperAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN") || a.getAuthority().equals("SUPER_ADMIN"));
+
+        if (!isSuperAdmin) {
+            String email = (String) auth.getPrincipal();
+            OwnerDTO currentOwner = ownerService.retrieveOwnerByEmail(email);
+
+            if (currentOwner == null || !currentOwner.getUserId().equals(ownerId)) {
+                throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You cannot delete another owner's profile");
+            }
         }
 
         ownerService.removeOwner(ownerId);
