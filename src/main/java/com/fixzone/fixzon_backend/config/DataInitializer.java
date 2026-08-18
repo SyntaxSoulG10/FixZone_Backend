@@ -87,6 +87,10 @@ public class DataInitializer implements CommandLineRunner {
             java.sql.Statement stmt = conn.createStatement();
             stmt.execute("ALTER TABLE users ALTER COLUMN profile_picture_url TYPE TEXT");
             stmt.execute("ALTER TABLE owner ALTER COLUMN banner_image_url TYPE TEXT");
+            stmt.execute("ALTER TABLE service_centers ALTER COLUMN business_reg_url TYPE TEXT");
+            stmt.execute("ALTER TABLE service_centers ALTER COLUMN nic_url TYPE TEXT");
+            stmt.execute("ALTER TABLE service_centers ALTER COLUMN tax_id_url TYPE TEXT");
+            stmt.execute("ALTER TABLE vehicles ALTER COLUMN image_url TYPE TEXT");
         } catch (Exception e) {
             log.info("Schema migration note: {}", e.getMessage());
         }
