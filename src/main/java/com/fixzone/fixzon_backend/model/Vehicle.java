@@ -35,7 +35,7 @@ public class Vehicle {
     @Column(name = "vehicle_type", length = 20)
     private String vehicleType;
 
-    @Column(name = "image_url")
+    @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
 
     @PrePersist
