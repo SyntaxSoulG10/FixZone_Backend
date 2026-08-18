@@ -378,16 +378,20 @@ public class DataInitializer implements CommandLineRunner {
             log.info(">>> Raja Motors created and seeded successfully <<<");
         } else {
             log.debug("Raja Motors user/email already exists. Syncing Owner details...");
-            Optional<User> existingUser = userRepository.findById(rajaId);
-            if (existingUser.isPresent()) {
-                Optional<Owner> existingOwner = ownerRepository.findById(rajaId);
+            Optional<User> existingUserOpt = userRepository.findById(rajaId);
+            if (!existingUserOpt.isPresent()) {
+                existingUserOpt = userRepository.findByEmail(rajaEmail);
+            }
+
+            if (existingUserOpt.isPresent()) {
+                User user = existingUserOpt.get();
+                Optional<Owner> existingOwner = ownerRepository.findById(user.getUserId());
                 Owner owner;
                 if (existingOwner.isPresent()) {
                     owner = existingOwner.get();
                     log.debug("Existing Owner record found.");
                 } else {
                     log.debug("User exists but Owner record missing. Creating Owner record...");
-                    User user = existingUser.get();
                     owner = new Owner();
                     owner.setUserId(user.getUserId());
                     owner.setFullName(user.getFullName());

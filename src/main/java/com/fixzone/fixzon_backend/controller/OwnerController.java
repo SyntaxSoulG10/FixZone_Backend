@@ -69,6 +69,24 @@ public class OwnerController {
         return ResponseEntity.status(HttpStatus.CREATED).body(createdOwner);
     }
 
+    @PutMapping("/current")
+    public ResponseEntity<OwnerDTO> modifyCurrentOwnerDetails(
+            @jakarta.validation.Valid @RequestBody OwnerDTO updatedOwnerData) {
+        String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        OwnerDTO currentOwner = ownerService.retrieveOwnerByEmail(email);
+
+        if (currentOwner == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        OwnerDTO modifiedOwner = ownerService.modifyOwner(currentOwner.getUserId(), updatedOwnerData);
+        if (modifiedOwner == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        return ResponseEntity.ok(modifiedOwner);
+    }
+
     @PutMapping("/{ownerId}")
     public ResponseEntity<OwnerDTO> modifyOwnerDetails(@PathVariable UUID ownerId,
             @jakarta.validation.Valid @RequestBody OwnerDTO updatedOwnerData) {

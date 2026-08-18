@@ -141,7 +141,7 @@ public class OwnerService {
 
     /**
      * Updates an existing owner's details.
-     * Explicitly maps fields to preserve inherited user properties.
+     * Explicitly maps fields to preserve inherited user properties and keeps login email immutable.
      */
     public OwnerDTO modifyOwner(UUID targetOwnerId, OwnerDTO updatedOwnerData) {
         if (targetOwnerId == null) {
@@ -153,76 +153,118 @@ public class OwnerService {
 
         try {
             return ownerRepository.findById(targetOwnerId).map(existingOwner -> {
-                // Check if email is being updated and if it's already taken by another user
-                if (updatedOwnerData.getEmail() != null && !updatedOwnerData.getEmail().equals(existingOwner.getEmail())) {
-                    if (ownerRepository.findByEmail(updatedOwnerData.getEmail()).isPresent()) {
-                        throw new IllegalStateException("Email is already in use by another owner.");
+                // SECURITY: Primary login email cannot be changed via profile update
+                // (existingOwner.getEmail() is retained and protected)
+
+                // 1. Company Name validation (Required, 2-150 chars)
+                if (updatedOwnerData.getCompanyName() != null) {
+                    String compName = updatedOwnerData.getCompanyName().trim();
+                    if (compName.length() < 2 || compName.length() > 150) {
+                        throw new IllegalArgumentException("Company name must be between 2 and 150 characters.");
+                    }
+                    existingOwner.setCompanyName(compName);
+                }
+
+                // 2. Company Email validation (Optional, valid format)
+                if (updatedOwnerData.getCompanyEmail() != null) {
+                    String compEmail = updatedOwnerData.getCompanyEmail().trim();
+                    if (!compEmail.isEmpty()) {
+                        if (!compEmail.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+                            throw new IllegalArgumentException("Invalid company email format.");
+                        }
+                        existingOwner.setCompanyEmail(compEmail);
+                    } else {
+                        existingOwner.setCompanyEmail(null);
                     }
                 }
 
-                // Updates owner-specific properties
-                if (updatedOwnerData.getOwnerCode() != null) {
-                    existingOwner.setOwnerCode(updatedOwnerData.getOwnerCode());
-                }
-                if (updatedOwnerData.getCompanyName() != null) {
-                    existingOwner.setCompanyName(updatedOwnerData.getCompanyName());
-                }
-                if (updatedOwnerData.getCompanyEmail() != null) {
-                    existingOwner.setCompanyEmail(updatedOwnerData.getCompanyEmail());
-                }
+                // 3. Company Phone validation (Optional, 9-20 chars)
                 if (updatedOwnerData.getCompanyNumber() != null) {
-                    existingOwner.setCompanyNumber(updatedOwnerData.getCompanyNumber());
+                    String compNum = updatedOwnerData.getCompanyNumber().trim();
+                    if (!compNum.isEmpty()) {
+                        if (!compNum.matches("^[0-9+()\\s-]{9,20}$")) {
+                            throw new IllegalArgumentException("Company phone number must be 9-20 digits.");
+                        }
+                        existingOwner.setCompanyNumber(compNum);
+                    } else {
+                        existingOwner.setCompanyNumber(null);
+                    }
                 }
-                
+
+                // 4. Social URLs sanitization
                 if (updatedOwnerData.getFacebookUrl() != null) {
-                    existingOwner.setFacebookUrl(updatedOwnerData.getFacebookUrl());
+                    existingOwner.setFacebookUrl(sanitizeSocialUrl(updatedOwnerData.getFacebookUrl()));
                 }
                 if (updatedOwnerData.getTwitterUrl() != null) {
-                    existingOwner.setTwitterUrl(updatedOwnerData.getTwitterUrl());
+                    existingOwner.setTwitterUrl(sanitizeSocialUrl(updatedOwnerData.getTwitterUrl()));
                 }
                 if (updatedOwnerData.getInstagramUrl() != null) {
-                    existingOwner.setInstagramUrl(updatedOwnerData.getInstagramUrl());
+                    existingOwner.setInstagramUrl(sanitizeSocialUrl(updatedOwnerData.getInstagramUrl()));
                 }
-                
+
+                // 5. Banner image update
                 if (updatedOwnerData.getBannerImageUrl() != null && !updatedOwnerData.getBannerImageUrl().equals(existingOwner.getBannerImageUrl())) {
                     log.info("[OWNER] Detected change in Banner Image. Length: {}", updatedOwnerData.getBannerImageUrl().length());
                     String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getBannerImageUrl(), AppConstants.OWNER_BANNER_PREFIX + existingOwner.getUserId());
                     existingOwner.setBannerImageUrl(uploadedUrl);
                     log.info("[OWNER] Banner updated to: {}", uploadedUrl);
                 }
-                
-                // Updates inherited user properties
+
+                // 6. Full Name validation (Required, 2-100 chars)
                 if (updatedOwnerData.getFullName() != null) {
-                    existingOwner.setFullName(updatedOwnerData.getFullName());
+                    String fName = updatedOwnerData.getFullName().trim();
+                    if (fName.length() < 2 || fName.length() > 100) {
+                        throw new IllegalArgumentException("Full name must be between 2 and 100 characters.");
+                    }
+                    existingOwner.setFullName(fName);
                 }
-                if (updatedOwnerData.getEmail() != null) {
-                    existingOwner.setEmail(updatedOwnerData.getEmail());
-                }
+
+                // 7. Owner Personal Phone validation (Optional, 9-20 chars)
                 if (updatedOwnerData.getPhone() != null) {
-                    existingOwner.setPhone(updatedOwnerData.getPhone());
+                    String userPhone = updatedOwnerData.getPhone().trim();
+                    if (!userPhone.isEmpty()) {
+                        if (!userPhone.matches("^[0-9+()\\s-]{9,20}$")) {
+                            throw new IllegalArgumentException("Personal phone number must be 9-20 digits.");
+                        }
+                        existingOwner.setPhone(userPhone);
+                    } else {
+                        existingOwner.setPhone(null);
+                    }
                 }
-                
+
+                // 8. Profile picture update
                 if (updatedOwnerData.getProfilePictureUrl() != null && !updatedOwnerData.getProfilePictureUrl().equals(existingOwner.getProfilePictureUrl())) {
                     log.info("[OWNER] Detected change in Profile Picture. Length: {}", updatedOwnerData.getProfilePictureUrl().length());
                     String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getProfilePictureUrl(), AppConstants.OWNER_PROFILE_PREFIX + existingOwner.getUserId());
                     existingOwner.setProfilePictureUrl(uploadedUrl);
                     log.info("[OWNER] Profile picture updated to: {}", uploadedUrl);
                 }
-                
+
                 if (updatedOwnerData.getStatus() != null) {
                     existingOwner.setStatus(updatedOwnerData.getStatus());
                 }
-                
+
                 Owner successfullyUpdatedEntity = ownerRepository.save(existingOwner);
                 return transformToDataTransferObject(successfullyUpdatedEntity);
             }).orElse(null);
-        } catch (IllegalStateException e) {
-            throw e; // Rethrow validation exceptions
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw e; // Rethrow validation exceptions so Spring returns 400 Bad Request
         } catch (Exception e) {
             // Logs critical errors during modification
             log.error("CRITICAL ERROR during owner modification: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to update owner details", e);
         }
+    }
+
+    private String sanitizeSocialUrl(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return null;
+        }
+        String trimmed = url.trim();
+        if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+            return "https://" + trimmed;
+        }
+        return trimmed;
     }
 
     @Transactional
