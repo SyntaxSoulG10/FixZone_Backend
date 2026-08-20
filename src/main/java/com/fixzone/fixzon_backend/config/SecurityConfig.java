@@ -49,6 +49,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/webhooks/stripe").permitAll()
                         .requestMatchers("/api/payments/connect/callback").permitAll()
                         .requestMatchers("/api/subscriptions/seed-billing").permitAll()
+                        .requestMatchers(
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
                         .requestMatchers("/api/admin/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "SUPER_ADMIN")
                         .requestMatchers("/api/super-admins/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "SUPER_ADMIN")
                         .requestMatchers("/api/customers/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "CUSTOMER", "OWNER", "COMPANY_OWNER")

@@ -12,6 +12,10 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+
+@Tag(name = "Bookings", description = "Service booking creation, status management, and schedule slot APIs")
 @RestController
 @RequestMapping("/api/bookings")
 public class BookingController {

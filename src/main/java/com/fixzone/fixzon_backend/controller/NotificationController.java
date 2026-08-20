@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+
+@Tag(name = "Notifications", description = "In-app notification and alert APIs")
 @RestController
 @RequestMapping("/api/notifications")
 public class NotificationController {

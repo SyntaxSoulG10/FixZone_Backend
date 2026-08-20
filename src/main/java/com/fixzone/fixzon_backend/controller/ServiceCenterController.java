@@ -19,6 +19,10 @@ import org.springframework.http.HttpStatus;
 import com.fixzone.fixzon_backend.service.ManagerService;
 import com.fixzone.fixzon_backend.DTO.ManagerDTO;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+
+@Tag(name = "Service Centers", description = "Service center discovery, nearby location search, and detail APIs")
 @RestController
 @RequestMapping("/api/service-centers")
 public class ServiceCenterController {

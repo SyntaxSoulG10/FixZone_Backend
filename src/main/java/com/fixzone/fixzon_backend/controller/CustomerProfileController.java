@@ -9,7 +9,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.util.*;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
+@Tag(name = "Customer Profile & Vehicles", description = "Customer profile management and vehicle garage APIs")
 @RestController
 @RequestMapping("/api/customer")
 @Transactional
@@ -118,6 +121,13 @@ public class CustomerProfileController {
         Customer customer = customerRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
         return ResponseEntity.ok(vehicleRepository.findByCustomerId(customer.getUserId()));
+    }
+
+    @GetMapping("/vehicle/{id}")
+    public ResponseEntity<Vehicle> getVehicleById(@PathVariable UUID id) {
+        return vehicleRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/vehicle")
