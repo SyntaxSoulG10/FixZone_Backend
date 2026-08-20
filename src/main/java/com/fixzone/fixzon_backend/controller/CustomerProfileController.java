@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.util.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.Operation;
 
 @Tag(name = "Customer Profile & Vehicles", description = "Customer profile management and vehicle garage APIs")
 @RestController
@@ -23,8 +22,8 @@ public class CustomerProfileController {
     private final ImageKitService imageKitService;
 
     public CustomerProfileController(CustomerRepository customerRepository,
-                                      VehicleRepository vehicleRepository,
-                                      ImageKitService imageKitService) {
+            VehicleRepository vehicleRepository,
+            ImageKitService imageKitService) {
         this.customerRepository = customerRepository;
         this.vehicleRepository = vehicleRepository;
         this.imageKitService = imageKitService;
@@ -58,14 +57,15 @@ public class CustomerProfileController {
         response.put("secondName", secondName);
         response.put("email", customer.getEmail());
         response.put("phoneNumber", customer.getPhone() != null ? customer.getPhone() : "");
-        response.put("profilePictureUrl", customer.getProfilePictureUrl() != null ? customer.getProfilePictureUrl() : "");
+        response.put("profilePictureUrl",
+                customer.getProfilePictureUrl() != null ? customer.getProfilePictureUrl() : "");
 
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(org.springframework.security.core.Authentication authentication,
-                                            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, String> request) {
         if (authentication == null || authentication.getName() == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
@@ -75,8 +75,19 @@ public class CustomerProfileController {
 
         String firstName = request.getOrDefault("firstName", "");
         String secondName = request.getOrDefault("secondName", "");
-        customer.setFullName((firstName + " " + secondName).trim());
-        customer.setPhone(request.get("phoneNumber"));
+        if (!firstName.isBlank() || !secondName.isBlank()) {
+            customer.setFullName((firstName + " " + secondName).trim());
+        }
+
+        String phone = request.get("phoneNumber");
+        if (phone != null && !phone.isBlank()) {
+            String cleanedPhone = phone.replaceAll("\\s+", "");
+            if (!cleanedPhone.matches("^(\\+94|0)?7[0-9]{8}$")) {
+                return ResponseEntity.badRequest().body(Map.of("error",
+                        "Please enter a valid Sri Lankan mobile number (e.g. 0771234567 or +94771234567)"));
+            }
+            customer.setPhone(cleanedPhone);
+        }
 
         if (request.containsKey("profilePictureUrl")) {
             customer.setProfilePictureUrl(request.get("profilePictureUrl"));
@@ -92,7 +103,7 @@ public class CustomerProfileController {
      */
     @PostMapping("/profile/picture")
     public ResponseEntity<?> uploadProfilePicture(org.springframework.security.core.Authentication authentication,
-                                                    @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, String> request) {
         if (authentication == null || authentication.getName() == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
@@ -132,7 +143,7 @@ public class CustomerProfileController {
 
     @PostMapping("/vehicle")
     public ResponseEntity<Vehicle> addVehicle(org.springframework.security.core.Authentication authentication,
-                                               @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, String> request) {
         if (authentication == null || authentication.getName() == null) {
             return ResponseEntity.status(401).build();
         }
@@ -142,9 +153,9 @@ public class CustomerProfileController {
         String brand = request.get("brand");
         String plateNumber = request.get("plateNumber");
         String vehicleType = request.get("vehicleType"); // e.g. "CAR", "BIKE"
-        String model = request.get("model");             // e.g. "Corolla"
-        String imageData = request.get("imageData");     // optional base64 image
-        String imageUrlReq = request.get("imageUrl");    // optional CDN image URL
+        String model = request.get("model"); // e.g. "Corolla"
+        String imageData = request.get("imageData"); // optional base64 image
+        String imageUrlReq = request.get("imageUrl"); // optional CDN image URL
 
         if (brand == null || brand.isBlank()) {
             throw new IllegalArgumentException("Brand is required");
@@ -177,8 +188,8 @@ public class CustomerProfileController {
      */
     @PutMapping("/vehicle/{id}")
     public ResponseEntity<Vehicle> updateVehicle(@PathVariable UUID id,
-                                                 org.springframework.security.core.Authentication authentication,
-                                                 @RequestBody Map<String, String> request) {
+            org.springframework.security.core.Authentication authentication,
+            @RequestBody Map<String, String> request) {
         if (authentication == null || authentication.getName() == null) {
             return ResponseEntity.status(401).build();
         }
@@ -191,10 +202,14 @@ public class CustomerProfileController {
             return ResponseEntity.status(403).build();
         }
 
-        if (request.containsKey("brand") && request.get("brand") != null) vehicle.setBrand(request.get("brand"));
-        if (request.containsKey("model")) vehicle.setModel(request.get("model"));
-        if (request.containsKey("plateNumber") && request.get("plateNumber") != null) vehicle.setPlateNumber(request.get("plateNumber"));
-        if (request.containsKey("vehicleType") && request.get("vehicleType") != null) vehicle.setVehicleType(request.get("vehicleType").toUpperCase());
+        if (request.containsKey("brand") && request.get("brand") != null)
+            vehicle.setBrand(request.get("brand"));
+        if (request.containsKey("model"))
+            vehicle.setModel(request.get("model"));
+        if (request.containsKey("plateNumber") && request.get("plateNumber") != null)
+            vehicle.setPlateNumber(request.get("plateNumber"));
+        if (request.containsKey("vehicleType") && request.get("vehicleType") != null)
+            vehicle.setVehicleType(request.get("vehicleType").toUpperCase());
 
         String imageUrlReq = request.get("imageUrl");
         String imageData = request.get("imageData");
@@ -214,8 +229,8 @@ public class CustomerProfileController {
      */
     @PostMapping("/vehicle/{id}/image")
     public ResponseEntity<?> uploadVehicleImage(@PathVariable UUID id,
-                                                 org.springframework.security.core.Authentication authentication,
-                                                 @RequestBody Map<String, String> request) {
+            org.springframework.security.core.Authentication authentication,
+            @RequestBody Map<String, String> request) {
         if (authentication == null || authentication.getName() == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
@@ -265,7 +280,7 @@ public class CustomerProfileController {
 
     @PutMapping("/settings")
     public ResponseEntity<?> updateSettings(org.springframework.security.core.Authentication authentication,
-                                             @RequestBody Map<String, Object> settings) {
+            @RequestBody Map<String, Object> settings) {
         return ResponseEntity.ok(settings);
     }
 
@@ -283,7 +298,7 @@ public class CustomerProfileController {
 
     @PostMapping("/payment-method")
     public ResponseEntity<?> addPaymentMethod(org.springframework.security.core.Authentication authentication,
-                                               @RequestBody Map<String, Object> payload) {
+            @RequestBody Map<String, Object> payload) {
         payload.put("id", new Random().nextInt(1000));
         return ResponseEntity.ok(payload);
     }

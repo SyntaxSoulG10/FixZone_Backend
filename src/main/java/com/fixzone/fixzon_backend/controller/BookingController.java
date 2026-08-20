@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.Operation;
 
 @Tag(name = "Bookings", description = "Service booking creation, status management, and schedule slot APIs")
 @RestController
@@ -26,9 +25,7 @@ public class BookingController {
         this.bookingService = bookingService;
     }
 
-
     // EXISTING READ-ONLY ENDPOINTS (BACKWARDS COMPACT)
-
 
     @GetMapping
     public ResponseEntity<List<BookingResponseDTO>> getAllBookings() {
@@ -44,22 +41,22 @@ public class BookingController {
             org.springframework.security.core.Authentication authentication) {
         return ResponseEntity.ok(bookingService.getBookingsForCurrentCustomer(authentication.getName()));
     }
-    
+
     @GetMapping("/{id}")
     public ResponseEntity<BookingResponseDTO> getBookingById(@PathVariable UUID id) {
         return ResponseEntity.ok(bookingService.getBookingById(id));
     }
-    
+
     @GetMapping("/center/{centerId}")
     public ResponseEntity<List<BookingResponseDTO>> getBookingsByCenter(@PathVariable UUID centerId) {
         return ResponseEntity.ok(bookingService.getBookingsByCenter(centerId));
     }
-    
+
     @GetMapping("/customer/{customerId}")
     public ResponseEntity<List<BookingResponseDTO>> getBookingsByCustomer(@PathVariable UUID customerId) {
         return ResponseEntity.ok(bookingService.getBookingsByCustomer(customerId));
     }
-    
+
     @GetMapping("/status/{status}")
     public ResponseEntity<List<BookingResponseDTO>> getBookingsByStatus(@PathVariable String status) {
         return ResponseEntity.ok(bookingService.getBookingsByStatus(status));
@@ -73,8 +70,7 @@ public class BookingController {
 
     @GetMapping("/mechanic/{mechanicId}")
     public ResponseEntity<List<BookingResponseDTO>> getBookingsByMechanic(
-            @PathVariable UUID mechanicId
-    ) {
+            @PathVariable UUID mechanicId) {
         return ResponseEntity.ok(bookingService.getBookingsByMechanic(mechanicId));
     }
 
@@ -82,8 +78,7 @@ public class BookingController {
     public ResponseEntity<Boolean> checkSlotAvailability(
             @RequestParam UUID centerId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime time
-    ) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime time) {
         boolean taken = bookingService.isSlotTaken(centerId, date, time);
         return ResponseEntity.ok(!taken);
     }
@@ -91,8 +86,7 @@ public class BookingController {
     @GetMapping("/available-slots")
     public ResponseEntity<List<String>> getAvailableSlots(
             @RequestParam UUID centerId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
-    ) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(bookingService.getAvailableSlots(centerId, date));
     }
 
@@ -103,11 +97,9 @@ public class BookingController {
 
     @GetMapping("/upcoming")
     public ResponseEntity<List<BookingResponseDTO>> getUpcomingBookings(
-            @RequestParam(required = false) UUID customerId
-    ) {
+            @RequestParam(required = false) UUID customerId) {
         return ResponseEntity.ok(bookingService.getUpcomingBookings(customerId));
     }
-
 
     /**
      * Create a new booking.
@@ -128,8 +120,7 @@ public class BookingController {
     public ResponseEntity<BookingResponseDTO> rescheduleBooking(
             @PathVariable UUID id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate newDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime newTime
-    ) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime newTime) {
         return ResponseEntity.ok(bookingService.rescheduleBooking(id, newDate, newTime));
     }
 
@@ -141,6 +132,7 @@ public class BookingController {
     public ResponseEntity<BookingResponseDTO> cancelBooking(@PathVariable UUID id) {
         return ResponseEntity.ok(bookingService.cancelBooking(id));
     }
+
     /**
      * Complete payment for a booking.
      * Status transitions from PENDING_PAYMENT to CONFIRMED.
@@ -148,8 +140,7 @@ public class BookingController {
     @PostMapping("/{id}/payment")
     public ResponseEntity<BookingResponseDTO> completePayment(
             @PathVariable UUID id,
-            @RequestParam String gatewaySessionId
-    ) {
+            @RequestParam String gatewaySessionId) {
         BookingResponseDTO response = bookingService.completePayment(id, gatewaySessionId);
         return ResponseEntity.ok(response);
     }
@@ -170,20 +161,20 @@ public class BookingController {
     @PutMapping("/{id}/status")
     public ResponseEntity<BookingResponseDTO> updateBookingStatus(
             @PathVariable UUID id,
-            @RequestParam com.fixzone.fixzon_backend.enums.BookingStatus status
-    ) {
+            @RequestParam com.fixzone.fixzon_backend.enums.BookingStatus status) {
         return ResponseEntity.ok(bookingService.updateBookingStatus(id, status));
     }
 
     @PutMapping("/{id}/edit")
     public ResponseEntity<BookingResponseDTO> editExistingBooking(
-            @PathVariable UUID id, 
+            @PathVariable UUID id,
             @RequestBody BookingRequestDTO request) {
         return ResponseEntity.ok(bookingService.editExistingBooking(id, request));
     }
 
     @GetMapping("/{id}/status-history")
-    public ResponseEntity<List<com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO>> getBookingStatusHistory(@PathVariable UUID id) {
+    public ResponseEntity<List<com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO>> getBookingStatusHistory(
+            @PathVariable UUID id) {
         return ResponseEntity.ok(bookingService.getBookingStatusHistory(id));
     }
 
