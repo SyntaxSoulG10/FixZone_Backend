@@ -767,7 +767,7 @@ public class PaymentService {
                     if (centerOpt.isPresent()) centerName = centerOpt.get().getName();
                 }
 
-                emailService.sendBookingConfirmationEmail(
+                emailService.sendPaymentConfirmationEmail(
                         customer.getEmail(),
                         customer.getFullName(),
                         pkgName,

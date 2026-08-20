@@ -330,7 +330,7 @@ public class EmailService {
         sendEmail(toEmail, null, "FixZone - Password Recovery", content);
     }
 
-    public void sendBookingConfirmationEmail(String toEmail, String customerName, String packageName, String serviceCenterName, String bookingDate, String bookingTime, java.math.BigDecimal amount) {
+    public void sendPaymentConfirmationEmail(String toEmail, String customerName, String packageName, String serviceCenterName, String bookingDate, String bookingTime, java.math.BigDecimal amount) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
