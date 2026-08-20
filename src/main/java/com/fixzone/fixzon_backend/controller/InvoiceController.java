@@ -1,6 +1,7 @@
 package com.fixzone.fixzon_backend.controller;
 
 import com.fixzone.fixzon_backend.DTO.InvoiceDTO;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.service.InvoiceService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,11 +12,12 @@ import java.util.UUID;
 @RequestMapping("/api/invoices")
 public class InvoiceController {
 
-    // Explicit constructor injection to resolve immutable service boundaries cleanly.
     private final InvoiceService invoiceService;
+    private final OwnerRepository ownerRepository;
 
-    public InvoiceController(InvoiceService invoiceService) {
+    public InvoiceController(InvoiceService invoiceService, OwnerRepository ownerRepository) {
         this.invoiceService = invoiceService;
+        this.ownerRepository = ownerRepository;
     }
 
     @GetMapping
@@ -24,9 +26,14 @@ public class InvoiceController {
     }
 
     @GetMapping("/current")
-    public ResponseEntity<List<InvoiceDTO>> getCurrentOwnerInvoices() {
-        // Hardcoded for development
-        return ResponseEntity.ok(invoiceService.getInvoicesByCompanyCode("FIX001"));
+    public ResponseEntity<List<InvoiceDTO>> getCurrentOwnerInvoices(
+            org.springframework.security.core.Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ownerRepository.findByEmail(authentication.getName())
+                .map(owner -> ResponseEntity.ok(invoiceService.getInvoicesByCompanyCode(owner.getOwnerCode())))
+                .orElse(ResponseEntity.status(404).build());
     }
 
     @GetMapping("/{id}")

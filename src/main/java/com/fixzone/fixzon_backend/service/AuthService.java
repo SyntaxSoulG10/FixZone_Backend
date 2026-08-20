@@ -241,6 +241,7 @@ public class AuthService {
                 owner.getEmailVerified() != null ? owner.getEmailVerified() : false);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void changePassword(String email, String currentPassword, String newPassword) {
         User user = authRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

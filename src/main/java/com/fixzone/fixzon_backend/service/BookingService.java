@@ -11,6 +11,7 @@ import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import com.fixzone.fixzon_backend.repository.VehicleRepository;
+import com.fixzone.fixzon_backend.service.EmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -226,7 +227,25 @@ public class BookingService {
         // Record history log
         saveStatusHistory(saved, saved.getStatus(), "CUSTOMER_RESCHEDULE");
 
-        // Send notifications asynchronously
+        // Send reschedule email to customer
+        try {
+            customerRepository.findById(saved.getCustomerId()).ifPresent(customer -> {
+                String centerName = serviceCenterRepository.findById(saved.getCenterId())
+                        .map(sc -> sc.getName()).orElse("Service Center");
+                emailService.sendBookingRescheduleEmail(
+                        customer.getEmail(),
+                        customer.getFullName(),
+                        saved.getBookingId().toString().substring(0, 8).toUpperCase(),
+                        centerName,
+                        newDate.toString(),
+                        newTime.toString()
+                );
+            });
+        } catch (Exception e) {
+            log.warn("Failed to send reschedule email for booking {}: {}", id, e.getMessage());
+        }
+
+        // Send in-app notifications asynchronously
         java.util.concurrent.CompletableFuture.runAsync(() -> {
             try {
                 if (saved.getCustomerId() != null) {
@@ -297,8 +316,8 @@ public class BookingService {
         // Record history log
         saveStatusHistory(saved, BookingStatus.CANCELLED, "CUSTOMER_CANCEL");
 
-        // Send notifications and emails asynchronously
-        BigDecimal fee = saved.getBookingFee() != null ? saved.getBookingFee() : 
+        // Send notifications and cancellation email asynchronously
+        BigDecimal fee = saved.getBookingFee() != null ? saved.getBookingFee() :
             (saved.getEstimatedCost() != null ? saved.getEstimatedCost().multiply(new BigDecimal("0.40")) : BigDecimal.ZERO);
         BigDecimal penalty = saved.getCancellationPenalty() != null ? saved.getCancellationPenalty() : BigDecimal.ZERO;
         BigDecimal refundCalc = fee.subtract(penalty);
