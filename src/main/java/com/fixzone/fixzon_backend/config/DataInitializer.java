@@ -471,6 +471,7 @@ public class DataInitializer implements CommandLineRunner {
 
             // Always update existing manager images if they are already in the DB
             updateManagerImagesForOwner(owner);
+            ensureRajaManagers(owner);
 
             // SKIP SEEDING if history already exists, but UPDATE metrics to ensure they are
             // accurate
@@ -726,6 +727,33 @@ public class DataInitializer implements CommandLineRunner {
             log.info("[SUCCESS] Manager images updated to professional Unsplash URL.");
         } catch (Exception e) {
             log.error("[ERROR] Failed to update manager images: {}", e.getMessage(), e);
+        }
+    }
+
+    private void ensureRajaManagers(Owner owner) {
+        try {
+            String[] locations = { "Colombo", "Kandy", "Galle" };
+            String mgrImg = "https://images.unsplash.com/photo-1651684215020-f7a5b6610f23?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvZmlsZSUyMHBob3Rvc3xlbnwwfHwwfHx8MA%3D%3D";
+            List<ServiceCenter> centers = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
+            for (ServiceCenter sc : centers) {
+                for (String loc : locations) {
+                    if (sc.getName() != null && sc.getName().contains(loc)) {
+                        String email = "manager." + loc.toLowerCase() + "@raja.lk";
+                        if (!userRepository.existsByEmail(email)) {
+                            Manager mgr = new Manager(UUID.randomUUID(), loc + " Branch Manager",
+                                    email,
+                                    "+94771000" + loc.length(), passwordEncoder.encode("manager123"), "ROLE_SERVICE_MANAGER",
+                                    true,
+                                    null, LocalDateTime.now(), "system", LocalDateTime.now(), "system",
+                                    mgrImg, "MGR-" + loc.substring(0, 3).toUpperCase(), sc.getCenterId());
+                            managerRepository.save(mgr);
+                            log.info(">>> Seeded Raja Manager for {} <<<", loc);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("[ERROR] Failed to ensure Raja branch managers: {}", e.getMessage(), e);
         }
     }
 

@@ -75,6 +75,26 @@ public class ManagerController {
         return ResponseEntity.ok(managerService.getManagersByOwnerCode(owner.getOwnerCode()));
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<ManagerDTO> getMyProfile() {
+        String email = getCurrentUserEmail();
+        ManagerDTO manager = managerService.getManagerByEmail(email);
+        if (manager == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(manager);
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<?> updateMyProfile(@RequestBody ManagerDTO managerDTO) {
+        String email = getCurrentUserEmail();
+        ManagerDTO existing = managerService.getManagerByEmail(email);
+        if (existing == null) return ResponseEntity.notFound().build();
+        // Prevent manager from arbitrarily reassigning center or elevating role
+        managerDTO.setManagedCenterId(existing.getManagedCenterId());
+        managerDTO.setRole(existing.getRole());
+        ManagerDTO updated = managerService.updateManager(existing.getUserId(), managerDTO);
+        return ResponseEntity.ok(updated);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ManagerDTO> getManagerById(@PathVariable UUID id) {
         log.info("Fetching manager by ID: {}", id);
@@ -123,6 +143,7 @@ public class ManagerController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateManager(@PathVariable UUID id, @RequestBody ManagerDTO managerDTO) {
         try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             String email = getCurrentUserEmail();
             OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
             
@@ -131,7 +152,18 @@ public class ManagerController {
                 return ResponseEntity.notFound().build();
             }
             
-            if (owner != null) {
+            boolean isManager = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE_MANAGER"));
+
+            if (isManager) {
+                // If it's a manager, ensure they can only update their own profile
+                if (!existing.getEmail().equalsIgnoreCase(email) && !existing.getUserId().equals(id)) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You can only update your own profile");
+                }
+                // Disallow center reassignment by manager
+                managerDTO.setManagedCenterId(existing.getManagedCenterId());
+                managerDTO.setRole(existing.getRole());
+            } else if (owner != null) {
                 boolean ownsCenter = serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode())
                     .stream().anyMatch(c -> c.getCenterId().equals(existing.getManagedCenterId()));
                 if (!ownsCenter) {
