@@ -46,21 +46,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/webhooks/stripe").permitAll()
+                        .requestMatchers("/api/webhooks/**").permitAll()
                         .requestMatchers("/api/payments/connect/callback").permitAll()
                         .requestMatchers("/api/subscriptions/seed-billing").permitAll()
-                        .requestMatchers("/api/admin/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "SUPER_ADMIN")
-                        .requestMatchers("/api/super-admins/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "SUPER_ADMIN")
-                        .requestMatchers("/api/customers/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "CUSTOMER", "OWNER", "COMPANY_OWNER")
-                        .requestMatchers("/api/customer/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "CUSTOMER", "OWNER", "COMPANY_OWNER")
-                        .requestMatchers("/api/bookings/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "ROLE_SERVICE_MANAGER", "CUSTOMER", "OWNER", "COMPANY_OWNER", "MANAGER", "ROLE_MANAGER")
-                        .requestMatchers("/api/notifications", "/api/notifications/**").authenticated()
-                        .requestMatchers("/api/invoices/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "ROLE_SUPER_ADMIN", "ROLE_SERVICE_MANAGER", "CUSTOMER", "OWNER", "COMPANY_OWNER", "MANAGER", "ROLE_MANAGER", "SUPER_ADMIN")
-                        .requestMatchers("/api/service-packages", "/api/service-packages/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "ROLE_SERVICE_MANAGER", "CUSTOMER", "OWNER", "COMPANY_OWNER", "MANAGER", "ROLE_MANAGER")
-                        .requestMatchers("/api/service-centers", "/api/service-centers/**").hasAnyAuthority("ROLE_CUSTOMER", "ROLE_COMPANY_OWNER", "ROLE_SERVICE_MANAGER", "CUSTOMER", "OWNER", "COMPANY_OWNER", "MANAGER", "ROLE_MANAGER")
-                        .requestMatchers("/api/analytics/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_COMPANY_OWNER", "ROLE_SERVICE_MANAGER", "SUPER_ADMIN", "OWNER", "COMPANY_OWNER", "MANAGER", "ROLE_MANAGER")
-                        .requestMatchers("/api/owners/**").hasAnyAuthority("ROLE_COMPANY_OWNER", "OWNER", "COMPANY_OWNER", "ROLE_SUPER_ADMIN", "SUPER_ADMIN")
-                        .requestMatchers("/api/managers/**").hasAnyAuthority("ROLE_SERVICE_MANAGER", "ROLE_COMPANY_OWNER", "MANAGER", "OWNER", "COMPANY_OWNER", "ROLE_MANAGER")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

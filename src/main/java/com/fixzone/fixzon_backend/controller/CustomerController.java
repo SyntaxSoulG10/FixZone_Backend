@@ -6,6 +6,7 @@ import com.fixzone.fixzon_backend.service.CustomerService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import com.fixzone.fixzon_backend.DTO.ServiceCenterDTO;
+import com.fixzone.fixzon_backend.middleware.RequireRole;
 import com.fixzone.fixzon_backend.service.ServiceCenterService;
 import java.util.UUID;
 
@@ -19,8 +20,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import com.fixzone.fixzon_backend.service.OwnerService;
 import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 
+
 @RestController
 @RequestMapping("/api/customers")
+@RequireRole({"ROLE_SUPER_ADMIN", "ROLE_OWNER","ROLE_SERVICE_MANAGER"})
 public class CustomerController {
 
     private final CustomerService customerService;

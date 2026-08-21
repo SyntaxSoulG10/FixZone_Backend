@@ -1,6 +1,7 @@
 package com.fixzone.fixzon_backend.controller;
 
 import com.fixzone.fixzon_backend.DTO.OwnerDTO;
+import com.fixzone.fixzon_backend.middleware.RequireRole;
 import com.fixzone.fixzon_backend.service.OwnerService;
 
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,7 @@ import java.util.UUID;
 // Dedicated controller to decouple HTTP routing from business operations.
 @RestController
 @RequestMapping("/api/owners")
+@RequireRole({"ROLE_COMPANY_OWNER", "ROLE_SUPER_ADMIN"})
 public class OwnerController {
 
     private final OwnerService ownerService;
@@ -47,6 +49,7 @@ public class OwnerController {
      * Allows Super Admins to monitor business registration and platform growth.
      */
     @GetMapping
+    @RequireRole({"ROLE_SUPER_ADMIN"})
     public ResponseEntity<List<OwnerDTO>> fetchAllCompanyOwners() {
         // Wraps response in ResponseEntity to provide proper HTTP status
         List<OwnerDTO> ownerList = ownerService.retrieveAllOwners();
