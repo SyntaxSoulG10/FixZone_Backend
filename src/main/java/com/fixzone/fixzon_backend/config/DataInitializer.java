@@ -747,7 +747,7 @@ public class DataInitializer implements CommandLineRunner {
                                     null, LocalDateTime.now(), "system", LocalDateTime.now(), "system",
                                     mgrImg, "MGR-" + loc.substring(0, 3).toUpperCase(), sc.getCenterId());
                             managerRepository.save(mgr);
-                            log.info(">>> Seeded Raja Manager for {} <<<", loc);
+                            log.info(">>> Seeded Raja Manager for {} ({}) <<<", loc, email);
                         }
                     }
                 }

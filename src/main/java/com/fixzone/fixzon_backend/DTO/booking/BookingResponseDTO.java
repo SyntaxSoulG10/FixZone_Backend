@@ -53,4 +53,11 @@ public class BookingResponseDTO {
     private String packageDescription;
     private Boolean isOnline;
     private String vehicleLabel;
+    
+    // Accurate real entity fields for frontend tables
+    private String customerName;
+    private String vehicleName;
+    private String plateNumber;
+    private Integer estimatedDurationMins;
+    private LocalTime endTime;
 }

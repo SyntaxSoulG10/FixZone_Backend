@@ -51,24 +51,18 @@ public class ManagerController {
      */
     @GetMapping("/current")
     public ResponseEntity<?> getCurrentOwnerManagers() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String email = getCurrentUserEmail();
         log.info("Fetching context for user: {}", email);
 
-        boolean isManager = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE_MANAGER"));
-
-        if (isManager) {
-            // If the user is a manager, return their own profile
-            ManagerDTO manager = managerService.getManagerByEmail(email);
-            if (manager == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        ManagerDTO manager = managerService.getManagerByEmail(email);
+        if (manager != null) {
             return ResponseEntity.ok(manager);
         }
 
         // Otherwise, it's an owner trying to get all their managers
         OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
         if (owner == null) {
-            log.warn("Owner not found for email: {}", email);
+            log.warn("Owner/Manager not found for email: {}", email);
             return ResponseEntity.ok(List.of());
         }
 
@@ -88,7 +82,6 @@ public class ManagerController {
         String email = getCurrentUserEmail();
         ManagerDTO existing = managerService.getManagerByEmail(email);
         if (existing == null) return ResponseEntity.notFound().build();
-        // Prevent manager from arbitrarily reassigning center or elevating role
         managerDTO.setManagedCenterId(existing.getManagedCenterId());
         managerDTO.setRole(existing.getRole());
         ManagerDTO updated = managerService.updateManager(existing.getUserId(), managerDTO);
@@ -160,7 +153,6 @@ public class ManagerController {
                 if (!existing.getEmail().equalsIgnoreCase(email) && !existing.getUserId().equals(id)) {
                     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You can only update your own profile");
                 }
-                // Disallow center reassignment by manager
                 managerDTO.setManagedCenterId(existing.getManagedCenterId());
                 managerDTO.setRole(existing.getRole());
             } else if (owner != null) {
