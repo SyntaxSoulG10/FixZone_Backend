@@ -257,14 +257,14 @@ public class DataInitializer implements CommandLineRunner {
             serviceCenterRepository.save(sc);
 
             UUID pkgId = UUID.fromString("22222222-2222-2222-2222-22222222222" + (i + 1));
-            ServicePackage p = new ServicePackage(pkgId, sc, "Full Service", "Package", null, "Oil & Filter", 
+            ServicePackage p = new ServicePackage(pkgId, sc, "Full Service", "Package", null, "Toyota", "Oil & Filter", 
                     new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system");
             servicePackageRepository.save(p);
 
             // Also ensure the Bike Package from frontend mock exists
             UUID bikePkgId = UUID.fromString("4aba5910-a686-49db-9dde-915c8b7f538c");
             if (!servicePackageRepository.existsById(bikePkgId)) {
-                ServicePackage bikePkg = new ServicePackage(bikePkgId, sc, "Gold Package (Bike)", "Package", "BIKE", "Bike specialized care", 
+                ServicePackage bikePkg = new ServicePackage(bikePkgId, sc, "Gold Package (Bike)", "Package", "BIKE", "Honda", "Bike specialized care", 
                         new BigDecimal("8000.00"), 240, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system");
                 servicePackageRepository.save(bikePkg);
             }
@@ -346,58 +346,129 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void seedPackagesForCenter(ServiceCenter sc) {
-        // Clean up any legacy branded names from existing database records
+        // Automatically assign vehicleBrand to any existing packages in the DB that currently have null/empty brand
         List<ServicePackage> existingList = servicePackageRepository.findByServiceCenter_CenterId(sc.getCenterId());
         for (ServicePackage p : existingList) {
-            if (p.getName() != null && p.getName().toLowerCase().contains("auto miraj")) {
-                String cleanedName = p.getName().replaceAll("(?i)Auto\\s*Miraj\\s*[-–:]?\\s*", "").trim();
-                p.setName(cleanedName);
-                servicePackageRepository.save(p);
+            if (p.getName() != null) {
+                String n = p.getName().toLowerCase();
+                if (p.getVehicleBrand() == null || p.getVehicleBrand().trim().isEmpty() || p.getVehicleBrand().equalsIgnoreCase("ALL")) {
+                    if (n.contains("toyota") || n.contains("platinum") || n.contains("full service") || n.contains("commercial") || n.contains("van") || n.contains("hybrid")) {
+                        p.setVehicleBrand("Toyota");
+                        if (p.getVehicleType() == null) p.setVehicleType(n.contains("van") ? "VAN" : "CAR");
+                    } else if (n.contains("honda") || n.contains("vtec") || n.contains("gold") || n.contains("lube") || n.contains("premium")) {
+                        p.setVehicleBrand("Honda");
+                        if (p.getVehicleType() == null) p.setVehicleType("CAR");
+                    } else if (n.contains("nissan") || n.contains("suv") || n.contains("executive") || n.contains("detail") || n.contains("interior")) {
+                        p.setVehicleBrand("Nissan");
+                        if (p.getVehicleType() == null) p.setVehicleType("SUV");
+                    } else if (n.contains("suzuki") || n.contains("basic") || n.contains("standard") || n.contains("economy") || n.contains("swift")) {
+                        p.setVehicleBrand("Suzuki");
+                        if (p.getVehicleType() == null) p.setVehicleType("CAR");
+                    } else if (n.contains("mitsubishi") || n.contains("pajero") || n.contains("4wd") || n.contains("super select")) {
+                        p.setVehicleBrand("Mitsubishi");
+                        if (p.getVehicleType() == null) p.setVehicleType("SUV");
+                    } else if (n.contains("hyundai") || n.contains("kia") || n.contains("smartstream")) {
+                        p.setVehicleBrand("Hyundai");
+                        if (p.getVehicleType() == null) p.setVehicleType("CAR");
+                    } else if (n.contains("bmw") || n.contains("luxury") || n.contains("european")) {
+                        p.setVehicleBrand("BMW");
+                        if (p.getVehicleType() == null) p.setVehicleType("CAR");
+                    } else if (n.contains("mercedes") || n.contains("benz") || n.contains("star")) {
+                        p.setVehicleBrand("Mercedes-Benz");
+                        if (p.getVehicleType() == null) p.setVehicleType("CAR");
+                    } else if (n.contains("bike") || n.contains("motorcycle") || n.contains("yamaha") || n.contains("scooter")) {
+                        p.setVehicleBrand("Yamaha");
+                        p.setVehicleType("BIKE");
+                    } else {
+                        p.setVehicleBrand("Toyota");
+                    }
+                    servicePackageRepository.save(p);
+                }
             }
         }
 
-        // 1. Platinum Comprehensive Full Maintenance (Car / Sedan)
-        createPackageIfNotExists(sc, "Platinum Comprehensive Full Maintenance", "CAR",
+        // 1. Toyota Genuine Periodic Maintenance (Car / Sedan)
+        createPackageIfNotExists(sc, "Toyota Genuine Periodic Maintenance", "CAR", "Toyota",
                 "Engine Oil & Filter Replacement (up to 4L),30-Point Computer ECU Diagnostic Scan,4-Wheel Brake Pad Cleaning & Inspection,Underbody Wash & Anti-Rust Inspection,Coolant & Fluid Top-Up,Interior Cabin Deep Vacuuming,Tire Shine & Alloy Wheel Dressing",
-                "Complete 30-point periodic maintenance covering synthetic engine lubrication, safety diagnostics, 4-wheel brake inspection, and exterior body detailing for sedans and hatchbacks.",
+                "Complete 30-point periodic maintenance covering synthetic engine lubrication, safety diagnostics, 4-wheel brake inspection, and exterior body detailing for Toyota sedans and hatchbacks.",
                 new BigDecimal("18500.00"), 120);
 
-        // 2. Executive SUV & 4x4 Periodic Major Service
-        createPackageIfNotExists(sc, "Executive SUV & 4x4 Periodic Major Service", "SUV",
+        // 2. Honda VTEC & Hybrid Performance Tune-Up (Car / Sedan)
+        createPackageIfNotExists(sc, "Honda VTEC & Hybrid Performance Tune-Up", "CAR", "Honda",
+                "High-Voltage Inverter Coolant Flush,Hybrid Battery Cell Voltage Analysis,30-Point Computer ECU Diagnostic Scan,12V Battery Health & Alternator Test,Electric Brake Actuator Calibration,Spark Plug Calibration & Cleaning",
+                "Specialized hybrid and performance care for Honda Vezel, Fit, Civic, and Accord by certified high-voltage technicians.",
+                new BigDecimal("19500.00"), 120);
+
+        // 3. Nissan Executive SUV & 4x4 Major Service (SUV / 4x4)
+        createPackageIfNotExists(sc, "Nissan Executive SUV & 4x4 Major Service", "SUV", "Nissan",
                 "Full Synthetic Oil Replacement (up to 7L),Genuine Oil & Air Filter Replacement,4-Wheel Caliper Greasing & Brake Check,Differential & Transfer Case Fluid Check,Heavy-Duty Underbody Degrease,30-Point Computer ECU Diagnostic Scan",
-                "Heavy-duty periodic service engineered for high-capacity SUVs, 4x4 Jeeps, and Crossovers with genuine filters, drivetrain inspection, and ECU health scanning.",
+                "Heavy-duty periodic service engineered for Nissan Patrol, X-Trail, Qashqai & Navara with genuine filters, drivetrain inspection, and ECU health scanning.",
                 new BigDecimal("26500.00"), 150);
 
-        // 3. Commercial Van & Passenger Fleet Service
-        createPackageIfNotExists(sc, "Commercial Van & Passenger Fleet Service", "VAN",
-                "Diesel/Petrol Engine Oil (up to 6L),Genuine Oil & Fuel Filter Replacement,Heavy Duty Brake Inspection,Suspension Bush & Leaf Spring Test,Radiator Coolant Flush & Pressure Test,Electrical System Scan",
-                "Tailored for commercial vans and fleet transports (Toyota KDH, Nissan Caravan, Every) to maximize operational uptime and fuel efficiency.",
-                new BigDecimal("22000.00"), 120);
-
-        // 4. Gold Lube Care & Express Oil Service
-        createPackageIfNotExists(sc, "Gold Lube Care & Express Oil Service", "CAR",
+        // 4. Suzuki Express Economy Lube & Filter Care (Car / Hatchback)
+        createPackageIfNotExists(sc, "Suzuki Express Economy Lube & Filter Care", "CAR", "Suzuki",
                 "Engine Oil Replacement (up to 4L),Genuine Oil Filter Replacement,15-Point Safety Health Check,Windshield Washer Fluid Top-up,Battery Health & Alternator Test,Complimentary Exterior Foam Wash",
-                "Quick-turnaround lube service using premium engine oils and OEM filters with safety checks and complimentary wash.",
+                "Quick-turnaround lube service using OEM Suzuki filters and premium lubricants with safety checks for Alto, Wagon R, Swift & Spacia.",
                 new BigDecimal("9500.00"), 45);
 
-        // 5. Hybrid & EV Battery Health & Inverter Care
-        createPackageIfNotExists(sc, "Hybrid & EV Battery Health & Inverter Care", "CAR",
-                "High-Voltage Inverter Coolant Flush,Hybrid Battery Cell Voltage Analysis,30-Point Computer ECU Diagnostic Scan,12V Battery Health & Alternator Test,Electric Brake Actuator Calibration",
-                "Specialized hybrid and electric vehicle service for Toyota Prius, Aqua, Axio, Honda Vezel, and Nissan Leaf by certified high-voltage technicians.",
-                new BigDecimal("16000.00"), 90);
+        // 5. Mitsubishi Super Select 4WD & Pajero Drivetrain Service (SUV / 4x4)
+        createPackageIfNotExists(sc, "Mitsubishi Super Select 4WD Drivetrain Service", "SUV", "Mitsubishi",
+                "Full Synthetic Oil Replacement (up to 7L),Differential & Transfer Case Fluid Check,Heavy-Duty Underbody Degrease,Suspension Bush & Leaf Spring Test,Brake Caliper Pin Lubrication",
+                "Specialized off-road drivetrain and suspension health service for Mitsubishi Montero, Pajero Sport, and Outlander.",
+                new BigDecimal("27500.00"), 150);
 
-        // 6. Pro Motorcycle & Scooter Periodic Care
-        createPackageIfNotExists(sc, "Pro Motorcycle & Scooter Periodic Care", "BIKE",
+        // 6. Hyundai & Kia Smartstream Engine Diagnostic Care (Car / Sedan)
+        createPackageIfNotExists(sc, "Hyundai & Kia Smartstream Engine Care", "CAR", "Hyundai",
+                "30-Point Computer ECU Diagnostic Scan,Engine Oil & Filter Replacement (up to 4L),Spark Plug Check & Calibration,Starter Motor & Charging System Test,Interior Cabin Deep Vacuuming",
+                "Tailored diagnostic calibration and lubrication package for Hyundai Tucson, Elantra, Ioniq, and Kia Sportage & Seltos.",
+                new BigDecimal("17000.00"), 90);
+
+        // 7. BMW & European Luxury Precision Diagnostics & Service (Car / Luxury Sedan)
+        createPackageIfNotExists(sc, "BMW & European Luxury Precision Diagnostics", "CAR", "BMW",
+                "Engine Oil & Filter Replacement (up to 4L),30-Point Computer ECU Diagnostic Scan,4-Wheel Brake Pad Cleaning & Inspection,Coolant & Fluid Top-Up,Brake & Clutch Fluid Inspection,Interior Cabin Deep Vacuuming",
+                "Precision diagnostic health check, Condition Based Service (CBS) reset, synthetic LL-04 oil and OEM microfilter replacement for German luxury cars.",
+                new BigDecimal("34500.00"), 150);
+
+        // 8. Mercedes-Benz Star Diagnostic & Safety Service (Car / Luxury Sedan)
+        createPackageIfNotExists(sc, "Mercedes-Benz Star Diagnostic & Safety Service", "CAR", "Mercedes-Benz",
+                "30-Point Computer ECU Diagnostic Scan,Engine Oil & Filter Replacement (up to 4L),4-Wheel Brake Pad Cleaning & Inspection,Coolant Top-up & Radiator Test,High-Pressure Underbody Wash & Degrease",
+                "Specialized Star Diagnosis scan, transmission inspection, brake fluid flush, and luxury detailing for Mercedes-Benz C, E, and S-Class.",
+                new BigDecimal("38000.00"), 180);
+
+        // 9. Commercial Van & Passenger Fleet Service (Van / Minibus)
+        createPackageIfNotExists(sc, "Commercial Van & Passenger Fleet Service", "VAN", "Toyota",
+                "Diesel/Petrol Engine Oil (up to 6L),Genuine Oil & Fuel Filter Replacement,Heavy Duty Brake Inspection,Suspension Bush & Leaf Spring Test,Radiator Coolant Flush & Pressure Test,Electrical System Scan",
+                "Tailored for commercial vans and fleet transports (Toyota KDH / HiAce, Nissan Caravan, Every) to maximize operational uptime and fuel efficiency.",
+                new BigDecimal("22000.00"), 120);
+
+        // 10. Pro Motorcycle & Scooter Precision Care (Motorcycle / Scooter)
+        createPackageIfNotExists(sc, "Pro Motorcycle & Scooter Precision Care", "BIKE", "Yamaha",
                 "Engine Oil Replacement,Brake Pad & Shoe Inspection,Drive Chain Cleaning & Lubrication,Spark Plug Calibration & Cleaning,Tire Pressure & Safety Check",
-                "Specialized 2-wheeler precision care for scooters and sport bikes with drive chain alignment, brake adjustments, and safety tuning.",
+                "Specialized 2-wheeler precision care for scooters and sport bikes (Yamaha, Honda, TVS, Bajaj) with drive chain alignment and brake tuning.",
                 new BigDecimal("6500.00"), 60);
+
+        // 11. Universal All-Makes Multi-Point Care (Universal / All Makes)
+        createPackageIfNotExists(sc, "Universal All-Makes Multi-Point Care", "CAR", "ALL",
+                "Engine Oil Replacement (up to 4L),Genuine Oil Filter Replacement,15-Point Safety Health Check,Windshield Washer Fluid Top-up,Battery Health & Alternator Test,Foam Body Wash & Wax Polish",
+                "Universal multi-point safety inspection, engine lubrication, battery testing, and foam wash suitable for all vehicle makes and models.",
+                new BigDecimal("11500.00"), 60);
     }
 
-    private void createPackageIfNotExists(ServiceCenter sc, String name, String vehicleType, String type, String desc, BigDecimal price, int duration) {
-        boolean exists = servicePackageRepository.findByServiceCenter_CenterId(sc.getCenterId())
-                .stream().anyMatch(p -> p.getName().equalsIgnoreCase(name));
-        if (!exists) {
-            ServicePackage p = new ServicePackage(UUID.randomUUID(), sc, name, type, vehicleType, desc, price, duration, true,
+    private void createPackageIfNotExists(ServiceCenter sc, String name, String vehicleType, String vehicleBrand, String type, String desc, BigDecimal price, int duration) {
+        java.util.Optional<ServicePackage> existingOpt = servicePackageRepository.findByServiceCenter_CenterId(sc.getCenterId())
+                .stream().filter(p -> p.getName().equalsIgnoreCase(name)).findFirst();
+        if (existingOpt.isPresent()) {
+            ServicePackage p = existingOpt.get();
+            p.setVehicleType(vehicleType);
+            p.setVehicleBrand(vehicleBrand);
+            p.setType(type);
+            p.setDescription(desc);
+            p.setBasePrice(price);
+            p.setEstimatedDurationMins(duration);
+            p.setIsActive(true);
+            servicePackageRepository.save(p);
+        } else {
+            ServicePackage p = new ServicePackage(UUID.randomUUID(), sc, name, type, vehicleType, vehicleBrand, desc, price, duration, true,
                     LocalDateTime.now(), "system", LocalDateTime.now(), "system");
             servicePackageRepository.save(p);
         }
@@ -543,15 +614,15 @@ public class DataInitializer implements CommandLineRunner {
                 centers.add(serviceCenterRepository.save(sc));
 
                 // Add 3 distinct packages per center for variety
-                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Basic Service", "Base maintenance", null,
+                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Basic Service", "Base maintenance", null, "Toyota",
                         "Essential oil and filter change.", new BigDecimal("8500.00"), 60, true, 
                         LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
                 
-                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Premium Full Service", "Full maintenance package", null,
+                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Premium Full Service", "Full maintenance package", null, "Honda",
                         "Oil change, filter, brake check, engine scan.", new BigDecimal("15500.00"), 120, true, 
                         LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
 
-                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Interior & Exterior Detail", "Deep cleaning", null,
+                packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc, "Interior & Exterior Detail", "Deep cleaning", null, "Nissan",
                         "Full body wash, vacuum, and wax.", new BigDecimal("5500.00"), 90, true, 
                         LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
 
@@ -569,7 +640,7 @@ public class DataInitializer implements CommandLineRunner {
             for (ServiceCenter center : centers) {
                 List<ServicePackage> centerPackages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
                 if (centerPackages.isEmpty()) {
-                    packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), center, "Standard Service", "Base maintenance", null,
+                    packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), center, "Standard Service", "Base maintenance", null, "Suzuki",
                             "Essential checks and oil service.", new BigDecimal("8500.00"), 60, true, 
                             LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
                 } else {

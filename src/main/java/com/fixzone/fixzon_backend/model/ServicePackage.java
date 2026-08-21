@@ -39,6 +39,13 @@ public class ServicePackage {
     @Column(name = "vehicle_type", length = 20)
     private String vehicleType;
 
+    /**
+     * Restricts this package to a specific vehicle brand/make (e.g., Honda, Toyota, Nissan, Suzuki).
+     * Null or "ALL" means compatible with all brands.
+     */
+    @Column(name = "vehicle_brand", length = 50)
+    private String vehicleBrand;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 

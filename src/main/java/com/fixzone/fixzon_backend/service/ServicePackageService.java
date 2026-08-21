@@ -91,6 +91,8 @@ public class ServicePackageService {
         if (dto == null) {
             throw new IllegalArgumentException("Service Package data cannot be null");
         }
+        validateBrandAndType(dto.getVehicleType(), dto.getVehicleBrand());
+
         ServicePackage model = new ServicePackage();
         BeanUtils.copyProperties(dto, model, "packageId", "createdAt");
         
@@ -110,6 +112,8 @@ public class ServicePackageService {
         if (dto == null) {
             throw new IllegalArgumentException("Service Package data cannot be null");
         }
+        validateBrandAndType(dto.getVehicleType(), dto.getVehicleBrand());
+
         ServicePackage existing = repository.findById(id).orElse(null);
         
         if (existing != null) {
@@ -121,6 +125,43 @@ public class ServicePackageService {
             return convertToDTO(repository.save(existing));
         }
         return null;
+    }
+
+    private void validateBrandAndType(String vehicleType, String vehicleBrand) {
+        if (vehicleBrand == null || vehicleBrand.isBlank() || vehicleBrand.equalsIgnoreCase("ALL") || 
+            vehicleType == null || vehicleType.isBlank() || vehicleType.equalsIgnoreCase("ALL")) {
+            return;
+        }
+
+        String type = vehicleType.toUpperCase().trim();
+        String brand = vehicleBrand.trim();
+
+        if ("BIKE".equals(type)) {
+            List<String> incompatibleForBike = List.of("Toyota", "Nissan", "Hyundai", "Kia", "Mazda", "Audi", "Mercedes-Benz", "Subaru", "Lexus", "Tata", "Mahindra", "Ford", "Land Rover");
+            if (incompatibleForBike.stream().anyMatch(b -> b.equalsIgnoreCase(brand))) {
+                throw new IllegalArgumentException(brand + " does not manufacture motorcycles or scooters. Please select a valid motorcycle brand (e.g., Honda, Yamaha, Suzuki, Bajaj, TVS, BMW) or change the vehicle classification.");
+            }
+        } else if ("BUS".equals(type)) {
+            List<String> incompatibleForBus = List.of("BMW", "Audi", "Honda", "Suzuki", "Mazda", "Subaru", "Lexus", "Yamaha", "Bajaj", "TVS", "Kia", "Hyundai", "Land Rover", "Ford");
+            if (incompatibleForBus.stream().anyMatch(b -> b.equalsIgnoreCase(brand))) {
+                throw new IllegalArgumentException(brand + " does not manufacture commercial passenger buses. Compatible bus brands include Toyota (Coaster), Nissan (Civilian), Mercedes-Benz, Tata, Ashok Leyland, Mitsubishi, etc.");
+            }
+        } else if ("CAR".equals(type) || "SUV".equals(type)) {
+            List<String> bikeOnly = List.of("Yamaha", "Bajaj", "TVS");
+            if (bikeOnly.stream().anyMatch(b -> b.equalsIgnoreCase(brand))) {
+                throw new IllegalArgumentException(brand + " is a motorcycle manufacturer and does not produce passenger cars or SUVs.");
+            }
+        } else if ("VAN".equals(type)) {
+            List<String> incompatibleForVan = List.of("Yamaha", "Bajaj", "TVS", "Audi", "BMW", "Subaru", "Lexus", "Land Rover");
+            if (incompatibleForVan.stream().anyMatch(b -> b.equalsIgnoreCase(brand))) {
+                throw new IllegalArgumentException(brand + " does not manufacture commercial passenger or cargo vans.");
+            }
+        } else if ("TRUCK".equals(type)) {
+            List<String> incompatibleForTruck = List.of("Yamaha", "Bajaj", "TVS", "Audi", "BMW", "Subaru", "Lexus");
+            if (incompatibleForTruck.stream().anyMatch(b -> b.equalsIgnoreCase(brand))) {
+                throw new IllegalArgumentException(brand + " does not manufacture commercial lorries or pickup trucks.");
+            }
+        }
     }
 
     public void deletePackage(UUID id) {
