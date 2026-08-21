@@ -1,8 +1,11 @@
 package com.fixzone.fixzon_backend.controller;
 
+import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 import com.fixzone.fixzon_backend.DTO.PaymentRecordDTO;
+import com.fixzone.fixzon_backend.service.OwnerService;
 import com.fixzone.fixzon_backend.service.PaymentRecordService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
@@ -13,9 +16,11 @@ public class PaymentRecordController {
 
     // Constructor injection guarantees dependencies are met securely.
     private final PaymentRecordService paymentRecordService;
+    private final OwnerService ownerService;
 
-    public PaymentRecordController(PaymentRecordService paymentRecordService) {
+    public PaymentRecordController(PaymentRecordService paymentRecordService, OwnerService ownerService) {
         this.paymentRecordService = paymentRecordService;
+        this.ownerService = ownerService;
     }
 
     @GetMapping
@@ -25,8 +30,12 @@ public class PaymentRecordController {
 
     @GetMapping("/current")
     public ResponseEntity<List<PaymentRecordDTO>> getCurrentOwnerPayments() {
-        // Hardcoded for development
-        return ResponseEntity.ok(paymentRecordService.getPaymentsByCompanyCode("FIX001"));
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+        if (owner == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        return ResponseEntity.ok(paymentRecordService.getPaymentsByCompanyCode(owner.getOwnerCode()));
     }
 
     @GetMapping("/{id}")

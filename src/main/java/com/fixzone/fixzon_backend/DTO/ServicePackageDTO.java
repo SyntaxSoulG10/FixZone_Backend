@@ -27,6 +27,13 @@ public class ServicePackageDTO {
      * Values: "CAR", "BIKE", "VAN", "TRUCK"
      */
     private String vehicleType;
+
+    /**
+     * Optional vehicle brand restriction (e.g. "Toyota", "Honda", "Nissan", "Suzuki", etc.).
+     * Null or "ALL" = compatible with all brands.
+     */
+    @jakarta.validation.constraints.Size(max = 50, message = "Vehicle brand must be 50 characters or less")
+    private String vehicleBrand;
     
     @NotBlank(message = "Description is required")
     @jakarta.validation.constraints.Size(min = 10, message = "Description must be at least 10 characters")

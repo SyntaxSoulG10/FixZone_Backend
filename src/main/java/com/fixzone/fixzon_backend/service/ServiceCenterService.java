@@ -41,6 +41,7 @@ public class ServiceCenterService {
     private final SuperAdminRepository superAdminRepository;
     private final NotificationService notificationService;
     private final BookingRepository bookingRepository;
+    private final ImageKitService imageKitService;
 
     /**
      * Dependency Injection via Constructor: Ensures all required repositories
@@ -55,7 +56,8 @@ public class ServiceCenterService {
             ManagerRepository managerRepository,
             SuperAdminRepository superAdminRepository,
             NotificationService notificationService,
-            BookingRepository bookingRepository) {
+            BookingRepository bookingRepository,
+            ImageKitService imageKitService) {
         this.serviceCenterRepository = serviceCenterRepository;
         this.userRepository = userRepository;
         this.servicePackageRepository = servicePackageRepository;
@@ -65,6 +67,7 @@ public class ServiceCenterService {
         this.superAdminRepository = superAdminRepository;
         this.notificationService = notificationService;
         this.bookingRepository = bookingRepository;
+        this.imageKitService = imageKitService;
     }
 
     /**
@@ -117,6 +120,25 @@ public class ServiceCenterService {
             return List.of();
         }
         List<ServiceCenter> centers = serviceCenterRepository.findAllById(centerIds);
+        return mapEntitiesToDtos(centers);
+    }
+
+    public List<ServiceCenterDTO> getAllServiceCenters() {
+        List<ServiceCenter> centers = serviceCenterRepository.findByIsActive(true).stream()
+                .filter(center -> !"SUSPENDED".equalsIgnoreCase(center.getStatus())
+                        && !"REJECTED".equalsIgnoreCase(center.getStatus())
+                        && !"PENDING".equalsIgnoreCase(center.getStatus()))
+                .filter(center -> {
+                    if (center.getOwner() == null) return true; // no owner linked — show it
+                    return ownerRepository.findById(center.getOwner().getUserId())
+                            .map(owner -> {
+                                com.fixzone.fixzon_backend.enums.SubscriptionStatus status =
+                                        com.fixzone.fixzon_backend.enums.SubscriptionStatus.fromLegacy(owner.getSubscriptionStatus());
+                                return status.isVisibleToCustomers();
+                            })
+                            .orElse(true); // owner not found in owner table — show it
+                })
+                .collect(java.util.stream.Collectors.toList());
         return mapEntitiesToDtos(centers);
     }
 
@@ -251,6 +273,20 @@ public class ServiceCenterService {
             center.setStatus("PENDING");
         }
 
+        // Upload service center image / logo to ImageKit if provided
+        if (dto.getImageUrl() != null && !dto.getImageUrl().isBlank()) {
+            if (dto.getImageUrl().startsWith("data:image") || dto.getImageUrl().contains(";base64,")) {
+                try {
+                    String uploadedUrl = imageKitService.uploadImage(dto.getImageUrl(), "center-logo-" + center.getCenterId());
+                    center.setImageUrl(uploadedUrl != null ? uploadedUrl : dto.getImageUrl());
+                } catch (Exception e) {
+                    center.setImageUrl(dto.getImageUrl());
+                }
+            } else {
+                center.setImageUrl(dto.getImageUrl());
+            }
+        }
+
         ServiceCenter savedCenter = serviceCenterRepository.save(center);
 
         // Notify all Super Admins
@@ -289,9 +325,31 @@ public class ServiceCenterService {
         existing.setContactPhone(dto.getContactPhone());
         existing.setOpeningHours(dto.getOpeningHours());
         existing.setRating(dto.getRating());
-        existing.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : existing.getIsActive());
+        
+        // If suspended by admin, preserve inactive state
+        if ("SUSPENDED".equalsIgnoreCase(existing.getStatus())) {
+            existing.setIsActive(false);
+        } else {
+            existing.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : existing.getIsActive());
+        }
+
         existing.setUpdatedBy(dto.getUpdatedBy());
         existing.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
+        existing.setGoogleMapsUrl(dto.getGoogleMapsUrl());
+
+        // Update service center image / logo if provided
+        if (dto.getImageUrl() != null) {
+            if (dto.getImageUrl().startsWith("data:image") || dto.getImageUrl().contains(";base64,")) {
+                try {
+                    String uploadedUrl = imageKitService.uploadImage(dto.getImageUrl(), "center-logo-" + existing.getCenterId());
+                    existing.setImageUrl(uploadedUrl != null ? uploadedUrl : dto.getImageUrl());
+                } catch (Exception e) {
+                    existing.setImageUrl(dto.getImageUrl());
+                }
+            } else {
+                existing.setImageUrl(dto.getImageUrl());
+            }
+        }
 
         return mapEntityToDto(serviceCenterRepository.save(existing));
     }
@@ -422,6 +480,8 @@ public class ServiceCenterService {
         center.setCreatedBy(dto.getCreatedBy());
         center.setUpdatedBy(dto.getUpdatedBy());
         center.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
+        center.setGoogleMapsUrl(dto.getGoogleMapsUrl());
+        center.setImageUrl(dto.getImageUrl());
         return center;
     }
 }

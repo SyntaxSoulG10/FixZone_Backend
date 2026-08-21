@@ -253,6 +253,19 @@ class AdminServiceTest {
         }
 
 
+        @Test
+        @DisplayName("TC-BE-16: updateServiceCenterStatus updates status and active flag")
+        void updateServiceCenterStatus_updatesStatusAndActiveFlag() {
+            UUID id = UUID.randomUUID();
+            ServiceCenter sc = createServiceCenter(id, "Test Center", "APPROVED");
+            when(serviceCenterRepository.findById(id)).thenReturn(Optional.of(sc));
+            when(serviceCenterRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            ServiceCenterDTO result = adminService.updateServiceCenterStatus(id, "SUSPENDED");
+
+            assertThat(result.getStatus()).isEqualTo("SUSPENDED");
+            assertThat(result.getIsActive()).isFalse();
+        }
 
         @Test
         @DisplayName("TC-BE-17: approveServiceCenter throws when center not found")

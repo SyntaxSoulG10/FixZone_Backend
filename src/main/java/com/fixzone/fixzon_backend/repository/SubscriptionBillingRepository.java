@@ -2,9 +2,11 @@ package com.fixzone.fixzon_backend.repository;
 
 import com.fixzone.fixzon_backend.model.SubscriptionBilling;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,4 +38,9 @@ public interface SubscriptionBillingRepository extends JpaRepository<Subscriptio
         ORDER BY 1, 2
         """, nativeQuery = true)
     List<Object[]> findMonthlyRevenueSince(@Param("start") LocalDateTime start);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM SubscriptionBilling b WHERE b.subscriptionId = :subscriptionId")
+    void deleteBySubscriptionId(@Param("subscriptionId") UUID subscriptionId);
 }

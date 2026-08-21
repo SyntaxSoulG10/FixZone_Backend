@@ -83,6 +83,27 @@ public class AdminService {
         return convertToDTO(serviceCenterRepository.save(sc));
     }
 
+    @Transactional
+    public ServiceCenterDTO updateServiceCenterStatus(UUID id, String status) {
+        Objects.requireNonNull(id, "ID must not be null");
+        ServiceCenter sc = serviceCenterRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Service Center not found"));
+        sc.setStatus(status); // SUSPENDED, ACTIVE, APPROVED
+        if ("SUSPENDED".equalsIgnoreCase(status)) {
+            sc.setIsActive(false);
+        } else if ("ACTIVE".equalsIgnoreCase(status) || "APPROVED".equalsIgnoreCase(status)) {
+            sc.setIsActive(true);
+        }
+
+        // Notify Owner of the service center status update
+        boolean isReactivated = status.equalsIgnoreCase("ACTIVE") || status.equalsIgnoreCase("APPROVED");
+        String title = "Service Center " + (isReactivated ? "Reactivated" : "Suspended");
+        String message = "Your service center '" + sc.getName() + "' status has been changed to " + status + " by the administrator.";
+        String type = isReactivated ? "SUCCESS" : "WARNING";
+        createNotification(sc.getOwner(), title, message, type, "/dashboard/company-owner/centers");
+
+        return convertToDTO(serviceCenterRepository.save(sc));
+    }
     // --- User Account Management & Platform Security ---
     // Methods for managing global user access, status transitions, and
     // administrative oversight.

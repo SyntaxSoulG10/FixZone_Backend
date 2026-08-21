@@ -1,6 +1,5 @@
 package com.fixzone.fixzon_backend.DTO;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -9,8 +8,7 @@ import lombok.EqualsAndHashCode;
 public class OwnerDTO extends UserDTO {
     private String ownerCode;
 
-    @NotBlank(message = "Company name is required")
-    @jakarta.validation.constraints.Size(min = 3, max = 150, message = "Company name must be 3-150 characters")
+    @jakarta.validation.constraints.Size(min = 2, max = 150, message = "Company name must be 2-150 characters")
     private String companyName;
 
     @jakarta.validation.constraints.Pattern(
@@ -19,9 +17,8 @@ public class OwnerDTO extends UserDTO {
     )
     private String companyEmail;
 
-    @jakarta.validation.constraints.Pattern(regexp = "^$|^[0-9+]{10,15}$", message = "Company phone must be 10-15 digits")
+    @jakarta.validation.constraints.Pattern(regexp = "^$|^[0-9+()\\s-]{9,20}$", message = "Company phone must be 9-20 digits")
     private String companyNumber;
-    private String passwordHash;
     private String bannerImageUrl;
     private String facebookUrl;
     private String twitterUrl;

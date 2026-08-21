@@ -283,6 +283,16 @@ public class ManagerService {
         }
     }
 
+    public void resendInvite(UUID managerId) {
+        if (managerId == null) {
+            throw new IllegalArgumentException("Manager ID cannot be null");
+        }
+        Manager manager = managerRepository.findById(managerId)
+                .orElseThrow(() -> new IllegalStateException("Manager not found with id: " + managerId));
+        
+        emailService.sendWelcomeEmail(manager.getEmail(), manager.getFullName(), defaultPassword);
+    }
+
     public void deleteManager(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("ID for deletion cannot be null");

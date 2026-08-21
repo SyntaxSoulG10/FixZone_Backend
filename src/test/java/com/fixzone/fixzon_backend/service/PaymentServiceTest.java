@@ -7,6 +7,8 @@ import com.fixzone.fixzon_backend.repository.AuthRepository;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.PaymentRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,9 +39,9 @@ class PaymentServiceTest {
     @Mock
     private AuthRepository authRepository;
     @Mock
-    private com.fixzone.fixzon_backend.repository.OwnerRepository ownerRepository;
+    private OwnerRepository ownerRepository;
     @Mock
-    private com.fixzone.fixzon_backend.repository.ServiceCenterRepository serviceCenterRepository;
+    private ServiceCenterRepository serviceCenterRepository;
 
     @InjectMocks
     private PaymentService paymentService;

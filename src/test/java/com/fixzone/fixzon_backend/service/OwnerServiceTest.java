@@ -29,6 +29,15 @@ class OwnerServiceTest {
     @Mock
     private ImageKitService imageKitService;
 
+    @Mock
+    private com.fixzone.fixzon_backend.repository.NotificationRepository notificationRepository;
+
+    @Mock
+    private com.fixzone.fixzon_backend.repository.SubscriptionRepository subscriptionRepository;
+
+    @Mock
+    private com.fixzone.fixzon_backend.repository.SubscriptionBillingRepository subscriptionBillingRepository;
+
     @InjectMocks
     private OwnerService ownerService;
 

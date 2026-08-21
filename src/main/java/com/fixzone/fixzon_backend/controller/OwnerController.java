@@ -72,14 +72,38 @@ public class OwnerController {
         return ResponseEntity.status(HttpStatus.CREATED).body(createdOwner);
     }
 
-    @PutMapping("/{ownerId}")
-    public ResponseEntity<OwnerDTO> modifyOwnerDetails(@PathVariable UUID ownerId,
+    @PutMapping("/current")
+    public ResponseEntity<OwnerDTO> modifyCurrentOwnerDetails(
             @jakarta.validation.Valid @RequestBody OwnerDTO updatedOwnerData) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         OwnerDTO currentOwner = ownerService.retrieveOwnerByEmail(email);
 
-        if (currentOwner == null || !currentOwner.getUserId().equals(ownerId)) {
-            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You cannot modify another owner's profile");
+        if (currentOwner == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        OwnerDTO modifiedOwner = ownerService.modifyOwner(currentOwner.getUserId(), updatedOwnerData);
+        if (modifiedOwner == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        return ResponseEntity.ok(modifiedOwner);
+    }
+
+    @PutMapping("/{ownerId}")
+    public ResponseEntity<OwnerDTO> modifyOwnerDetails(@PathVariable UUID ownerId,
+            @jakarta.validation.Valid @RequestBody OwnerDTO updatedOwnerData) {
+        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isSuperAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN") || a.getAuthority().equals("SUPER_ADMIN"));
+
+        if (!isSuperAdmin) {
+            String email = (String) auth.getPrincipal();
+            OwnerDTO currentOwner = ownerService.retrieveOwnerByEmail(email);
+
+            if (currentOwner == null || !currentOwner.getUserId().equals(ownerId)) {
+                throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You cannot modify another owner's profile");
+            }
         }
 
         OwnerDTO modifiedOwner = ownerService.modifyOwner(ownerId, updatedOwnerData);
@@ -91,13 +115,32 @@ public class OwnerController {
         return ResponseEntity.ok(modifiedOwner);
     }
 
-    @DeleteMapping("/{ownerId}")
-    public ResponseEntity<Void> removeOwnerRecord(@PathVariable UUID ownerId) {
+    @DeleteMapping("/current")
+    public ResponseEntity<Void> removeCurrentOwner() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         OwnerDTO currentOwner = ownerService.retrieveOwnerByEmail(email);
 
-        if (currentOwner == null || !currentOwner.getUserId().equals(ownerId)) {
-            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You cannot delete another owner's profile");
+        if (currentOwner == null) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND, "Owner profile not found");
+        }
+
+        ownerService.removeOwner(currentOwner.getUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{ownerId}")
+    public ResponseEntity<Void> removeOwnerRecord(@PathVariable UUID ownerId) {
+        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isSuperAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN") || a.getAuthority().equals("SUPER_ADMIN"));
+
+        if (!isSuperAdmin) {
+            String email = (String) auth.getPrincipal();
+            OwnerDTO currentOwner = ownerService.retrieveOwnerByEmail(email);
+
+            if (currentOwner == null || !currentOwner.getUserId().equals(ownerId)) {
+                throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You cannot delete another owner's profile");
+            }
         }
 
         ownerService.removeOwner(ownerId);
