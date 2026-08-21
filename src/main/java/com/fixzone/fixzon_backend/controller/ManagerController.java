@@ -51,28 +51,41 @@ public class ManagerController {
      */
     @GetMapping("/current")
     public ResponseEntity<?> getCurrentOwnerManagers() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String email = getCurrentUserEmail();
         log.info("Fetching context for user: {}", email);
 
-        boolean isManager = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE_MANAGER"));
-
-        if (isManager) {
-            // If the user is a manager, return their own profile
-            ManagerDTO manager = managerService.getManagerByEmail(email);
-            if (manager == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        ManagerDTO manager = managerService.getManagerByEmail(email);
+        if (manager != null) {
             return ResponseEntity.ok(manager);
         }
 
         // Otherwise, it's an owner trying to get all their managers
         OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
         if (owner == null) {
-            log.warn("Owner not found for email: {}", email);
+            log.warn("Owner/Manager not found for email: {}", email);
             return ResponseEntity.ok(List.of());
         }
 
         return ResponseEntity.ok(managerService.getManagersByOwnerCode(owner.getOwnerCode()));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ManagerDTO> getMyProfile() {
+        String email = getCurrentUserEmail();
+        ManagerDTO manager = managerService.getManagerByEmail(email);
+        if (manager == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(manager);
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<?> updateMyProfile(@RequestBody ManagerDTO managerDTO) {
+        String email = getCurrentUserEmail();
+        ManagerDTO existing = managerService.getManagerByEmail(email);
+        if (existing == null) return ResponseEntity.notFound().build();
+        managerDTO.setManagedCenterId(existing.getManagedCenterId());
+        managerDTO.setRole(existing.getRole());
+        ManagerDTO updated = managerService.updateManager(existing.getUserId(), managerDTO);
+        return ResponseEntity.ok(updated);
     }
 
     @GetMapping("/{id}")
@@ -123,6 +136,7 @@ public class ManagerController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateManager(@PathVariable UUID id, @RequestBody ManagerDTO managerDTO) {
         try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             String email = getCurrentUserEmail();
             OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
             
@@ -131,7 +145,17 @@ public class ManagerController {
                 return ResponseEntity.notFound().build();
             }
             
-            if (owner != null) {
+            boolean isManager = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().contains("MANAGER"));
+
+            if (isManager) {
+                // If it's a manager, ensure they can only update their own profile
+                if (!existing.getEmail().equalsIgnoreCase(email) && !existing.getUserId().equals(id)) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied: You can only update your own profile");
+                }
+                managerDTO.setManagedCenterId(existing.getManagedCenterId());
+                managerDTO.setRole(existing.getRole());
+            } else if (owner != null) {
                 boolean ownsCenter = serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode())
                     .stream().anyMatch(c -> c.getCenterId().equals(existing.getManagedCenterId()));
                 if (!ownsCenter) {
