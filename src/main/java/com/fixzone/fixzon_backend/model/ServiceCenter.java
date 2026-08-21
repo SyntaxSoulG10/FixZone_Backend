@@ -75,13 +75,13 @@ public class ServiceCenter {
     @Column(name = "status", length = 30)
     private String status = "PENDING";
 
-    @Column(name = "business_reg_url")
+    @Column(name = "business_reg_url", columnDefinition = "TEXT")
     private String businessRegUrl;
 
-    @Column(name = "tax_id_url")
+    @Column(name = "tax_id_url", columnDefinition = "TEXT")
     private String taxIdUrl;
 
-    @Column(name = "nic_url")
+    @Column(name = "nic_url", columnDefinition = "TEXT")
     private String nicUrl;
 
     @Column(name = "rejection_reason", columnDefinition = "TEXT")

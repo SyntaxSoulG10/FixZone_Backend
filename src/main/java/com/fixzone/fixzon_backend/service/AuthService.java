@@ -15,6 +15,8 @@ import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.SuperAdminRepository;
 import com.fixzone.fixzon_backend.model.SuperAdmin;
+import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
+import com.fixzone.fixzon_backend.model.ServiceCenter;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +31,7 @@ public class AuthService {
     private final CustomerRepository customerRepository;
     private final OwnerRepository ownerRepository;
     private final SuperAdminRepository superAdminRepository;
+    private final ServiceCenterRepository serviceCenterRepository;
     private final NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
     private final OtpService otpService;
@@ -39,18 +42,20 @@ public class AuthService {
     private String frontendUrl;
 
     public AuthService(AuthRepository authRepository,
-            CustomerRepository customerRepository,
-            OwnerRepository ownerRepository,
-            SuperAdminRepository superAdminRepository,
-            NotificationService notificationService,
-            PasswordEncoder passwordEncoder,
-            OtpService otpService,
-            JwtUtil jwtUtil,
-            EmailService emailService) {
+                       CustomerRepository customerRepository,
+                       OwnerRepository ownerRepository,
+                       SuperAdminRepository superAdminRepository,
+                       ServiceCenterRepository serviceCenterRepository,
+                       NotificationService notificationService,
+                       PasswordEncoder passwordEncoder,
+                       OtpService otpService,
+                       JwtUtil jwtUtil,
+                       EmailService emailService) {
         this.authRepository = authRepository;
         this.customerRepository = customerRepository;
         this.ownerRepository = ownerRepository;
         this.superAdminRepository = superAdminRepository;
+        this.serviceCenterRepository = serviceCenterRepository;
         this.notificationService = notificationService;
         this.passwordEncoder = passwordEncoder;
         this.otpService = otpService;
@@ -183,6 +188,7 @@ public class AuthService {
                 customer.getEmailVerified() != null ? customer.getEmailVerified() : false);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public AuthResponseDTO registerOwner(RegisterOwnerDTO request) {
         if (authRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email is already taken");
@@ -204,6 +210,18 @@ public class AuthService {
 
         Owner savedOwner = ownerRepository.save(owner);
 
+        ServiceCenter serviceCenter = new ServiceCenter();
+        serviceCenter.setCenterId(UUID.randomUUID());
+        serviceCenter.setOwner(savedOwner);
+        serviceCenter.setName(request.getCompanyName() != null ? request.getCompanyName() : "HQ");
+        serviceCenter.setContactPhone(request.getCompanyNumber());
+        serviceCenter.setStatus("PENDING");
+        serviceCenter.setIsActive(false);
+        serviceCenter.setBusinessRegUrl(request.getBusinessRegUrl());
+        serviceCenter.setTaxIdUrl(request.getTaxIdUrl());
+        serviceCenter.setNicUrl(request.getNicUrl());
+        serviceCenterRepository.save(serviceCenter);
+
         // Safe notification trigger
         triggerSignupNotifications(savedOwner, "Owner");
 
@@ -223,6 +241,7 @@ public class AuthService {
                 owner.getEmailVerified() != null ? owner.getEmailVerified() : false);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void changePassword(String email, String currentPassword, String newPassword) {
         User user = authRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

@@ -13,6 +13,7 @@ import com.fixzone.fixzon_backend.repository.PaymentRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.AuthRepository;
+import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Refund;
@@ -68,6 +69,7 @@ public class PaymentService {
     private final ServiceCenterRepository serviceCenterRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final CustomerRepository customerRepository;
 
     public PaymentService(PaymentRepository paymentRepository,
             ServicePackageRepository servicePackageRepository,
@@ -76,7 +78,8 @@ public class PaymentService {
             OwnerRepository ownerRepository,
             ServiceCenterRepository serviceCenterRepository,
             NotificationService notificationService,
-            EmailService emailService) {
+            EmailService emailService,
+            CustomerRepository customerRepository) {
         this.paymentRepository = paymentRepository;
         this.servicePackageRepository = servicePackageRepository;
         this.bookingRepository = bookingRepository;
@@ -85,6 +88,7 @@ public class PaymentService {
         this.serviceCenterRepository = serviceCenterRepository;
         this.notificationService = notificationService;
         this.emailService = emailService;
+        this.customerRepository = customerRepository;
     }
 
     @Transactional
@@ -763,7 +767,7 @@ public class PaymentService {
                     if (centerOpt.isPresent()) centerName = centerOpt.get().getName();
                 }
 
-                emailService.sendBookingConfirmationEmail(
+                emailService.sendPaymentConfirmationEmail(
                         customer.getEmail(),
                         customer.getFullName(),
                         pkgName,

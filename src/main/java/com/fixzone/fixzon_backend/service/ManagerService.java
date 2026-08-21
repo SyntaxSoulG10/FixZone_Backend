@@ -295,12 +295,9 @@ public class ManagerService {
             throw new IllegalArgumentException("ID for deletion cannot be null");
         }
         try {
-            if (!managerRepository.existsById(id)) {
-                throw new IllegalStateException("Manager not found with id: " + id);
+            if (managerRepository.existsById(id)) {
+                managerRepository.deleteById(id);
             }
-            managerRepository.deleteById(id);
-        } catch (IllegalStateException e) {
-            throw e;
         } catch (Exception e) {
             log.error("Database error while deleting manager: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to delete manager", e);

@@ -146,7 +146,7 @@ public class ManagerController {
             }
             
             boolean isManager = auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().contains("MANAGER"));
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_SERVICE_MANAGER"));
 
             if (isManager) {
                 // If it's a manager, ensure they can only update their own profile
@@ -211,10 +211,11 @@ public class ManagerController {
             
             ManagerDTO existing = managerService.getManagerById(id);
             if (existing == null) {
-                return ResponseEntity.notFound().build();
+                log.info("Manager ID {} already deleted or does not exist. Returning 204.", id);
+                return ResponseEntity.noContent().build();
             }
             
-            if (owner != null) {
+            if (owner != null && existing.getManagedCenterId() != null) {
                 boolean ownsCenter = serviceCenterService.getServiceCentersByOwnerCode(owner.getOwnerCode())
                     .stream().anyMatch(c -> c.getCenterId().equals(existing.getManagedCenterId()));
                 if (!ownsCenter) {
@@ -227,7 +228,7 @@ public class ManagerController {
             return ResponseEntity.noContent().build();
         } catch (IllegalStateException e) {
             log.warn("Manager not found for deletion with ID: {}", id);
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.noContent().build();
         }
     }
 
