@@ -28,6 +28,9 @@ class ServiceCenterServiceTest {
     @Mock private OwnerRepository ownerRepository;
     @Mock private InvoiceRepository invoiceRepository;
     @Mock private ManagerRepository managerRepository;
+    @Mock private SuperAdminRepository superAdminRepository;
+    @Mock private NotificationService notificationService;
+    @Mock private ImageKitService imageKitService;
 
     @InjectMocks
     private ServiceCenterService serviceCenterService;
@@ -43,12 +46,14 @@ class ServiceCenterServiceTest {
 
         Owner owner = new Owner();
         owner.setUserId(ownerId);
+        owner.setSubscriptionStatus("ACTIVE");
 
         center = new ServiceCenter();
         center.setCenterId(centerId);
         center.setName("Test Center");
         center.setOwner(owner);
         center.setIsActive(true);
+        center.setStatus("APPROVED");
     }
 
     @Test

@@ -37,6 +37,7 @@ public class ServiceCenterService {
     private final ManagerRepository managerRepository;
     private final SuperAdminRepository superAdminRepository;
     private final NotificationService notificationService;
+    private final ImageKitService imageKitService;
 
     /**
      * Dependency Injection via Constructor: Ensures all required repositories
@@ -50,7 +51,8 @@ public class ServiceCenterService {
             InvoiceRepository invoiceRepository,
             ManagerRepository managerRepository,
             SuperAdminRepository superAdminRepository,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            ImageKitService imageKitService) {
         this.serviceCenterRepository = serviceCenterRepository;
         this.userRepository = userRepository;
         this.servicePackageRepository = servicePackageRepository;
@@ -59,6 +61,7 @@ public class ServiceCenterService {
         this.managerRepository = managerRepository;
         this.superAdminRepository = superAdminRepository;
         this.notificationService = notificationService;
+        this.imageKitService = imageKitService;
     }
 
     /**
@@ -183,6 +186,20 @@ public class ServiceCenterService {
             center.setStatus("PENDING");
         }
 
+        // Upload service center image / logo to ImageKit if provided
+        if (dto.getImageUrl() != null && !dto.getImageUrl().isBlank()) {
+            if (dto.getImageUrl().startsWith("data:image") || dto.getImageUrl().contains(";base64,")) {
+                try {
+                    String uploadedUrl = imageKitService.uploadImage(dto.getImageUrl(), "center-logo-" + center.getCenterId());
+                    center.setImageUrl(uploadedUrl != null ? uploadedUrl : dto.getImageUrl());
+                } catch (Exception e) {
+                    center.setImageUrl(dto.getImageUrl());
+                }
+            } else {
+                center.setImageUrl(dto.getImageUrl());
+            }
+        }
+
         ServiceCenter savedCenter = serviceCenterRepository.save(center);
 
         // Notify all Super Admins
@@ -230,6 +247,20 @@ public class ServiceCenterService {
         existing.setUpdatedBy(dto.getUpdatedBy());
         existing.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
         existing.setGoogleMapsUrl(dto.getGoogleMapsUrl());
+
+        // Update service center image / logo if provided
+        if (dto.getImageUrl() != null) {
+            if (dto.getImageUrl().startsWith("data:image") || dto.getImageUrl().contains(";base64,")) {
+                try {
+                    String uploadedUrl = imageKitService.uploadImage(dto.getImageUrl(), "center-logo-" + existing.getCenterId());
+                    existing.setImageUrl(uploadedUrl != null ? uploadedUrl : dto.getImageUrl());
+                } catch (Exception e) {
+                    existing.setImageUrl(dto.getImageUrl());
+                }
+            } else {
+                existing.setImageUrl(dto.getImageUrl());
+            }
+        }
 
         return mapEntityToDto(serviceCenterRepository.save(existing));
     }
@@ -346,6 +377,7 @@ public class ServiceCenterService {
         center.setUpdatedBy(dto.getUpdatedBy());
         center.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
         center.setGoogleMapsUrl(dto.getGoogleMapsUrl());
+        center.setImageUrl(dto.getImageUrl());
         return center;
     }
 }

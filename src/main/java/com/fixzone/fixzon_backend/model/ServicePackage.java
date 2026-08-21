@@ -28,7 +28,7 @@ public class ServicePackage {
     @Column(name = "name", nullable = false, length = 150)
     private String name;
 
-    @Column(name = "type", length = 100)
+    @Column(name = "type", columnDefinition = "TEXT")
     private String type; // Can be used for comma-separated features
 
     /**

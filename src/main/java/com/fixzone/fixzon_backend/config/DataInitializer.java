@@ -91,6 +91,8 @@ public class DataInitializer implements CommandLineRunner {
             stmt.execute("ALTER TABLE service_centers ALTER COLUMN nic_url TYPE TEXT");
             stmt.execute("ALTER TABLE service_centers ALTER COLUMN tax_id_url TYPE TEXT");
             stmt.execute("ALTER TABLE vehicles ALTER COLUMN image_url TYPE TEXT");
+            stmt.execute("ALTER TABLE service_packages ALTER COLUMN type TYPE TEXT");
+            stmt.execute("ALTER TABLE service_centers ADD COLUMN IF NOT EXISTS image_url TEXT");
         } catch (Exception e) {
             log.info("Schema migration note: {}", e.getMessage());
         }
@@ -101,6 +103,16 @@ public class DataInitializer implements CommandLineRunner {
             stmt.execute("ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS model VARCHAR(100)");
         } catch (Exception e) {
             log.info("Vehicle model column migration note: {}", e.getMessage());
+        }
+
+        // DATA REPAIR: Remove "Auto Miraj" from package names
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            stmt.executeUpdate("UPDATE service_packages SET name = TRIM(REGEXP_REPLACE(name, '(?i)Auto\\s*Miraj\\s*[-–:]?\\s*', '', 'g')) WHERE name ILIKE '%Auto Miraj%'");
+            stmt.executeUpdate("UPDATE service_packages SET description = TRIM(REGEXP_REPLACE(description, '(?i)Auto\\s*Miraj\\s*[-–:]?\\s*', '', 'g')) WHERE description ILIKE '%Auto Miraj%'");
+            log.info(">>> Cleaned up 'Auto Miraj' from package names and descriptions in database <<<");
+        } catch (Exception e) {
+            log.info("Auto Miraj package name cleanup note: {}", e.getMessage());
         }
 
         // DATA REPAIR: Fix any owners in DB who have null subscription_status
@@ -240,7 +252,8 @@ public class DataInitializer implements CommandLineRunner {
             UUID scId = UUID.fromString("11111111-1111-1111-1111-11111111111" + (i + 1));
             ServiceCenter sc = new ServiceCenter(scId, owner, owner.getCompanyName() + " HQ", "Colombo",
                     "+9411400", "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
-                    LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, "APPROVED", null, null, null, null, null, null);
+                    LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, "APPROVED", null, null, null, null, null,
+                    "https://images.unsplash.com/photo-1613214149922-f1809c99b414?w=800&auto=format&fit=crop&q=80", null);
             serviceCenterRepository.save(sc);
 
             UUID pkgId = UUID.fromString("22222222-2222-2222-2222-22222222222" + (i + 1));
@@ -325,22 +338,69 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void ensureMockPackages() {
-        System.out.println(">>> Ensuring Mock Packages exist for frontend consistency <<<");
-        serviceCenterRepository.findAll().stream().findFirst().ifPresent(sc -> {
-            // Full Service
-            UUID fullPkgId = UUID.fromString("22222222-2222-2222-2222-222222222221");
-            if (!servicePackageRepository.existsById(fullPkgId)) {
-                servicePackageRepository.save(new ServicePackage(fullPkgId, sc, "Full Service", "Package", null, "Oil & Filter", 
-                    new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
+        log.info(">>> Ensuring Standard Automotive Service Packages exist for all Service Centers in Database <<<");
+        List<ServiceCenter> centers = serviceCenterRepository.findAll();
+        for (ServiceCenter sc : centers) {
+            seedPackagesForCenter(sc);
+        }
+    }
+
+    private void seedPackagesForCenter(ServiceCenter sc) {
+        // Clean up any legacy branded names from existing database records
+        List<ServicePackage> existingList = servicePackageRepository.findByServiceCenter_CenterId(sc.getCenterId());
+        for (ServicePackage p : existingList) {
+            if (p.getName() != null && p.getName().toLowerCase().contains("auto miraj")) {
+                String cleanedName = p.getName().replaceAll("(?i)Auto\\s*Miraj\\s*[-–:]?\\s*", "").trim();
+                p.setName(cleanedName);
+                servicePackageRepository.save(p);
             }
-            
-            // Bike Package
-            UUID bikePkgId = UUID.fromString("4aba5910-a686-49db-9dde-915c8b7f538c");
-            if (!servicePackageRepository.existsById(bikePkgId)) {
-                servicePackageRepository.save(new ServicePackage(bikePkgId, sc, "Gold Package (Bike)", "Package", "BIKE", "Bike specialized care", 
-                    new BigDecimal("8000.00"), 240, true, LocalDateTime.now(), "system", LocalDateTime.now(), "system"));
-            }
-        });
+        }
+
+        // 1. Platinum Comprehensive Full Maintenance (Car / Sedan)
+        createPackageIfNotExists(sc, "Platinum Comprehensive Full Maintenance", "CAR",
+                "Engine Oil & Filter Replacement (up to 4L),30-Point Computer ECU Diagnostic Scan,4-Wheel Brake Pad Cleaning & Inspection,Underbody Wash & Anti-Rust Inspection,Coolant & Fluid Top-Up,Interior Cabin Deep Vacuuming,Tire Shine & Alloy Wheel Dressing",
+                "Complete 30-point periodic maintenance covering synthetic engine lubrication, safety diagnostics, 4-wheel brake inspection, and exterior body detailing for sedans and hatchbacks.",
+                new BigDecimal("18500.00"), 120);
+
+        // 2. Executive SUV & 4x4 Periodic Major Service
+        createPackageIfNotExists(sc, "Executive SUV & 4x4 Periodic Major Service", "SUV",
+                "Full Synthetic Oil Replacement (up to 7L),Genuine Oil & Air Filter Replacement,4-Wheel Caliper Greasing & Brake Check,Differential & Transfer Case Fluid Check,Heavy-Duty Underbody Degrease,30-Point Computer ECU Diagnostic Scan",
+                "Heavy-duty periodic service engineered for high-capacity SUVs, 4x4 Jeeps, and Crossovers with genuine filters, drivetrain inspection, and ECU health scanning.",
+                new BigDecimal("26500.00"), 150);
+
+        // 3. Commercial Van & Passenger Fleet Service
+        createPackageIfNotExists(sc, "Commercial Van & Passenger Fleet Service", "VAN",
+                "Diesel/Petrol Engine Oil (up to 6L),Genuine Oil & Fuel Filter Replacement,Heavy Duty Brake Inspection,Suspension Bush & Leaf Spring Test,Radiator Coolant Flush & Pressure Test,Electrical System Scan",
+                "Tailored for commercial vans and fleet transports (Toyota KDH, Nissan Caravan, Every) to maximize operational uptime and fuel efficiency.",
+                new BigDecimal("22000.00"), 120);
+
+        // 4. Gold Lube Care & Express Oil Service
+        createPackageIfNotExists(sc, "Gold Lube Care & Express Oil Service", "CAR",
+                "Engine Oil Replacement (up to 4L),Genuine Oil Filter Replacement,15-Point Safety Health Check,Windshield Washer Fluid Top-up,Battery Health & Alternator Test,Complimentary Exterior Foam Wash",
+                "Quick-turnaround lube service using premium engine oils and OEM filters with safety checks and complimentary wash.",
+                new BigDecimal("9500.00"), 45);
+
+        // 5. Hybrid & EV Battery Health & Inverter Care
+        createPackageIfNotExists(sc, "Hybrid & EV Battery Health & Inverter Care", "CAR",
+                "High-Voltage Inverter Coolant Flush,Hybrid Battery Cell Voltage Analysis,30-Point Computer ECU Diagnostic Scan,12V Battery Health & Alternator Test,Electric Brake Actuator Calibration",
+                "Specialized hybrid and electric vehicle service for Toyota Prius, Aqua, Axio, Honda Vezel, and Nissan Leaf by certified high-voltage technicians.",
+                new BigDecimal("16000.00"), 90);
+
+        // 6. Pro Motorcycle & Scooter Periodic Care
+        createPackageIfNotExists(sc, "Pro Motorcycle & Scooter Periodic Care", "BIKE",
+                "Engine Oil Replacement,Brake Pad & Shoe Inspection,Drive Chain Cleaning & Lubrication,Spark Plug Calibration & Cleaning,Tire Pressure & Safety Check",
+                "Specialized 2-wheeler precision care for scooters and sport bikes with drive chain alignment, brake adjustments, and safety tuning.",
+                new BigDecimal("6500.00"), 60);
+    }
+
+    private void createPackageIfNotExists(ServiceCenter sc, String name, String vehicleType, String type, String desc, BigDecimal price, int duration) {
+        boolean exists = servicePackageRepository.findByServiceCenter_CenterId(sc.getCenterId())
+                .stream().anyMatch(p -> p.getName().equalsIgnoreCase(name));
+        if (!exists) {
+            ServicePackage p = new ServicePackage(UUID.randomUUID(), sc, name, type, vehicleType, desc, price, duration, true,
+                    LocalDateTime.now(), "system", LocalDateTime.now(), "system");
+            servicePackageRepository.save(p);
+        }
     }
 
     private void ensureRajaMotors() {
@@ -469,10 +529,17 @@ public class DataInitializer implements CommandLineRunner {
         List<Manager> managers = new ArrayList<>();
 
         if (serviceCenterRepository.findByOwner_UserId(owner.getUserId()).size() < 3) {
-            for (String loc : locations) {
+            String[] branchImages = {
+                "https://images.unsplash.com/photo-1613214149922-f1809c99b414?w=800&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=80"
+            };
+            for (int bIdx = 0; bIdx < locations.length; bIdx++) {
+                String loc = locations[bIdx];
                 ServiceCenter sc = new ServiceCenter(UUID.randomUUID(), owner, "Raja Motors - " + loc, loc,
                         "+94112000" + loc.length(), "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
-                        LocalDateTime.now(), "system", new String[] {"Toyota", "Honda", "Nissan", "Suzuki"}, "APPROVED", null, null, null, null, null, null);
+                        LocalDateTime.now(), "system", new String[] {"Toyota", "Honda", "Nissan", "Suzuki"}, "APPROVED", null, null, null, null, null,
+                        branchImages[bIdx], null);
                 centers.add(serviceCenterRepository.save(sc));
 
                 // Add 3 distinct packages per center for variety

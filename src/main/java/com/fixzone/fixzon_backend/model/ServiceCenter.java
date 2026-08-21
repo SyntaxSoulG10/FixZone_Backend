@@ -77,6 +77,9 @@ public class ServiceCenter {
 
     @Column(name = "google_maps_url", length = 2083)
     private String googleMapsUrl;
+
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
     
     @OneToMany(mappedBy = "serviceCenter", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ServicePackage> servicePackages;

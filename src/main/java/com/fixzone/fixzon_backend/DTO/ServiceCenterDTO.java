@@ -50,6 +50,7 @@ public class ServiceCenterDTO {
 
     private String rejectionReason;
     private String googleMapsUrl;
+    private String imageUrl;
     private java.util.List<ServicePackageDTO> servicePackages;
     private BigDecimal revenue;
     private Integer mechanicsCount;
