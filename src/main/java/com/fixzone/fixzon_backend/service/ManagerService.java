@@ -274,6 +274,13 @@ public class ManagerService {
                     existing.setPasswordHash(passwordEncoder.encode(dto.getPasswordHash()));
                 }
 
+                if (dto.getLocation() != null && !dto.getLocation().trim().isEmpty() && existing.getManagedCenterId() != null) {
+                    serviceCenterRepository.findById(existing.getManagedCenterId()).ifPresent(center -> {
+                        center.setAddress(dto.getLocation().trim());
+                        serviceCenterRepository.save(center);
+                    });
+                }
+
                 existing.setUpdatedAt(LocalDateTime.now());
                 return mapEntityToDto(managerRepository.save(existing));
             }).orElse(null);
@@ -315,6 +322,16 @@ public class ManagerService {
         if (entity == null) return null;
         ManagerDTO dto = new ManagerDTO();
         BeanUtils.copyProperties(entity, dto);
+        
+        if (entity.getManagedCenterId() != null) {
+            serviceCenterRepository.findById(entity.getManagedCenterId()).ifPresent(center -> {
+                dto.setCenterName(center.getName());
+                String loc = center.getAddress() != null && !center.getAddress().trim().isEmpty() 
+                        ? center.getAddress() 
+                        : center.getName();
+                dto.setLocation(loc);
+            });
+        }
         return dto;
     }
 

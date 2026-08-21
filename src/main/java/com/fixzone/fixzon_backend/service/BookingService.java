@@ -226,7 +226,25 @@ public class BookingService {
         // Record history log
         saveStatusHistory(saved, saved.getStatus(), "CUSTOMER_RESCHEDULE");
 
-        // Send notifications asynchronously
+        // Send reschedule email to customer
+        try {
+            customerRepository.findById(saved.getCustomerId()).ifPresent(customer -> {
+                String centerName = serviceCenterRepository.findById(saved.getCenterId())
+                        .map(sc -> sc.getName()).orElse("Service Center");
+                emailService.sendBookingRescheduleEmail(
+                        customer.getEmail(),
+                        customer.getFullName(),
+                        saved.getBookingId().toString().substring(0, 8).toUpperCase(),
+                        centerName,
+                        newDate.toString(),
+                        newTime.toString()
+                );
+            });
+        } catch (Exception e) {
+            log.warn("Failed to send reschedule email for booking {}: {}", id, e.getMessage());
+        }
+
+        // Send in-app notifications asynchronously
         java.util.concurrent.CompletableFuture.runAsync(() -> {
             try {
                 if (saved.getCustomerId() != null) {
@@ -297,8 +315,8 @@ public class BookingService {
         // Record history log
         saveStatusHistory(saved, BookingStatus.CANCELLED, "CUSTOMER_CANCEL");
 
-        // Send notifications and emails asynchronously
-        BigDecimal fee = saved.getBookingFee() != null ? saved.getBookingFee() : 
+        // Send notifications and cancellation email asynchronously
+        BigDecimal fee = saved.getBookingFee() != null ? saved.getBookingFee() :
             (saved.getEstimatedCost() != null ? saved.getEstimatedCost().multiply(new BigDecimal("0.40")) : BigDecimal.ZERO);
         BigDecimal penalty = saved.getCancellationPenalty() != null ? saved.getCancellationPenalty() : BigDecimal.ZERO;
         BigDecimal refundCalc = fee.subtract(penalty);
@@ -637,6 +655,7 @@ public class BookingService {
         Objects.requireNonNull(booking, "Booking must not be null");
         BookingResponseDTO dto = new BookingResponseDTO();
         BeanUtils.copyProperties(booking, dto);
+        // 1. Service Center
         if (booking.getCenterId() != null) {
             var scOpt = serviceCenterRepository.findById(booking.getCenterId());
             if (scOpt.isPresent()) {
@@ -651,29 +670,64 @@ public class BookingService {
             dto.setCenterAddress("");
         }
 
+        // 2. Service Package & Duration / End Time Calculation
         if (booking.getPackageId() != null) {
             var pkgOpt = servicePackageRepository.findById(booking.getPackageId());
             if (pkgOpt.isPresent()) {
-                dto.setPackageName(pkgOpt.get().getName());
-                dto.setPackageDescription(pkgOpt.get().getDescription());
+                var pkg = pkgOpt.get();
+                dto.setPackageName(pkg.getName());
+                dto.setPackageDescription(pkg.getDescription());
+                dto.setEstimatedDurationMins(pkg.getEstimatedDurationMins());
+                if (booking.getBookingTime() != null) {
+                    int duration = pkg.getEstimatedDurationMins() != null ? pkg.getEstimatedDurationMins() : 60;
+                    dto.setEndTime(booking.getBookingTime().plusMinutes(duration));
+                }
             } else {
                 dto.setPackageName("Package");
+                if (booking.getBookingTime() != null) {
+                    dto.setEndTime(booking.getBookingTime().plusMinutes(60));
+                }
             }
         } else {
             dto.setPackageName("Package");
+            if (booking.getBookingTime() != null) {
+                dto.setEndTime(booking.getBookingTime().plusMinutes(60));
+            }
         }
 
+        // 3. Customer Full Name from User/Customer entity
+        if (booking.getCustomerId() != null) {
+            var userOpt = userRepository.findById(booking.getCustomerId());
+            if (userOpt.isPresent()) {
+                dto.setCustomerName(userOpt.get().getFullName());
+            } else {
+                var custOpt = customerRepository.findById(booking.getCustomerId());
+                dto.setCustomerName(custOpt.map(com.fixzone.fixzon_backend.model.User::getFullName).orElse("Customer"));
+            }
+        } else {
+            dto.setCustomerName("Customer");
+        }
+
+        // 4. Vehicle Brand, Model & Registration / Plate Number
         if (booking.getVehicleId() != null) {
             var vOpt = vehicleRepository.findById(booking.getVehicleId());
             if (vOpt.isPresent()) {
                 var v = vOpt.get();
+                String vName = ((v.getBrand() != null ? v.getBrand() : "") + (v.getModel() != null ? " " + v.getModel() : "")).trim();
+                dto.setVehicleName(vName.isBlank() ? "Vehicle" : vName);
+                dto.setPlateNumber(v.getPlateNumber() != null ? v.getPlateNumber() : "");
+                
                 String label = (v.getBrand() != null ? v.getBrand() : "")
                         + (v.getPlateNumber() != null ? " - " + v.getPlateNumber() : "");
                 dto.setVehicleLabel(label.isBlank() ? "Registered Vehicle" : label);
             } else {
+                dto.setVehicleName("Vehicle");
+                dto.setPlateNumber("");
                 dto.setVehicleLabel("Registered Vehicle");
             }
         } else {
+            dto.setVehicleName("Vehicle");
+            dto.setPlateNumber("");
             dto.setVehicleLabel("Registered Vehicle");
         }
 

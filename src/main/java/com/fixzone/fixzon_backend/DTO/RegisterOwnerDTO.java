@@ -22,4 +22,13 @@ public class RegisterOwnerDTO {
     @jakarta.validation.constraints.NotBlank(message = "Password is required")
     @jakarta.validation.constraints.Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
+
+    @jakarta.validation.constraints.NotBlank(message = "Business Registration Document is required")
+    private String businessRegUrl;
+
+    @jakarta.validation.constraints.NotBlank(message = "Tax Identification Document is required")
+    private String taxIdUrl;
+
+    @jakarta.validation.constraints.NotBlank(message = "NIC / Personal ID Document is required")
+    private String nicUrl;
 }

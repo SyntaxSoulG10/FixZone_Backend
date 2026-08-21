@@ -18,5 +18,8 @@ public class ManagerDTO extends UserDTO {
     private String passwordHash; // Keep for creation/updates but exclude from responses
     
     private Boolean sendInvite;
+    
+    private String centerName;
+    private String location;
 }
 

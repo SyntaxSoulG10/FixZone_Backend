@@ -10,6 +10,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -226,6 +227,81 @@ public class EmailService {
     }
 
     @Async
+    public void sendBookingConfirmationEmail(String toEmail, String fullName, String bookingId,
+            String serviceCenterName, String bookingDate, String bookingTime, BigDecimal bookingFee) {
+        String content = "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;\">" +
+                "<div style=\"text-align: center; margin-bottom: 20px;\">" +
+                "<h2 style=\"color: #ea580c; margin: 0;\">Booking Confirmed!</h2>" +
+                "<p style=\"color: #64748b; font-size: 14px; margin-top: 4px;\">FixZone Automotive Services</p>" +
+                "</div>" +
+                "<p>Hi <b>" + fullName + "</b>,</p>" +
+                "<p>Your booking has been confirmed and payment received. Here are your booking details:</p>" +
+                "<div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;\">" +
+                "<p style=\"margin: 6px 0;\"><strong>Booking ID:</strong> " + bookingId + "</p>" +
+                "<p style=\"margin: 6px 0;\"><strong>Service Center:</strong> " + serviceCenterName + "</p>" +
+                "<p style=\"margin: 6px 0;\"><strong>Date:</strong> " + bookingDate + "</p>" +
+                "<p style=\"margin: 6px 0;\"><strong>Time:</strong> " + bookingTime + "</p>" +
+                (bookingFee != null ? "<p style=\"margin: 6px 0;\"><strong>Booking Fee Paid:</strong> LKR " + bookingFee + "</p>" : "") +
+                "</div>" +
+                "<p style=\"color: #64748b; font-size: 13px;\">Please arrive 10 minutes before your scheduled time. If you need to reschedule or cancel, do so at least 3 days in advance to avoid any penalty.</p>" +
+                "<hr style=\"border: none; border-top: 1px solid #f1f5f9; margin: 20px 0;\" />" +
+                "<p style=\"color: #94a3b8; font-size: 12px; text-align: center;\">FixZone Platform</p>" +
+                "</div>";
+        sendEmail(toEmail, fullName, "FixZone - Booking Confirmed #" + bookingId, content);
+    }
+
+    @Async
+    public void sendBookingCancellationEmail(String toEmail, String fullName, String bookingId,
+            String serviceCenterName, String bookingDate, String bookingTime, java.math.BigDecimal penalty) {
+        String penaltyLine = (penalty != null && penalty.compareTo(java.math.BigDecimal.ZERO) > 0)
+                ? "<p style=\"margin: 6px 0; color: #dc2626;\"><strong>Cancellation Penalty:</strong> LKR " + penalty + " (cancelled within 3 days)</p>"
+                : "<p style=\"margin: 6px 0; color: #16a34a;\"><strong>Cancellation Penalty:</strong> None</p>";
+
+        String content = "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;\">" +
+                "<div style=\"text-align: center; margin-bottom: 20px;\">" +
+                "<h2 style=\"color: #dc2626; margin: 0;\">Booking Cancelled</h2>" +
+                "<p style=\"color: #64748b; font-size: 14px; margin-top: 4px;\">FixZone Automotive Services</p>" +
+                "</div>" +
+                "<p>Hi <b>" + fullName + "</b>,</p>" +
+                "<p>Your booking has been successfully cancelled. Here are the details:</p>" +
+                "<div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;\">" +
+                "<p style=\"margin: 6px 0;\"><strong>Booking ID:</strong> " + bookingId + "</p>" +
+                "<p style=\"margin: 6px 0;\"><strong>Service Center:</strong> " + serviceCenterName + "</p>" +
+                "<p style=\"margin: 6px 0;\"><strong>Original Date:</strong> " + bookingDate + "</p>" +
+                "<p style=\"margin: 6px 0;\"><strong>Original Time:</strong> " + bookingTime + "</p>" +
+                penaltyLine +
+                "</div>" +
+                "<p style=\"color: #64748b; font-size: 13px;\">If a refund is applicable, it will be processed within 5-7 business days to your original payment method.</p>" +
+                "<hr style=\"border: none; border-top: 1px solid #f1f5f9; margin: 20px 0;\" />" +
+                "<p style=\"color: #94a3b8; font-size: 12px; text-align: center;\">FixZone Platform</p>" +
+                "</div>";
+        sendEmail(toEmail, fullName, "FixZone - Booking Cancelled #" + bookingId, content);
+    }
+
+    @Async
+    public void sendBookingRescheduleEmail(String toEmail, String fullName, String bookingId,
+            String serviceCenterName, String newDate, String newTime) {
+        String content = "<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;\">" +
+                "<div style=\"text-align: center; margin-bottom: 20px;\">" +
+                "<h2 style=\"color: #ea580c; margin: 0;\">Booking Rescheduled</h2>" +
+                "<p style=\"color: #64748b; font-size: 14px; margin-top: 4px;\">FixZone Automotive Services</p>" +
+                "</div>" +
+                "<p>Hi <b>" + fullName + "</b>,</p>" +
+                "<p>Your booking has been successfully rescheduled. Here are your updated details:</p>" +
+                "<div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;\">" +
+                "<p style=\"margin: 6px 0;\"><strong>Booking ID:</strong> " + bookingId + "</p>" +
+                "<p style=\"margin: 6px 0;\"><strong>Service Center:</strong> " + serviceCenterName + "</p>" +
+                "<p style=\"margin: 6px 0;\"><strong>New Date:</strong> " + newDate + "</p>" +
+                "<p style=\"margin: 6px 0;\"><strong>New Time:</strong> " + newTime + "</p>" +
+                "</div>" +
+                "<p style=\"color: #64748b; font-size: 13px;\">Please arrive 10 minutes before your scheduled time. Further rescheduling must be done at least 3 days in advance.</p>" +
+                "<hr style=\"border: none; border-top: 1px solid #f1f5f9; margin: 20px 0;\" />" +
+                "<p style=\"color: #94a3b8; font-size: 12px; text-align: center;\">FixZone Platform</p>" +
+                "</div>";
+        sendEmail(toEmail, fullName, "FixZone - Booking Rescheduled #" + bookingId, content);
+    }
+
+    @Async
     public void sendPasswordResetEmail(String toEmail, String resetLink) {
         sendPasswordResetEmail(toEmail, resetLink, null);
     }
@@ -254,7 +330,7 @@ public class EmailService {
         sendEmail(toEmail, null, "FixZone - Password Recovery", content);
     }
 
-    public void sendBookingConfirmationEmail(String toEmail, String customerName, String packageName, String serviceCenterName, String bookingDate, String bookingTime, java.math.BigDecimal amount) {
+    public void sendPaymentConfirmationEmail(String toEmail, String customerName, String packageName, String serviceCenterName, String bookingDate, String bookingTime, java.math.BigDecimal amount) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);

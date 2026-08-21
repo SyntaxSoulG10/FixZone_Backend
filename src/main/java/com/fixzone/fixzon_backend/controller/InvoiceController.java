@@ -1,10 +1,9 @@
 package com.fixzone.fixzon_backend.controller;
 
 import com.fixzone.fixzon_backend.DTO.InvoiceDTO;
-import com.fixzone.fixzon_backend.DTO.OwnerDTO;
+import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.service.InvoiceService;
-import com.fixzone.fixzon_backend.service.OwnerService;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -14,13 +13,12 @@ import java.util.UUID;
 @RequestMapping("/api/invoices")
 public class InvoiceController {
 
-    // Explicit constructor injection to resolve immutable service boundaries cleanly.
     private final InvoiceService invoiceService;
-    private final OwnerService ownerService;
+    private final OwnerRepository ownerRepository;
 
-    public InvoiceController(InvoiceService invoiceService, OwnerService ownerService) {
+    public InvoiceController(InvoiceService invoiceService, OwnerRepository ownerRepository) {
         this.invoiceService = invoiceService;
-        this.ownerService = ownerService;
+        this.ownerRepository = ownerRepository;
     }
 
     @GetMapping
@@ -29,13 +27,13 @@ public class InvoiceController {
     }
 
     @GetMapping("/current")
-    public ResponseEntity<List<InvoiceDTO>> getCurrentOwnerInvoices() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
-        if (owner == null) {
-            return ResponseEntity.ok(List.of());
+    public ResponseEntity<List<InvoiceDTO>> getCurrentOwnerInvoices(Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(401).build();
         }
-        return ResponseEntity.ok(invoiceService.getInvoicesByCompanyCode(owner.getOwnerCode()));
+        return ownerRepository.findByEmail(authentication.getName())
+                .map(owner -> ResponseEntity.ok(invoiceService.getInvoicesByCompanyCode(owner.getOwnerCode())))
+                .orElse(ResponseEntity.status(404).build());
     }
 
     @GetMapping("/{id}")
@@ -64,8 +62,7 @@ public class InvoiceController {
      * Used by the customer dashboard "download invoice" button on completed bookings.
      */
     @GetMapping("/my")
-    public ResponseEntity<List<InvoiceDTO>> getMyInvoices(
-            org.springframework.security.core.Authentication authentication) {
+    public ResponseEntity<List<InvoiceDTO>> getMyInvoices(Authentication authentication) {
         return ResponseEntity.ok(invoiceService.getInvoicesForCurrentCustomer(authentication.getName()));
     }
 
