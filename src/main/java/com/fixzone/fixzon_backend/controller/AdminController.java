@@ -7,6 +7,7 @@ import com.fixzone.fixzon_backend.DTO.SubscriptionDTO;
 import com.fixzone.fixzon_backend.DTO.UserDTO;
 import com.fixzone.fixzon_backend.service.AdminService;
 import com.fixzone.fixzon_backend.service.SuperAdminAnalyticsService;
+import com.fixzone.fixzon_backend.middleware.RequireRole;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin")
+@RequireRole({"ROLE_SUPER_ADMIN"})
 public class AdminController {
 
     private final AdminService adminService;

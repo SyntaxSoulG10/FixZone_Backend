@@ -2,6 +2,7 @@ package com.fixzone.fixzon_backend.controller;
 
 import com.fixzone.fixzon_backend.DTO.ManagerDTO;
 import com.fixzone.fixzon_backend.DTO.OwnerDTO;
+import com.fixzone.fixzon_backend.middleware.RequireRole;
 import com.fixzone.fixzon_backend.service.ManagerService;
 import com.fixzone.fixzon_backend.service.OwnerService;
 import com.fixzone.fixzon_backend.service.ServiceCenterService;
@@ -25,6 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/managers")
 @Validated // Enables class-level validation
+@RequireRole({"ROLE_SERVICE_MANAGER", "ROLE_COMPANY_OWNER"})
 public class ManagerController {
 
     private static final Logger log = LoggerFactory.getLogger(ManagerController.class);

@@ -1,6 +1,7 @@
 package com.fixzone.fixzon_backend.controller;
 
 import com.fixzone.fixzon_backend.DTO.SuperAdminDTO;
+import com.fixzone.fixzon_backend.middleware.RequireRole;
 import com.fixzone.fixzon_backend.service.SuperAdminService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,6 +11,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/super-admins")
+@RequireRole({"ROLE_SUPER_ADMIN"})
 public class SuperAdminController {
 
     private final SuperAdminService superAdminService;
