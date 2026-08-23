@@ -72,6 +72,9 @@ public class Invoice {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+        if (issuedAt == null) {
+            issuedAt = LocalDateTime.now();
+        }
     }
 
     @PreUpdate

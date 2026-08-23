@@ -7,11 +7,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 
 import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -43,6 +43,8 @@ public class DataInitializer implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final DataSource dataSource;
     private final SubscriptionBillingRepository subscriptionBillingRepository;
+    private final VehicleRepository vehicleRepository;
+    private final BookingStatusHistoryRepository bookingStatusHistoryRepository;
 
     @Value("${spring.jpa.hibernate.ddl-auto:update}")
     private String ddlAuto;
@@ -56,7 +58,9 @@ public class DataInitializer implements CommandLineRunner {
             SubscriptionPlanRepository planRepository,
             AnalyticsRepository analyticsRepository, BookingHistoryRepository bookingHistoryRepository,
             PaymentRepository paymentRepository, PasswordEncoder passwordEncoder,
-            DataSource dataSource, SubscriptionBillingRepository subscriptionBillingRepository) {
+            DataSource dataSource, SubscriptionBillingRepository subscriptionBillingRepository,
+            VehicleRepository vehicleRepository,
+            BookingStatusHistoryRepository bookingStatusHistoryRepository) {
         this.userRepository = userRepository;
         this.ownerRepository = ownerRepository;
         this.customerRepository = customerRepository;
@@ -76,10 +80,11 @@ public class DataInitializer implements CommandLineRunner {
         this.passwordEncoder = passwordEncoder;
         this.dataSource = dataSource;
         this.subscriptionBillingRepository = subscriptionBillingRepository;
+        this.vehicleRepository = vehicleRepository;
+        this.bookingStatusHistoryRepository = bookingStatusHistoryRepository;
     }
 
     @Override
-    @Transactional
     public void run(String... args) throws Exception {
         log.info(">>> APPLYING SCHEMA MIGRATIONS AND DATA INITIALIZATION <<<");
 
@@ -104,6 +109,21 @@ public class DataInitializer implements CommandLineRunner {
             log.info(">>> Dropped auto_renew_enabled column from owner table <<<");
         } catch (Exception e) {
             log.info("Drop auto_renew_enabled column note: {}", e.getMessage());
+        }
+
+        // DROP redundant features column from service_packages if it exists
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            // In case features column exists and has content while type is null/empty, preserve it into type
+            try {
+                stmt.execute("UPDATE service_packages SET type = features WHERE (type IS NULL OR type = '') AND features IS NOT NULL");
+            } catch (Exception ignored) {
+                // features column may not exist yet or have different structure
+            }
+            stmt.execute("ALTER TABLE service_packages DROP COLUMN IF EXISTS features");
+            log.info(">>> Dropped redundant 'features' column from service_packages table <<<");
+        } catch (Exception e) {
+            log.info("Drop features column note: {}", e.getMessage());
         }
 
         // Add model column to vehicles table if it doesn't exist
@@ -155,18 +175,22 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         // SAFETY GUARD: Only wipe and re-seed if explicitly in 'create' mode.
-        // Never delete data just because count() returned 0 — Neon cold start can cause
-        // a transient 0 count on the first query before the connection pool warms up.
         boolean isCreateMode = "create".equalsIgnoreCase(ddlAuto);
-        long userCount = userRepository.count();
+        long userCount = 0;
+        try {
+            userCount = userRepository.count();
+        } catch (Exception e) {
+            log.warn("Could not check user count: {}", e.getMessage());
+        }
 
         if (!isCreateMode || userCount > 0) {
             log.info("Existing data found (count={}) or not in create mode. Ensuring seed data only...", userCount);
-            ensureMockCharlie();
-            ensureRajaMotors();
-            ensureMockManager();
-            ensureMockPackages();
-            ensureSuperAdmins();
+            try { ensureMockCharlie(); } catch (Exception e) { log.warn("ensureMockCharlie note: {}", e.getMessage()); }
+            try { ensureRajaMotors(); } catch (Exception e) { log.warn("ensureRajaMotors note: {}", e.getMessage()); }
+            try { ensureMockManager(); } catch (Exception e) { log.warn("ensureMockManager note: {}", e.getMessage()); }
+            try { ensureMockPackages(); } catch (Exception e) { log.warn("ensureMockPackages note: {}", e.getMessage()); }
+            try { ensureSuperAdmins(); } catch (Exception e) { log.warn("ensureSuperAdmins note: {}", e.getMessage()); }
+            try { ensureBookingsForManager(); } catch (Exception e) { log.warn("ensureBookingsForManager note: {}", e.getMessage()); }
             return;
         }
 
@@ -361,8 +385,11 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void ensureMockManager() {
-        if (!userRepository.existsByEmail("manager1@fixzone.lk") && serviceCenterRepository.count() > 0) {
-            ServiceCenter firstCenter = serviceCenterRepository.findAll().get(0);
+        if (serviceCenterRepository.count() == 0) return;
+        ServiceCenter firstCenter = serviceCenterRepository.findAll().get(0);
+
+        Optional<User> existingUser = userRepository.findByEmail("manager1@fixzone.lk");
+        if (existingUser.isEmpty()) {
             Manager manager = new Manager(
                     UUID.randomUUID(),
                     "Roshan Wijesinghe",
@@ -381,6 +408,268 @@ public class DataInitializer implements CommandLineRunner {
                     firstCenter.getCenterId());
             managerRepository.save(manager);
             log.info(">>> Mock Manager created successfully <<<");
+        } else {
+            Optional<Manager> mgrOpt = managerRepository.findById(existingUser.get().getUserId());
+            if (mgrOpt.isPresent()) {
+                Manager mgr = mgrOpt.get();
+                if (mgr.getManagedCenterId() == null) {
+                    mgr.setManagedCenterId(firstCenter.getCenterId());
+                    managerRepository.save(mgr);
+                    log.info(">>> Assigned managedCenterId to existing manager1@fixzone.lk <<<");
+                }
+            }
+        }
+    }
+
+    private void ensureBookingsForManager() {
+        Optional<User> mgrUserOpt = userRepository.findByEmail("manager1@fixzone.lk");
+        if (mgrUserOpt.isEmpty() && serviceCenterRepository.count() > 0) {
+            ensureMockManager();
+            mgrUserOpt = userRepository.findByEmail("manager1@fixzone.lk");
+        }
+        if (mgrUserOpt.isEmpty() || serviceCenterRepository.count() == 0) {
+            return;
+        }
+
+        Manager manager;
+        if (mgrUserOpt.get() instanceof Manager) {
+            manager = (Manager) mgrUserOpt.get();
+        } else {
+            Optional<Manager> mOpt = managerRepository.findById(mgrUserOpt.get().getUserId());
+            if (mOpt.isPresent()) {
+                manager = mOpt.get();
+            } else {
+                return;
+            }
+        }
+
+        ServiceCenter center;
+        if (manager.getManagedCenterId() != null) {
+            center = serviceCenterRepository.findById(manager.getManagedCenterId())
+                    .orElse(serviceCenterRepository.findAll().get(0));
+        } else {
+            center = serviceCenterRepository.findAll().get(0);
+            manager.setManagedCenterId(center.getCenterId());
+            managerRepository.save(manager);
+        }
+
+        // Ensure packages exist for this center
+        List<ServicePackage> packages = servicePackageRepository.findByServiceCenter_CenterId(center.getCenterId());
+        if (packages.isEmpty()) {
+            seedPackagesForCenter(center);
+            packages = servicePackageRepository.findByServiceCenter_CenterId(center.getCenterId());
+        }
+        if (packages.isEmpty()) {
+            ServicePackage fallbackPkg1 = new ServicePackage();
+            fallbackPkg1.setPackageId(UUID.randomUUID());
+            fallbackPkg1.setServiceCenter(center);
+            fallbackPkg1.setName("Full Hybrid Periodic Service");
+            fallbackPkg1.setType("Maintenance");
+            fallbackPkg1.setVehicleBrand("Toyota");
+            fallbackPkg1.setDescription("Complete lube, filter, brake scan, and battery inspection.");
+            fallbackPkg1.setBasePrice(new BigDecimal("14500.00"));
+            fallbackPkg1.setEstimatedDurationMins(90);
+            fallbackPkg1.setIsActive(true);
+            fallbackPkg1.setCreatedAt(LocalDateTime.now());
+            fallbackPkg1.setCreatedBy("system");
+            fallbackPkg1.setUpdatedAt(LocalDateTime.now());
+            fallbackPkg1.setUpdatedBy("system");
+            fallbackPkg1 = servicePackageRepository.save(fallbackPkg1);
+
+            ServicePackage fallbackPkg2 = new ServicePackage();
+            fallbackPkg2.setPackageId(UUID.randomUUID());
+            fallbackPkg2.setServiceCenter(center);
+            fallbackPkg2.setName("Standard Periodic Maintenance & Inspection");
+            fallbackPkg2.setType("Inspection");
+            fallbackPkg2.setVehicleBrand("Honda");
+            fallbackPkg2.setDescription("Engine oil replacement, brake check, multi-point diagnostic check.");
+            fallbackPkg2.setBasePrice(new BigDecimal("9500.00"));
+            fallbackPkg2.setEstimatedDurationMins(60);
+            fallbackPkg2.setIsActive(true);
+            fallbackPkg2.setCreatedAt(LocalDateTime.now());
+            fallbackPkg2.setCreatedBy("system");
+            fallbackPkg2.setUpdatedAt(LocalDateTime.now());
+            fallbackPkg2.setUpdatedBy("system");
+            fallbackPkg2 = servicePackageRepository.save(fallbackPkg2);
+
+            packages = List.of(fallbackPkg1, fallbackPkg2);
+        }
+
+        ServicePackage pkg1 = packages.get(0);
+        ServicePackage pkg2 = packages.size() > 1 ? packages.get(1) : pkg1;
+
+        // Helper to ensure customer
+        java.util.function.BiFunction<String, String, Customer> getOrCreateCustomer = (email, name) -> {
+            Optional<User> uOpt = userRepository.findByEmail(email);
+            if (uOpt.isPresent() && uOpt.get() instanceof Customer) {
+                return (Customer) uOpt.get();
+            } else if (uOpt.isPresent()) {
+                return customerRepository.findById(uOpt.get().getUserId()).orElseGet(() -> {
+                    Customer c = new Customer();
+                    c.setUserId(uOpt.get().getUserId());
+                    c.setEmail(email);
+                    c.setFullName(name);
+                    c.setPhone("+94771234567");
+                    c.setRole("ROLE_CUSTOMER");
+                    c.setPasswordHash(passwordEncoder.encode("Customer123!"));
+                    c.setStatus("Active");
+                    c.setCustomerCode("CUST-" + Math.abs(email.hashCode() % 1000));
+                    return customerRepository.save(c);
+                });
+            } else {
+                Customer c = new Customer();
+                c.setUserId(UUID.randomUUID());
+                c.setEmail(email);
+                c.setFullName(name);
+                c.setPhone("+94771234567");
+                c.setRole("ROLE_CUSTOMER");
+                c.setPasswordHash(passwordEncoder.encode("Customer123!"));
+                c.setStatus("Active");
+                c.setCustomerCode("CUST-" + Math.abs(email.hashCode() % 1000));
+                return customerRepository.save(c);
+            }
+        };
+
+        // Helper to ensure vehicle
+        java.util.function.Function<Object[], Vehicle> getOrCreateVehicle = (argsArr) -> {
+            Customer cust = (Customer) argsArr[0];
+            String brand = (String) argsArr[1];
+            String plate = (String) argsArr[2];
+            String model = (String) argsArr[3];
+            List<Vehicle> vList = vehicleRepository.findByCustomerId(cust.getUserId());
+            if (!vList.isEmpty()) {
+                return vList.get(0);
+            }
+            Vehicle v = new Vehicle(UUID.randomUUID(), cust.getUserId(), brand, plate, model, "CAR", null, LocalDate.now().minusMonths(3));
+            return vehicleRepository.save(v);
+        };
+
+        Customer c1 = getOrCreateCustomer.apply("kamal.perera@fixzone.lk", "Kamal Perera");
+        Customer c2 = getOrCreateCustomer.apply("nimal.silva@fixzone.lk", "Nimal Silva");
+        Customer c3 = getOrCreateCustomer.apply("dilshan.mendis@fixzone.lk", "Dilshan Mendis");
+        Customer c4 = getOrCreateCustomer.apply("kasun.j@fixzone.lk", "Kasun Jayawardena");
+        Customer c5 = getOrCreateCustomer.apply("suresh.p@fixzone.lk", "Suresh Perera");
+
+        Vehicle v1 = getOrCreateVehicle.apply(new Object[]{c1, "Toyota", "WP CAB-4521", "Prius"});
+        Vehicle v2 = getOrCreateVehicle.apply(new Object[]{c2, "Honda", "WP CAD-7890", "Vezel"});
+        Vehicle v3 = getOrCreateVehicle.apply(new Object[]{c3, "Toyota", "WP CAC-9988", "Land Cruiser Prado"});
+        Vehicle v4 = getOrCreateVehicle.apply(new Object[]{c4, "Nissan", "WP CBF-3344", "X-Trail"});
+        Vehicle v5 = getOrCreateVehicle.apply(new Object[]{c5, "Mazda", "WP CAX-5566", "CX-5"});
+
+        UUID tenantId = center.getOwner() != null ? center.getOwner().getUserId() : UUID.randomUUID();
+        LocalDate today = LocalDate.now();
+
+        // Clean existing today's bookings for this center to guarantee fresh 5 items
+        List<Booking> todayBookings = bookingRepository.findByCenterId(center.getCenterId()).stream()
+                .filter(b -> today.equals(b.getBookingDate()))
+                .toList();
+
+        if (todayBookings.size() != 5) {
+            for (Booking oldB : todayBookings) {
+                try {
+                    bookingStatusHistoryRepository.deleteAll(bookingStatusHistoryRepository.findByBookingIdOrderByChangedAtAsc(oldB.getBookingId()));
+                    bookingRepository.delete(oldB);
+                } catch (Exception e) {
+                    log.warn("Note on cleaning old booking: {}", e.getMessage());
+                }
+            }
+
+            // Booking 1: COMPLETED (Completed early morning)
+            Booking b1 = new Booking();
+            b1.setBookingId(UUID.randomUUID());
+            b1.setTenantId(tenantId);
+            b1.setCenterId(center.getCenterId());
+            b1.setCustomerId(c3.getUserId());
+            b1.setVehicleId(v3.getId());
+            b1.setPackageId(pkg1.getPackageId());
+            b1.setBookingDate(today);
+            b1.setBookingTime(LocalTime.of(8, 0));
+            b1.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED);
+            b1.setEstimatedCost(pkg1.getBasePrice() != null ? pkg1.getBasePrice() : new BigDecimal("14500.00"));
+            b1.setBookingFee(new BigDecimal("2000.00"));
+            b1.setBookingFeePaid(true);
+            b1.setCreatedAt(LocalDateTime.now().minusHours(4));
+            b1.setUpdatedAt(LocalDateTime.now().minusHours(1));
+            b1.setSpecialRequest("Customer: " + c3.getFullName() + ", Vehicle: " + v3.getBrand() + " " + v3.getModel() + ", Vehicle Number: " + v3.getPlateNumber() + ", Service: " + pkg1.getName());
+            b1 = bookingRepository.save(b1);
+
+            // Booking 2: IN_PROGRESS (Bay 1 active)
+            Booking b2 = new Booking();
+            b2.setBookingId(UUID.randomUUID());
+            b2.setTenantId(tenantId);
+            b2.setCenterId(center.getCenterId());
+            b2.setCustomerId(c1.getUserId());
+            b2.setVehicleId(v1.getId());
+            b2.setPackageId(pkg1.getPackageId());
+            b2.setBookingDate(today);
+            b2.setBookingTime(LocalTime.of(9, 30));
+            b2.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.IN_PROGRESS);
+            b2.setEstimatedCost(pkg1.getBasePrice() != null ? pkg1.getBasePrice() : new BigDecimal("14500.00"));
+            b2.setBookingFee(new BigDecimal("2000.00"));
+            b2.setBookingFeePaid(true);
+            b2.setCreatedAt(LocalDateTime.now().minusHours(3));
+            b2.setUpdatedAt(LocalDateTime.now().minusMinutes(45));
+            b2.setSpecialRequest("Customer: " + c1.getFullName() + ", Vehicle: " + v1.getBrand() + " " + v1.getModel() + ", Vehicle Number: " + v1.getPlateNumber() + ", Service: " + pkg1.getName());
+            b2 = bookingRepository.save(b2);
+
+            // Booking 3: IN_PROGRESS (Bay 2 active)
+            Booking b3 = new Booking();
+            b3.setBookingId(UUID.randomUUID());
+            b3.setTenantId(tenantId);
+            b3.setCenterId(center.getCenterId());
+            b3.setCustomerId(c4.getUserId());
+            b3.setVehicleId(v4.getId());
+            b3.setPackageId(pkg2.getPackageId());
+            b3.setBookingDate(today);
+            b3.setBookingTime(LocalTime.of(11, 0));
+            b3.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.IN_PROGRESS);
+            b3.setEstimatedCost(pkg2.getBasePrice() != null ? pkg2.getBasePrice() : new BigDecimal("9500.00"));
+            b3.setBookingFee(new BigDecimal("1500.00"));
+            b3.setBookingFeePaid(true);
+            b3.setCreatedAt(LocalDateTime.now().minusHours(2));
+            b3.setUpdatedAt(LocalDateTime.now().minusMinutes(20));
+            b3.setSpecialRequest("Customer: " + c4.getFullName() + ", Vehicle: " + v4.getBrand() + " " + v4.getModel() + ", Vehicle Number: " + v4.getPlateNumber() + ", Service: " + pkg2.getName());
+            b3 = bookingRepository.save(b3);
+
+            // Booking 4: CONFIRMED (Upcoming 14:00)
+            Booking b4 = new Booking();
+            b4.setBookingId(UUID.randomUUID());
+            b4.setTenantId(tenantId);
+            b4.setCenterId(center.getCenterId());
+            b4.setCustomerId(c2.getUserId());
+            b4.setVehicleId(v2.getId());
+            b4.setPackageId(pkg2.getPackageId());
+            b4.setBookingDate(today);
+            b4.setBookingTime(LocalTime.of(14, 0));
+            b4.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED);
+            b4.setEstimatedCost(pkg2.getBasePrice() != null ? pkg2.getBasePrice() : new BigDecimal("9500.00"));
+            b4.setBookingFee(new BigDecimal("1500.00"));
+            b4.setBookingFeePaid(true);
+            b4.setCreatedAt(LocalDateTime.now().minusHours(2));
+            b4.setUpdatedAt(LocalDateTime.now().minusHours(1));
+            b4.setSpecialRequest("Customer: " + c2.getFullName() + ", Vehicle: " + v2.getBrand() + " " + v2.getModel() + ", Vehicle Number: " + v2.getPlateNumber() + ", Service: " + pkg2.getName());
+            b4 = bookingRepository.save(b4);
+
+            // Booking 5: CONFIRMED (Upcoming 16:00)
+            Booking b5 = new Booking();
+            b5.setBookingId(UUID.randomUUID());
+            b5.setTenantId(tenantId);
+            b5.setCenterId(center.getCenterId());
+            b5.setCustomerId(c5.getUserId());
+            b5.setVehicleId(v5.getId());
+            b5.setPackageId(pkg1.getPackageId());
+            b5.setBookingDate(today);
+            b5.setBookingTime(LocalTime.of(16, 0));
+            b5.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED);
+            b5.setEstimatedCost(pkg1.getBasePrice() != null ? pkg1.getBasePrice() : new BigDecimal("14500.00"));
+            b5.setBookingFee(new BigDecimal("2000.00"));
+            b5.setBookingFeePaid(true);
+            b5.setCreatedAt(LocalDateTime.now().minusHours(1));
+            b5.setUpdatedAt(LocalDateTime.now().minusMinutes(30));
+            b5.setSpecialRequest("Customer: " + c5.getFullName() + ", Vehicle: " + v5.getBrand() + " " + v5.getModel() + ", Vehicle Number: " + v5.getPlateNumber() + ", Service: " + pkg1.getName());
+            b5 = bookingRepository.save(b5);
+
+            log.info(">>> Seeded exactly 5 today's bookings (1 COMPLETED, 2 IN_PROGRESS, 2 CONFIRMED) for manager center {} <<<", center.getName());
         }
     }
 

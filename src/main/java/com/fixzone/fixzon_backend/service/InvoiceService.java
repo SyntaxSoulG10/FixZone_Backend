@@ -103,6 +103,9 @@ public class InvoiceService {
         if (invoice.getInvoiceId() == null) {
             invoice.setInvoiceId(UUID.randomUUID());
         }
+        if (invoice.getIssuedAt() == null) {
+            invoice.setIssuedAt(java.time.LocalDateTime.now());
+        }
         return transformToDataTransferObject(invoiceRepository.save(invoice));
     }
 
