@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.UUID;
@@ -649,6 +650,59 @@ public class BookingService {
         }
 
         return mapToResponseDTO(saved);
+    }
+
+    @Transactional
+    public List<BookingResponseDTO> processOverdueBookings() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        List<Booking> overdueBookings = bookingRepository.findAll().stream()
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
+                .filter(b -> {
+                    if (b.getBookingDate() == null || b.getBookingTime() == null) return false;
+                    java.time.LocalDateTime bookingStart = java.time.LocalDateTime.of(b.getBookingDate(), b.getBookingTime());
+                    java.time.LocalDateTime gracePeriodEnd = bookingStart.plusMinutes(30);
+                    return now.isAfter(gracePeriodEnd);
+                })
+                .collect(Collectors.toList());
+
+        List<BookingResponseDTO> cancelledDTOs = new ArrayList<>();
+
+        for (Booking booking : overdueBookings) {
+            log.info(">>> AUTO-CANCELLING OVERDUE BOOKING {}: Scheduled for {} {}, 30-minute grace period expired.",
+                    booking.getBookingId(), booking.getBookingDate(), booking.getBookingTime());
+
+            booking.setStatus(BookingStatus.CANCELLED);
+            booking.setCancelledAt(now);
+
+            BigDecimal baseCost = booking.getBookingFee() != null ? booking.getBookingFee() : (booking.getEstimatedCost() != null ? booking.getEstimatedCost() : BigDecimal.ZERO);
+            BigDecimal penaltyAmount = baseCost.multiply(new BigDecimal("0.90"));
+            booking.setCancellationPenalty(penaltyAmount);
+
+            Booking saved = bookingRepository.save(booking);
+
+            String logMsg = String.format("Auto-Cancelled: Customer No-Show after 30-Minute Grace Period (90%% Penalty Applied: LKR %.2f)", penaltyAmount.doubleValue());
+            saveStatusHistory(saved, BookingStatus.CANCELLED, logMsg);
+
+            if (saved.getCustomerId() != null) {
+                com.fixzone.fixzon_backend.model.User recipient = userRepository.findById(saved.getCustomerId())
+                        .orElseGet(() -> customerRepository.findById(saved.getCustomerId())
+                                .map(c -> (com.fixzone.fixzon_backend.model.User) c).orElse(null));
+
+                if (recipient != null) {
+                    notificationService.createNotificationSafe(
+                            recipient,
+                            "Booking Auto-Cancelled",
+                            "Your booking for " + saved.getBookingDate() + " at " + saved.getBookingTime() +
+                                    " was cancelled due to no-show after the 30-minute grace period. A 90% penalty has been applied.",
+                            "WARNING",
+                            "/bookings"
+                    );
+                }
+            }
+            cancelledDTOs.add(mapToResponseDTO(saved));
+        }
+
+        return cancelledDTOs;
     }
 
     private BookingResponseDTO mapToResponseDTO(@org.springframework.lang.NonNull Booking booking) {
