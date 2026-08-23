@@ -28,7 +28,7 @@ public class ServicePackage {
     @Column(name = "name", nullable = false, length = 150)
     private String name;
 
-    @Column(name = "type", length = 100)
+    @Column(name = "type", columnDefinition = "TEXT")
     private String type; // Can be used for comma-separated features
 
     /**
@@ -41,6 +41,9 @@ public class ServicePackage {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
 
     @Column(name = "base_price", precision = 10, scale = 2)
     private BigDecimal basePrice;

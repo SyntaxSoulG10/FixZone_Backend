@@ -75,6 +75,9 @@ public class ServiceCenter {
     @Column(name = "status", length = 30)
     private String status = "PENDING";
 
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
     @Column(name = "business_reg_url", columnDefinition = "TEXT")
     private String businessRegUrl;
 

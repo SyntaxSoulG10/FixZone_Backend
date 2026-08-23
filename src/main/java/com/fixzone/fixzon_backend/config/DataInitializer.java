@@ -260,26 +260,55 @@ public class DataInitializer implements CommandLineRunner {
         for (int i = 0; i < owners.size(); i++) {
             Owner owner = owners.get(i);
             UUID scId = UUID.fromString("11111111-1111-1111-1111-11111111111" + (i + 1));
-            ServiceCenter sc = new ServiceCenter(scId, owner, owner.getCompanyName() + " HQ", "Colombo",
-                    "+9411400", "08:00 - 18:00", new BigDecimal("4.5"), true, LocalDateTime.now(), "system",
-                    LocalDateTime.now(), "system", new String[] { "Toyota", "Nissan" }, null, null, "APPROVED", null,
-                    null, null,
-                    null, null);
+            ServiceCenter sc = new ServiceCenter();
+            sc.setCenterId(scId);
+            sc.setOwner(owner);
+            sc.setName(owner.getCompanyName() + " HQ");
+            sc.setAddress("Colombo");
+            sc.setContactPhone("+9411400");
+            sc.setOpeningHours("08:00 - 18:00");
+            sc.setRating(new BigDecimal("4.5"));
+            sc.setIsActive(true);
+            sc.setSupportedVehicleBrands(new String[] { "Toyota", "Nissan" });
+            sc.setStatus("APPROVED");
+            sc.setImageUrl("https://images.unsplash.com/photo-1625047509168-a7026f36de04?q=80&w=600&auto=format&fit=crop");
             serviceCenterRepository.save(sc);
 
             UUID pkgId = UUID.fromString("22222222-2222-2222-2222-22222222222" + (i + 1));
-            ServicePackage p = new ServicePackage(pkgId, sc, "Full Service", "Package", null, "Oil & Filter",
-                    new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system", LocalDateTime.now(),
-                    "system");
+            ServicePackage p = new ServicePackage();
+            p.setPackageId(pkgId);
+            p.setServiceCenter(sc);
+            p.setName("Full Service");
+            p.setType("Essential engine oil change, Oil filter replacement, Fluid level check");
+            p.setDescription("Essential oil and filter change.");
+            p.setBasePrice(new BigDecimal("15000.00"));
+            p.setEstimatedDurationMins(120);
+            p.setIsActive(true);
+            p.setCreatedAt(LocalDateTime.now());
+            p.setCreatedBy("system");
+            p.setUpdatedAt(LocalDateTime.now());
+            p.setUpdatedBy("system");
+            p.setImageUrl("https://images.unsplash.com/photo-1625047509168-a7026f36de04?q=80&w=600&auto=format&fit=crop");
             servicePackageRepository.save(p);
 
             // Also ensure the Bike Package from frontend mock exists
             UUID bikePkgId = UUID.fromString("4aba5910-a686-49db-9dde-915c8b7f538c");
             if (!servicePackageRepository.existsById(bikePkgId)) {
-                ServicePackage bikePkg = new ServicePackage(bikePkgId, sc, "Gold Package (Bike)", "Package", "BIKE",
-                        "Bike specialized care",
-                        new BigDecimal("8000.00"), 240, true, LocalDateTime.now(), "system", LocalDateTime.now(),
-                        "system");
+                ServicePackage bikePkg = new ServicePackage();
+                bikePkg.setPackageId(bikePkgId);
+                bikePkg.setServiceCenter(sc);
+                bikePkg.setName("Gold Package (Bike)");
+                bikePkg.setType("Package");
+                bikePkg.setVehicleType("BIKE");
+                bikePkg.setDescription("Bike specialized care");
+                bikePkg.setBasePrice(new BigDecimal("8000.00"));
+                bikePkg.setEstimatedDurationMins(240);
+                bikePkg.setIsActive(true);
+                bikePkg.setCreatedAt(LocalDateTime.now());
+                bikePkg.setCreatedBy("system");
+                bikePkg.setUpdatedAt(LocalDateTime.now());
+                bikePkg.setUpdatedBy("system");
+                bikePkg.setImageUrl("https://images.unsplash.com/photo-1625047509168-a7026f36de04?q=80&w=600&auto=format&fit=crop");
                 servicePackageRepository.save(bikePkg);
             }
         }
@@ -363,19 +392,42 @@ public class DataInitializer implements CommandLineRunner {
             // Full Service
             UUID fullPkgId = UUID.fromString("22222222-2222-2222-2222-222222222221");
             if (!servicePackageRepository.existsById(fullPkgId)) {
-                servicePackageRepository
-                        .save(new ServicePackage(fullPkgId, sc, "Full Service", "Package", null, "Oil & Filter",
-                                new BigDecimal("15000.00"), 120, true, LocalDateTime.now(), "system",
-                                LocalDateTime.now(), "system"));
+                ServicePackage fp = new ServicePackage();
+                fp.setPackageId(fullPkgId);
+                fp.setServiceCenter(sc);
+                fp.setName("Full Service");
+                fp.setType("Package");
+                fp.setDescription("Oil & Filter");
+                fp.setBasePrice(new BigDecimal("15000.00"));
+                fp.setEstimatedDurationMins(120);
+                fp.setIsActive(true);
+                fp.setCreatedAt(LocalDateTime.now());
+                fp.setCreatedBy("system");
+                fp.setUpdatedAt(LocalDateTime.now());
+                fp.setUpdatedBy("system");
+                fp.setImageUrl("https://images.unsplash.com/photo-1625047509168-a7026f36de04?q=80&w=600&auto=format&fit=crop");
+                servicePackageRepository.save(fp);
             }
 
             // Bike Package
             UUID bikePkgId = UUID.fromString("4aba5910-a686-49db-9dde-915c8b7f538c");
             if (!servicePackageRepository.existsById(bikePkgId)) {
-                servicePackageRepository.save(new ServicePackage(bikePkgId, sc, "Gold Package (Bike)", "Package",
-                        "BIKE", "Bike specialized care",
-                        new BigDecimal("8000.00"), 240, true, LocalDateTime.now(), "system", LocalDateTime.now(),
-                        "system"));
+                ServicePackage bp = new ServicePackage();
+                bp.setPackageId(bikePkgId);
+                bp.setServiceCenter(sc);
+                bp.setName("Gold Package (Bike)");
+                bp.setType("Package");
+                bp.setVehicleType("BIKE");
+                bp.setDescription("Bike specialized care");
+                bp.setBasePrice(new BigDecimal("8000.00"));
+                bp.setEstimatedDurationMins(240);
+                bp.setIsActive(true);
+                bp.setCreatedAt(LocalDateTime.now());
+                bp.setCreatedBy("system");
+                bp.setUpdatedAt(LocalDateTime.now());
+                bp.setUpdatedBy("system");
+                bp.setImageUrl("https://images.unsplash.com/photo-1625047509168-a7026f36de04?q=80&w=600&auto=format&fit=crop");
+                servicePackageRepository.save(bp);
             }
         });
     }
@@ -506,28 +558,68 @@ public class DataInitializer implements CommandLineRunner {
 
             if (serviceCenterRepository.findByOwner_UserId(owner.getUserId()).size() < 3) {
                 for (String loc : locations) {
-                    ServiceCenter sc = new ServiceCenter(UUID.randomUUID(), owner, "Raja Motors - " + loc, loc,
-                            "+94112000" + loc.length(), "08:00 - 18:00", new BigDecimal("4.5"), true,
-                            LocalDateTime.now(), "system",
-                            LocalDateTime.now(), "system", new String[] { "Toyota", "Honda", "Nissan", "Suzuki" },
-                            null, null, "APPROVED", null, null, null, null, null);
+                    ServiceCenter sc = new ServiceCenter();
+                    sc.setCenterId(UUID.randomUUID());
+                    sc.setOwner(owner);
+                    sc.setName("Raja Motors - " + loc);
+                    sc.setAddress(loc);
+                    sc.setContactPhone("+94112000" + loc.length());
+                    sc.setOpeningHours("08:00 - 18:00");
+                    sc.setRating(new BigDecimal("4.5"));
+                    sc.setIsActive(true);
+                    sc.setSupportedVehicleBrands(new String[] { "Toyota", "Honda", "Nissan", "Suzuki" });
+                    sc.setStatus("APPROVED");
+                    sc.setImageUrl("https://images.unsplash.com/photo-1625047509168-a7026f36de04?q=80&w=600&auto=format&fit=crop");
                     centers.add(serviceCenterRepository.save(sc));
 
                     // Add 3 distinct packages per center for variety
-                    packages.add(servicePackageRepository
-                            .save(new ServicePackage(UUID.randomUUID(), sc, "Basic Service", "Base maintenance", null,
-                                    "Essential oil and filter change.", new BigDecimal("8500.00"), 60, true,
-                                    LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+                    ServicePackage p1 = new ServicePackage();
+                    p1.setPackageId(UUID.randomUUID());
+                    p1.setServiceCenter(sc);
+                    p1.setName("Basic Service");
+                    p1.setType("Essential engine oil change, Oil filter replacement, Fluid level check");
+                    p1.setDescription("Essential oil and filter change.");
+                    p1.setBasePrice(new BigDecimal("8500.00"));
+                    p1.setEstimatedDurationMins(60);
+                    p1.setIsActive(true);
+                    p1.setCreatedAt(LocalDateTime.now());
+                    p1.setCreatedBy("system");
+                    p1.setUpdatedAt(LocalDateTime.now());
+                    p1.setUpdatedBy("system");
+                    p1.setImageUrl("https://images.unsplash.com/photo-1625047509168-a7026f36de04?q=80&w=600&auto=format&fit=crop");
+                    packages.add(servicePackageRepository.save(p1));
 
-                    packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc,
-                            "Premium Full Service", "Full maintenance package", null,
-                            "Oil change, filter, brake check, engine scan.", new BigDecimal("15500.00"), 120, true,
-                            LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+                    ServicePackage p2 = new ServicePackage();
+                    p2.setPackageId(UUID.randomUUID());
+                    p2.setServiceCenter(sc);
+                    p2.setName("Premium Full Service");
+                    p2.setType("Engine oil change, Filter replacement, Full brake check, Computer diagnostic scan");
+                    p2.setDescription("Oil change, filter, brake check, engine scan.");
+                    p2.setBasePrice(new BigDecimal("15500.00"));
+                    p2.setEstimatedDurationMins(120);
+                    p2.setIsActive(true);
+                    p2.setCreatedAt(LocalDateTime.now());
+                    p2.setCreatedBy("system");
+                    p2.setUpdatedAt(LocalDateTime.now());
+                    p2.setUpdatedBy("system");
+                    p2.setImageUrl("https://images.unsplash.com/photo-1625047509168-a7026f36de04?q=80&w=600&auto=format&fit=crop");
+                    packages.add(servicePackageRepository.save(p2));
 
-                    packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), sc,
-                            "Interior & Exterior Detail", "Deep cleaning", null,
-                            "Full body wash, vacuum, and wax.", new BigDecimal("5500.00"), 90, true,
-                            LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+                    ServicePackage p3 = new ServicePackage();
+                    p3.setPackageId(UUID.randomUUID());
+                    p3.setServiceCenter(sc);
+                    p3.setName("Interior & Exterior Detail");
+                    p3.setType("Full exterior body wash, Interior vacuuming, Exterior wax & paint polish");
+                    p3.setDescription("Full body wash, vacuum, and wax.");
+                    p3.setBasePrice(new BigDecimal("5500.00"));
+                    p3.setEstimatedDurationMins(90);
+                    p3.setIsActive(true);
+                    p3.setCreatedAt(LocalDateTime.now());
+                    p3.setCreatedBy("system");
+                    p3.setUpdatedAt(LocalDateTime.now());
+                    p3.setUpdatedBy("system");
+                    p3.setImageUrl("https://images.unsplash.com/photo-1625047509168-a7026f36de04?q=80&w=600&auto=format&fit=crop");
+                    packages.add(servicePackageRepository.save(p3));
 
                     String mgrImg = "https://images.unsplash.com/photo-1651684215020-f7a5b6610f23?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvZmlsZSUyMHBob3Rvc3xlbnwwfHwwfHx8MA%3D%3D";
 
@@ -546,10 +638,21 @@ public class DataInitializer implements CommandLineRunner {
                     List<ServicePackage> centerPackages = servicePackageRepository
                             .findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
                     if (centerPackages.isEmpty()) {
-                        packages.add(servicePackageRepository.save(new ServicePackage(UUID.randomUUID(), center,
-                                "Standard Service", "Base maintenance", null,
-                                "Essential checks and oil service.", new BigDecimal("8500.00"), 60, true,
-                                LocalDateTime.now(), "system", LocalDateTime.now(), "system")));
+                        ServicePackage sp = new ServicePackage();
+                        sp.setPackageId(UUID.randomUUID());
+                        sp.setServiceCenter(center);
+                        sp.setName("Standard Service");
+                        sp.setType("Essential vehicle checks, Engine oil service, Filter inspection");
+                        sp.setDescription("Essential checks and oil service.");
+                        sp.setBasePrice(new BigDecimal("8500.00"));
+                        sp.setEstimatedDurationMins(60);
+                        sp.setIsActive(true);
+                        sp.setCreatedAt(LocalDateTime.now());
+                        sp.setCreatedBy("system");
+                        sp.setUpdatedAt(LocalDateTime.now());
+                        sp.setUpdatedBy("system");
+                        sp.setImageUrl("https://images.unsplash.com/photo-1625047509168-a7026f36de04?q=80&w=600&auto=format&fit=crop");
+                        packages.add(servicePackageRepository.save(sp));
                     } else {
                         packages.addAll(centerPackages);
                     }
