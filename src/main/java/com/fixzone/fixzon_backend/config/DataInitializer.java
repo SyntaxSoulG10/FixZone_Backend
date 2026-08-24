@@ -546,25 +546,19 @@ public class DataInitializer implements CommandLineRunner {
 
         Customer c1 = getOrCreateCustomer.apply("kamal.perera@fixzone.lk", "Kamal Perera");
         Customer c2 = getOrCreateCustomer.apply("nimal.silva@fixzone.lk", "Nimal Silva");
-        Customer c3 = getOrCreateCustomer.apply("dilshan.mendis@fixzone.lk", "Dilshan Mendis");
-        Customer c4 = getOrCreateCustomer.apply("kasun.j@fixzone.lk", "Kasun Jayawardena");
-        Customer c5 = getOrCreateCustomer.apply("suresh.p@fixzone.lk", "Suresh Perera");
 
         Vehicle v1 = getOrCreateVehicle.apply(new Object[]{c1, "Toyota", "WP CAB-4521", "Prius"});
         Vehicle v2 = getOrCreateVehicle.apply(new Object[]{c2, "Honda", "WP CAD-7890", "Vezel"});
-        Vehicle v3 = getOrCreateVehicle.apply(new Object[]{c3, "Toyota", "WP CAC-9988", "Land Cruiser Prado"});
-        Vehicle v4 = getOrCreateVehicle.apply(new Object[]{c4, "Nissan", "WP CBF-3344", "X-Trail"});
-        Vehicle v5 = getOrCreateVehicle.apply(new Object[]{c5, "Mazda", "WP CAX-5566", "CX-5"});
 
         UUID tenantId = center.getOwner() != null ? center.getOwner().getUserId() : UUID.randomUUID();
         LocalDate today = LocalDate.now();
 
-        // Clean existing today's bookings for this center to guarantee fresh 5 items
+        // Clean existing today's bookings for this center to guarantee fresh 2 items
         List<Booking> todayBookings = bookingRepository.findByCenterId(center.getCenterId()).stream()
                 .filter(b -> today.equals(b.getBookingDate()))
                 .toList();
 
-        if (todayBookings.size() != 5) {
+        if (todayBookings.size() != 2) {
             for (Booking oldB : todayBookings) {
                 try {
                     bookingStatusHistoryRepository.deleteAll(bookingStatusHistoryRepository.findByBookingIdOrderByChangedAtAsc(oldB.getBookingId()));
@@ -574,102 +568,45 @@ public class DataInitializer implements CommandLineRunner {
                 }
             }
 
-            // Booking 1: COMPLETED (Completed early morning)
+            // Booking 1: IN_PROGRESS (Active morning slot)
             Booking b1 = new Booking();
             b1.setBookingId(UUID.randomUUID());
             b1.setTenantId(tenantId);
             b1.setCenterId(center.getCenterId());
-            b1.setCustomerId(c3.getUserId());
-            b1.setVehicleId(v3.getId());
+            b1.setCustomerId(c1.getUserId());
+            b1.setVehicleId(v1.getId());
             b1.setPackageId(pkg1.getPackageId());
             b1.setBookingDate(today);
-            b1.setBookingTime(LocalTime.of(8, 0));
-            b1.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED);
+            b1.setBookingTime(LocalTime.of(9, 30));
+            b1.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.IN_PROGRESS);
             b1.setEstimatedCost(pkg1.getBasePrice() != null ? pkg1.getBasePrice() : new BigDecimal("14500.00"));
             b1.setBookingFee(new BigDecimal("2000.00"));
             b1.setBookingFeePaid(true);
-            b1.setCreatedAt(LocalDateTime.now().minusHours(4));
-            b1.setUpdatedAt(LocalDateTime.now().minusHours(1));
-            b1.setSpecialRequest("Customer: " + c3.getFullName() + ", Vehicle: " + v3.getBrand() + " " + v3.getModel() + ", Vehicle Number: " + v3.getPlateNumber() + ", Service: " + pkg1.getName());
+            b1.setCreatedAt(LocalDateTime.now().minusHours(3));
+            b1.setUpdatedAt(LocalDateTime.now().minusMinutes(45));
+            b1.setSpecialRequest("Customer: " + c1.getFullName() + ", Vehicle: " + v1.getBrand() + " " + v1.getModel() + ", Vehicle Number: " + v1.getPlateNumber() + ", Service: " + pkg1.getName());
             b1 = bookingRepository.save(b1);
 
-            // Booking 2: IN_PROGRESS (Bay 1 active)
+            // Booking 2: CONFIRMED (Upcoming afternoon slot 14:00)
             Booking b2 = new Booking();
             b2.setBookingId(UUID.randomUUID());
             b2.setTenantId(tenantId);
             b2.setCenterId(center.getCenterId());
-            b2.setCustomerId(c1.getUserId());
-            b2.setVehicleId(v1.getId());
-            b2.setPackageId(pkg1.getPackageId());
+            b2.setCustomerId(c2.getUserId());
+            b2.setVehicleId(v2.getId());
+            b2.setPackageId(pkg2.getPackageId());
             b2.setBookingDate(today);
-            b2.setBookingTime(LocalTime.of(9, 30));
-            b2.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.IN_PROGRESS);
-            b2.setEstimatedCost(pkg1.getBasePrice() != null ? pkg1.getBasePrice() : new BigDecimal("14500.00"));
-            b2.setBookingFee(new BigDecimal("2000.00"));
+            b2.setBookingTime(LocalTime.of(14, 0));
+            b2.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED);
+            b2.setEstimatedCost(pkg2.getBasePrice() != null ? pkg2.getBasePrice() : new BigDecimal("9500.00"));
+            b2.setBookingFee(new BigDecimal("1500.00"));
             b2.setBookingFeePaid(true);
-            b2.setCreatedAt(LocalDateTime.now().minusHours(3));
-            b2.setUpdatedAt(LocalDateTime.now().minusMinutes(45));
-            b2.setSpecialRequest("Customer: " + c1.getFullName() + ", Vehicle: " + v1.getBrand() + " " + v1.getModel() + ", Vehicle Number: " + v1.getPlateNumber() + ", Service: " + pkg1.getName());
+            b2.setCreatedAt(LocalDateTime.now().minusHours(2));
+            b2.setUpdatedAt(LocalDateTime.now().minusHours(1));
+            b2.setSpecialRequest("Customer: " + c2.getFullName() + ", Vehicle: " + v2.getBrand() + " " + v2.getModel() + ", Vehicle Number: " + v2.getPlateNumber() + ", Service: " + pkg2.getName());
             b2 = bookingRepository.save(b2);
 
-            // Booking 3: IN_PROGRESS (Bay 2 active)
-            Booking b3 = new Booking();
-            b3.setBookingId(UUID.randomUUID());
-            b3.setTenantId(tenantId);
-            b3.setCenterId(center.getCenterId());
-            b3.setCustomerId(c4.getUserId());
-            b3.setVehicleId(v4.getId());
-            b3.setPackageId(pkg2.getPackageId());
-            b3.setBookingDate(today);
-            b3.setBookingTime(LocalTime.of(11, 0));
-            b3.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.IN_PROGRESS);
-            b3.setEstimatedCost(pkg2.getBasePrice() != null ? pkg2.getBasePrice() : new BigDecimal("9500.00"));
-            b3.setBookingFee(new BigDecimal("1500.00"));
-            b3.setBookingFeePaid(true);
-            b3.setCreatedAt(LocalDateTime.now().minusHours(2));
-            b3.setUpdatedAt(LocalDateTime.now().minusMinutes(20));
-            b3.setSpecialRequest("Customer: " + c4.getFullName() + ", Vehicle: " + v4.getBrand() + " " + v4.getModel() + ", Vehicle Number: " + v4.getPlateNumber() + ", Service: " + pkg2.getName());
-            b3 = bookingRepository.save(b3);
-
-            // Booking 4: CONFIRMED (Upcoming 14:00)
-            Booking b4 = new Booking();
-            b4.setBookingId(UUID.randomUUID());
-            b4.setTenantId(tenantId);
-            b4.setCenterId(center.getCenterId());
-            b4.setCustomerId(c2.getUserId());
-            b4.setVehicleId(v2.getId());
-            b4.setPackageId(pkg2.getPackageId());
-            b4.setBookingDate(today);
-            b4.setBookingTime(LocalTime.of(14, 0));
-            b4.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED);
-            b4.setEstimatedCost(pkg2.getBasePrice() != null ? pkg2.getBasePrice() : new BigDecimal("9500.00"));
-            b4.setBookingFee(new BigDecimal("1500.00"));
-            b4.setBookingFeePaid(true);
-            b4.setCreatedAt(LocalDateTime.now().minusHours(2));
-            b4.setUpdatedAt(LocalDateTime.now().minusHours(1));
-            b4.setSpecialRequest("Customer: " + c2.getFullName() + ", Vehicle: " + v2.getBrand() + " " + v2.getModel() + ", Vehicle Number: " + v2.getPlateNumber() + ", Service: " + pkg2.getName());
-            b4 = bookingRepository.save(b4);
-
-            // Booking 5: CONFIRMED (Upcoming 16:00)
-            Booking b5 = new Booking();
-            b5.setBookingId(UUID.randomUUID());
-            b5.setTenantId(tenantId);
-            b5.setCenterId(center.getCenterId());
-            b5.setCustomerId(c5.getUserId());
-            b5.setVehicleId(v5.getId());
-            b5.setPackageId(pkg1.getPackageId());
-            b5.setBookingDate(today);
-            b5.setBookingTime(LocalTime.of(16, 0));
-            b5.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED);
-            b5.setEstimatedCost(pkg1.getBasePrice() != null ? pkg1.getBasePrice() : new BigDecimal("14500.00"));
-            b5.setBookingFee(new BigDecimal("2000.00"));
-            b5.setBookingFeePaid(true);
-            b5.setCreatedAt(LocalDateTime.now().minusHours(1));
-            b5.setUpdatedAt(LocalDateTime.now().minusMinutes(30));
-            b5.setSpecialRequest("Customer: " + c5.getFullName() + ", Vehicle: " + v5.getBrand() + " " + v5.getModel() + ", Vehicle Number: " + v5.getPlateNumber() + ", Service: " + pkg1.getName());
-            b5 = bookingRepository.save(b5);
-
-            log.info(">>> Seeded exactly 5 today's bookings (1 COMPLETED, 2 IN_PROGRESS, 2 CONFIRMED) for manager center {} <<<", center.getName());
+            log.info(">>> Seeded exactly 2 today's bookings (1 IN_PROGRESS, 1 CONFIRMED) for manager center {} <<<", center.getName());
         }
     }
 
