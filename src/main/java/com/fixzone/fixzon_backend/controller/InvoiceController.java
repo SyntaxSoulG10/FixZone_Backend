@@ -88,6 +88,12 @@ public class InvoiceController {
         return updatedInvoice != null ? ResponseEntity.ok(updatedInvoice) : ResponseEntity.notFound().build();
     }
 
+    @PutMapping("/{id}/status")
+    public ResponseEntity<InvoiceDTO> updateInvoiceStatus(@PathVariable UUID id, @RequestParam String status) {
+        InvoiceDTO updatedInvoice = invoiceService.updateInvoiceStatus(id, status);
+        return updatedInvoice != null ? ResponseEntity.ok(updatedInvoice) : ResponseEntity.notFound().build();
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteInvoice(@PathVariable UUID id) {
         invoiceService.deleteInvoice(id);
