@@ -75,6 +75,9 @@ public class ServiceCenter {
     @Column(name = "status", length = 30)
     private String status = "PENDING";
 
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
     @Column(name = "business_reg_url", columnDefinition = "TEXT")
     private String businessRegUrl;
 
@@ -90,8 +93,6 @@ public class ServiceCenter {
     @Column(name = "google_maps_url", length = 2083)
     private String googleMapsUrl;
 
-    @Column(name = "image_url", columnDefinition = "TEXT")
-    private String imageUrl;
     
     @OneToMany(mappedBy = "serviceCenter", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ServicePackage> servicePackages;

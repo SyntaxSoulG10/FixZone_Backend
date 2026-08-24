@@ -19,6 +19,9 @@ import org.springframework.http.HttpStatus;
 import com.fixzone.fixzon_backend.service.ManagerService;
 import com.fixzone.fixzon_backend.DTO.ManagerDTO;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "Service Centers", description = "Service center discovery, nearby location search, and detail APIs")
 @RestController
 @RequestMapping("/api/service-centers")
 public class ServiceCenterController {
@@ -76,7 +79,8 @@ public class ServiceCenterController {
         }
 
         boolean isSuperAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_SUPER_ADMIN") || a.getAuthority().equalsIgnoreCase("SUPER_ADMIN"));
+                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_SUPER_ADMIN")
+                        || a.getAuthority().equalsIgnoreCase("SUPER_ADMIN"));
         if (isSuperAdmin) {
             return ResponseEntity.ok(serviceCenterService.getAllServiceCenters(PageRequest.of(0, 1000)).getContent());
         }
@@ -84,7 +88,9 @@ public class ServiceCenterController {
         String email = auth.getName();
 
         boolean isManager = auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_SERVICE_MANAGER") || a.getAuthority().equalsIgnoreCase("MANAGER") || a.getAuthority().equalsIgnoreCase("ROLE_MANAGER"));
+                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_SERVICE_MANAGER")
+                        || a.getAuthority().equalsIgnoreCase("MANAGER")
+                        || a.getAuthority().equalsIgnoreCase("ROLE_MANAGER"));
         if (isManager) {
             ManagerDTO manager = managerService.getManagerByEmail(email);
             if (manager != null && manager.getManagedCenterId() != null) {

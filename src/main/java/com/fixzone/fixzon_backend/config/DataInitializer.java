@@ -323,10 +323,10 @@ public class DataInitializer implements CommandLineRunner {
             p.setPackageId(pkgId);
             p.setServiceCenter(sc);
             p.setName("Full Service");
-            p.setType("Package");
+            p.setType("Essential engine oil change, Oil filter replacement, Fluid level check");
             p.setVehicleType("CAR");
             p.setVehicleBrand("Toyota");
-            p.setDescription("Oil & Filter");
+            p.setDescription("Essential oil and filter change.");
             p.setBasePrice(new BigDecimal("15000.00"));
             p.setEstimatedDurationMins(120);
             p.setIsActive(true);
@@ -334,6 +334,7 @@ public class DataInitializer implements CommandLineRunner {
             p.setCreatedBy("system");
             p.setUpdatedAt(LocalDateTime.now());
             p.setUpdatedBy("system");
+            p.setImageUrl("https://images.unsplash.com/photo-1625047509168-a7026f36de04?q=80&w=600&auto=format&fit=crop");
             servicePackageRepository.save(p);
 
             // Also ensure the Bike Package from frontend mock exists
@@ -354,6 +355,7 @@ public class DataInitializer implements CommandLineRunner {
                 bikePkg.setCreatedBy("system");
                 bikePkg.setUpdatedAt(LocalDateTime.now());
                 bikePkg.setUpdatedBy("system");
+                bikePkg.setImageUrl("https://images.unsplash.com/photo-1625047509168-a7026f36de04?q=80&w=600&auto=format&fit=crop");
                 servicePackageRepository.save(bikePkg);
             }
         }
