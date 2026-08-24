@@ -10,7 +10,10 @@ import com.fixzone.fixzon_backend.service.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
+@Tag(name = "Authentication", description = "Endpoints for User Login, Registration, OTP Verification, and Password Reset")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -23,23 +26,27 @@ public class AuthController {
         this.imageKitService = imageKitService;
     }
 
+    @Operation(summary = "Get ImageKit upload authentication parameters")
     @GetMapping("/imagekit-auth")
     public ResponseEntity<?> getImageKitAuth() {
         return ResponseEntity.ok(imageKitService.getAuthenticationParameters());
     }
 
+    @Operation(summary = "Authenticate user and receive JWT token")
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@RequestBody AuthRequestDTO authRequestDTO) {
         AuthResponseDTO response = authService.login(authRequestDTO);
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Register a new Customer account")
     @PostMapping("/register/customer")
     public ResponseEntity<AuthResponseDTO> registerCustomer(@RequestBody RegisterCustomerDTO request) {
         AuthResponseDTO response = authService.registerCustomer(request);
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Register a new Service Center Owner account")
     @PostMapping("/register/owner")
     public ResponseEntity<AuthResponseDTO> registerOwner(@RequestBody RegisterOwnerDTO request) {
         AuthResponseDTO response = authService.registerOwner(request);
