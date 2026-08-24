@@ -49,9 +49,6 @@ public class ServicePackage {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "image_url", columnDefinition = "TEXT")
-    private String imageUrl;
-
     @Column(name = "base_price", precision = 10, scale = 2)
     private BigDecimal basePrice;
 

@@ -41,7 +41,6 @@ public class ServiceCenterDTO {
     private Double latitude;
     private Double longitude;
     private String status;
-    private String imageUrl;
     private Boolean stripeConnected;
     private Boolean paymentEnabled;
     private Boolean canAcceptPayments;
@@ -55,7 +54,7 @@ public class ServiceCenterDTO {
 
     private String rejectionReason;
     private String googleMapsUrl;
-
+    private String imageUrl;
     private java.util.List<ServicePackageDTO> servicePackages;
     private BigDecimal revenue;
     private Integer mechanicsCount;

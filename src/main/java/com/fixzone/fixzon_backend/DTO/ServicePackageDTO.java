@@ -39,8 +39,6 @@ public class ServicePackageDTO {
     @jakarta.validation.constraints.Size(min = 10, message = "Description must be at least 10 characters")
     private String description;
 
-    private String imageUrl;
-
     @NotNull(message = "Price is required")
     @jakarta.validation.constraints.DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than 0")
     private BigDecimal basePrice;
