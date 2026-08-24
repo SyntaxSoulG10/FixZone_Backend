@@ -7,5 +7,6 @@ public enum BookingStatus {
     COMPLETED, //Service is finished
     IN_PROGRESS, //Service is currently being performed
     CANCELLED,//Booking cancelled by user or system
-    EXPIRED //EXPIRED = booking was created but NOT completed in time
+    EXPIRED, //EXPIRED = booking was created but NOT completed in time
+    PAID //Invoice generated and payment settled
 }

@@ -600,6 +600,9 @@ public class BookingService {
                 } else if (newStatus == BookingStatus.CANCELLED) {
                     notificationService.createNotificationSafe(recipient, "Booking Cancelled",
                             "Your booking for " + saved.getBookingDate() + " was cancelled.", "WARNING", "/bookings");
+                } else if (newStatus == BookingStatus.PAID) {
+                    notificationService.createNotificationSafe(recipient, "Invoice Paid",
+                            "Payment received and invoice generated for your vehicle service.", "SUCCESS", "/bookings");
                 }
             } else {
                 log.error(">>> FAILED TO CREATE STATUS NOTIFICATION: Customer/User ID {} not found!",

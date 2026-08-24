@@ -2,6 +2,8 @@ package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.DTO.InvoiceDTO;
 import com.fixzone.fixzon_backend.model.Invoice;
+import com.fixzone.fixzon_backend.enums.BookingStatus;
+import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.fixzone.fixzon_backend.repository.InvoiceRepository;
 import org.springframework.stereotype.Service;
@@ -14,10 +16,12 @@ import java.util.stream.Collectors;
 public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final CustomerRepository customerRepository;
+    private final BookingRepository bookingRepository;
 
-    public InvoiceService(InvoiceRepository invoiceRepository, CustomerRepository customerRepository) {
+    public InvoiceService(InvoiceRepository invoiceRepository, CustomerRepository customerRepository, BookingRepository bookingRepository) {
         this.invoiceRepository = invoiceRepository;
         this.customerRepository = customerRepository;
+        this.bookingRepository = bookingRepository;
     }
 
     public List<InvoiceDTO> getAllInvoices() {
@@ -106,7 +110,14 @@ public class InvoiceService {
         if (invoice.getIssuedAt() == null) {
             invoice.setIssuedAt(java.time.LocalDateTime.now());
         }
-        return transformToDataTransferObject(invoiceRepository.save(invoice));
+        Invoice savedInvoice = invoiceRepository.save(invoice);
+        if ("PAID".equalsIgnoreCase(savedInvoice.getStatus()) && savedInvoice.getBookingId() != null) {
+            bookingRepository.findById(savedInvoice.getBookingId()).ifPresent(booking -> {
+                booking.setStatus(BookingStatus.PAID);
+                bookingRepository.save(booking);
+            });
+        }
+        return transformToDataTransferObject(savedInvoice);
     }
 
     public InvoiceDTO updateInvoice(UUID id, InvoiceDTO dto) {
@@ -134,6 +145,32 @@ public class InvoiceService {
         existing.setUpdatedBy(dto.getUpdatedBy());
 
         Invoice saved = invoiceRepository.save(existing);
+        if ("PAID".equalsIgnoreCase(saved.getStatus()) && saved.getBookingId() != null) {
+            bookingRepository.findById(saved.getBookingId()).ifPresent(booking -> {
+                booking.setStatus(BookingStatus.PAID);
+                bookingRepository.save(booking);
+            });
+        }
+        return transformToDataTransferObject(saved);
+    }
+
+    public InvoiceDTO updateInvoiceStatus(UUID id, String status) {
+        if (id == null) {
+            throw new IllegalArgumentException("ID must not be null");
+        }
+        Invoice invoice = invoiceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
+
+        invoice.setStatus(status);
+        Invoice saved = invoiceRepository.save(invoice);
+
+        if ("PAID".equalsIgnoreCase(status) && saved.getBookingId() != null) {
+            bookingRepository.findById(saved.getBookingId()).ifPresent(booking -> {
+                booking.setStatus(BookingStatus.PAID);
+                bookingRepository.save(booking);
+            });
+        }
+
         return transformToDataTransferObject(saved);
     }
 
