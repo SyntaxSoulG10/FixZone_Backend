@@ -19,6 +19,9 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByCenterIdIn(Collection<UUID> centerIds);
     List<Booking> findByCenterIdInAndBookingDateBetween(Collection<UUID> centerIds, LocalDate start, LocalDate end);
     long countByTenantId(UUID tenantId);
+
+    @Query("SELECT MAX(b.bookingDate) FROM Booking b WHERE b.tenantId = :tenantId")
+    LocalDate findLatestBookingDateByTenantId(@Param("tenantId") UUID tenantId);
     
     List<Booking> findByCustomerId(UUID customerId);
     

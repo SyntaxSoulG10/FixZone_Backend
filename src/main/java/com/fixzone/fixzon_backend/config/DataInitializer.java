@@ -187,6 +187,7 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Existing data found (count={}) or not in create mode. Ensuring seed data only...", userCount);
             try { ensureMockCharlie(); } catch (Exception e) { log.warn("ensureMockCharlie note: {}", e.getMessage()); }
             try { ensureRajaMotors(); } catch (Exception e) { log.warn("ensureRajaMotors note: {}", e.getMessage()); }
+            try { ensureHistoryForAllOwners(); } catch (Exception e) { log.warn("ensureHistoryForAllOwners note: {}", e.getMessage()); }
             try { ensureMockManager(); } catch (Exception e) { log.warn("ensureMockManager note: {}", e.getMessage()); }
             try { ensureMockPackages(); } catch (Exception e) { log.warn("ensureMockPackages note: {}", e.getMessage()); }
             try { ensureSuperAdmins(); } catch (Exception e) { log.warn("ensureSuperAdmins note: {}", e.getMessage()); }
@@ -943,12 +944,23 @@ public class DataInitializer implements CommandLineRunner {
             updateManagerImagesForOwner(owner);
             ensureRajaManagers(owner);
 
-            // SKIP SEEDING if history already exists, but UPDATE metrics to ensure they are
-            // accurate
-            if (historyCount > 0) {
-                log.debug("Raja Motors already has history data. Updating metrics from existing records...");
+            LocalDate latestBookingDate = bookingRepository.findLatestBookingDateByTenantId(owner.getUserId());
+            boolean isStale = (latestBookingDate == null || latestBookingDate.isBefore(LocalDate.now().minusDays(1)));
+
+            if (historyCount > 0 && !isStale) {
+                log.debug("Raja Motors already has history data up to date. Updating metrics from existing records...");
                 updateCustomerMetricsForOwner(owner);
                 return;
+            }
+
+            if (isStale && historyCount > 0) {
+                log.info("Raja Motors history data is stale. Deleting and re-seeding 180 days to match current date...");
+                List<ServiceCenter> existingCenters = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
+                for (ServiceCenter center : existingCenters) {
+                    paymentRecordRepository.deleteAll(paymentRecordRepository.findByCenterId(center.getCenterId()));
+                    invoiceRepository.deleteAll(invoiceRepository.findByCenterId(center.getCenterId()));
+                    bookingRepository.deleteAll(bookingRepository.findByCenterId(center.getCenterId()));
+                }
             }
 
             log.debug("NO HISTORY FOUND: Seeding history for Raja Motors...");
@@ -1107,9 +1119,9 @@ public class DataInitializer implements CommandLineRunner {
                 }
             }
 
-            // Seed 3 months of historical data
+            // Seed 6 months (180 days) of continuous historical data
             LocalDateTime now = LocalDateTime.now();
-            for (int day = 0; day < 90; day++) {
+            for (int day = 0; day < 180; day++) {
                 LocalDateTime bookingDateTime = now.minusDays(day);
 
                 // Generate 2-4 bookings per day across random centers
@@ -1304,6 +1316,230 @@ public class DataInitializer implements CommandLineRunner {
                     "SA-001");
             superAdminRepository.save(admin);
             log.info(">>> Mock Super Admin created successfully <<<");
+        }
+    }
+
+    public void forceReseedRajaMotors() {
+        ensureHistoryForAllOwners();
+    }
+
+    public void ensureHistoryForAllOwners() {
+        try {
+            List<Owner> allOwners = ownerRepository.findAll();
+            log.info("Ensuring 180-day history for all {} registered owner(s)...", allOwners.size());
+            for (Owner owner : allOwners) {
+                seedHistoryForOwner(owner);
+            }
+        } catch (Exception e) {
+            log.error("[ERROR] Failed during ensureHistoryForAllOwners: {}", e.getMessage(), e);
+        }
+    }
+
+    public void seedHistoryForOwner(Owner owner) {
+        if (owner == null) return;
+        try {
+            if (owner.getOwnerCode() == null || owner.getOwnerCode().trim().isEmpty()) {
+                owner.setOwnerCode("OWN-" + owner.getUserId().toString().substring(0, 8).toUpperCase());
+                owner = ownerRepository.save(owner);
+            }
+
+            List<ServiceCenter> centers = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
+            if (centers.isEmpty()) {
+                log.info("Owner {} has no centers. Creating default center for demonstration...", owner.getEmail());
+                ServiceCenter sc = new ServiceCenter();
+                sc.setCenterId(UUID.randomUUID());
+                sc.setOwner(owner);
+                String cName = (owner.getCompanyName() != null && !owner.getCompanyName().isEmpty()) ? owner.getCompanyName() + " - Main Center" : "FixZone Auto Center";
+                sc.setName(cName);
+                sc.setAddress("Colombo");
+                sc.setContactPhone("+941120001");
+                sc.setOpeningHours("08:00 - 18:00");
+                sc.setRating(new BigDecimal("4.5"));
+                sc.setIsActive(true);
+                sc.setCreatedAt(LocalDateTime.now());
+                sc.setCreatedBy("system");
+                sc.setUpdatedAt(LocalDateTime.now());
+                sc.setUpdatedBy("system");
+                sc.setSupportedVehicleBrands(new String[] {"Toyota", "Honda", "Nissan", "Suzuki"});
+                sc.setStatus("APPROVED");
+                sc.setImageUrl("https://images.unsplash.com/photo-1613214149922-f1809c99b414?w=800&auto=format&fit=crop&q=80");
+                centers = List.of(serviceCenterRepository.save(sc));
+            }
+
+            // Ensure each center has service packages
+            List<ServicePackage> allPackages = new ArrayList<>();
+            for (ServiceCenter center : centers) {
+                List<ServicePackage> centerPackages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
+                if (centerPackages.isEmpty()) {
+                    ServicePackage p1 = new ServicePackage();
+                    p1.setPackageId(UUID.randomUUID());
+                    p1.setServiceCenter(center);
+                    p1.setName("Full Service Maintenance");
+                    p1.setType("Full maintenance");
+                    p1.setVehicleBrand("Toyota");
+                    p1.setDescription("Oil change, filter, engine diagnostics & multi-point check.");
+                    p1.setBasePrice(new BigDecimal("12500.00"));
+                    p1.setEstimatedDurationMins(90);
+                    p1.setIsActive(true);
+                    p1.setCreatedAt(LocalDateTime.now());
+                    p1.setCreatedBy("system");
+                    p1.setUpdatedAt(LocalDateTime.now());
+                    p1.setUpdatedBy("system");
+                    allPackages.add(servicePackageRepository.save(p1));
+
+                    ServicePackage p2 = new ServicePackage();
+                    p2.setPackageId(UUID.randomUUID());
+                    p2.setServiceCenter(center);
+                    p2.setName("Express Lube & Filter");
+                    p2.setType("Quick service");
+                    p2.setVehicleBrand("Honda");
+                    p2.setDescription("Fast oil & filter replacement.");
+                    p2.setBasePrice(new BigDecimal("6500.00"));
+                    p2.setEstimatedDurationMins(45);
+                    p2.setIsActive(true);
+                    p2.setCreatedAt(LocalDateTime.now());
+                    p2.setCreatedBy("system");
+                    p2.setUpdatedAt(LocalDateTime.now());
+                    p2.setUpdatedBy("system");
+                    allPackages.add(servicePackageRepository.save(p2));
+                } else {
+                    allPackages.addAll(centerPackages);
+                }
+            }
+
+            long historyCount = bookingRepository.countByTenantId(owner.getUserId());
+            LocalDate latestBookingDate = bookingRepository.findLatestBookingDateByTenantId(owner.getUserId());
+            boolean isStale = (latestBookingDate == null || latestBookingDate.isBefore(LocalDate.now().minusDays(1)));
+
+            if (historyCount > 0 && !isStale) {
+                log.debug("Owner {} already has fresh history up to {}. Skipping re-seed.", owner.getEmail(), latestBookingDate);
+                updateCustomerMetricsForOwner(owner);
+                return;
+            }
+
+            if (isStale && historyCount > 0) {
+                log.info("Owner {} history is stale (latest: {}). Clearing old records...", owner.getEmail(), latestBookingDate);
+                for (ServiceCenter center : centers) {
+                    paymentRecordRepository.deleteAll(paymentRecordRepository.findByCenterId(center.getCenterId()));
+                    invoiceRepository.deleteAll(invoiceRepository.findByCenterId(center.getCenterId()));
+                    bookingRepository.deleteAll(bookingRepository.findByCenterId(center.getCenterId()));
+                }
+            }
+
+            log.info("Generating 180 days of continuous booking & payment history for owner {}...", owner.getEmail());
+
+            // Ensure customer records exist via customerRepository
+            List<Customer> customers = customerRepository.findAll();
+            if (customers == null || customers.isEmpty()) {
+                customers = new ArrayList<>();
+                for (int i = 1; i <= 10; i++) {
+                    String cEmail = "demo.customer" + i + "@fixzonemail.com";
+                    Customer c = new Customer();
+                    c.setUserId(UUID.randomUUID());
+                    c.setFullName("Customer " + i);
+                    c.setEmail(cEmail);
+                    c.setPhone("+947712345" + (10 + i));
+                    c.setPasswordHash(passwordEncoder.encode("password123"));
+                    c.setRole("ROLE_CUSTOMER");
+                    c.setStatus("Active");
+                    c.setCreatedAt(LocalDateTime.now().minusMonths(6));
+                    c.setCustomerCode("CUST-" + (100 + i));
+                    customers.add(customerRepository.save(c));
+                }
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+            int totalSeedBookings = 0;
+            for (int day = 0; day < 180; day++) {
+                LocalDateTime bookingDateTime = now.minusDays(day);
+                int dailyBookings = 2 + (int) (Math.random() * 3);
+
+                for (int i = 0; i < dailyBookings; i++) {
+                    ServiceCenter center = centers.get((int) (Math.random() * centers.size()));
+                    Customer customer = customers.get((int) (Math.random() * customers.size()));
+
+                    List<ServicePackage> centerPackages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
+                    if (centerPackages == null || centerPackages.isEmpty()) centerPackages = allPackages;
+                    if (centerPackages.isEmpty()) continue;
+
+                    ServicePackage pkg = centerPackages.get((int) (Math.random() * centerPackages.size()));
+
+                    Booking b = new Booking();
+                    b.setBookingId(UUID.randomUUID());
+                    b.setTenantId(owner.getUserId());
+                    b.setCenterId(center.getCenterId());
+                    b.setCustomerId(customer.getUserId());
+                    b.setVehicleId(UUID.randomUUID());
+                    b.setPackageId(pkg.getPackageId());
+                    b.setBookingDate(bookingDateTime.toLocalDate());
+                    b.setBookingTime(LocalTime.of(9 + (int) (Math.random() * 8), 0));
+
+                    if (day > 2) {
+                        b.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED);
+                    } else if (day == 0) {
+                        b.setStatus(Math.random() > 0.5 ? com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED : com.fixzone.fixzon_backend.enums.BookingStatus.IN_PROGRESS);
+                    } else {
+                        b.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED);
+                    }
+
+                    b.setEstimatedCost(pkg.getBasePrice());
+                    b.setBookingFee(new BigDecimal("1000.00"));
+                    b.setBookingFeePaid(true);
+                    b.setCreatedAt(bookingDateTime);
+                    bookingRepository.save(b);
+                    totalSeedBookings++;
+
+                    customer.setVisits((customer.getVisits() == null ? 0 : customer.getVisits()) + 1);
+
+                    Invoice inv = new Invoice();
+                    inv.setInvoiceId(UUID.randomUUID());
+                    inv.setCompanyCode(owner.getOwnerCode() != null ? owner.getOwnerCode() : "OWN-" + owner.getUserId().toString().substring(0, 6).toUpperCase());
+                    inv.setCenterId(center.getCenterId());
+                    inv.setBookingId(b.getBookingId());
+                    inv.setIssuedToCustomerId(customer.getUserId());
+                    inv.setSubtotal(pkg.getBasePrice());
+                    inv.setTax(pkg.getBasePrice().multiply(new BigDecimal("0.08")));
+                    inv.setDiscount(BigDecimal.ZERO);
+                    inv.setTotal(inv.getSubtotal().add(inv.getTax()));
+                    inv.setStatus(b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED ? "PAID" : "PENDING");
+                    inv.setIssuedAt(bookingDateTime.plusHours(2));
+                    inv.setCreatedAt(bookingDateTime.plusHours(2));
+                    invoiceRepository.save(inv);
+
+                    if ("PAID".equals(inv.getStatus())) {
+                        customer.setTotalSpent((customer.getTotalSpent() == null ? BigDecimal.ZERO : customer.getTotalSpent()).add(inv.getTotal()));
+                    }
+                    customerRepository.save(customer);
+
+                    PaymentRecord onlinePayment = new PaymentRecord();
+                    onlinePayment.setPaymentId(UUID.randomUUID());
+                    onlinePayment.setInvoiceId(inv.getInvoiceId());
+                    onlinePayment.setCenterId(center.getCenterId());
+                    onlinePayment.setAmount(new BigDecimal("1000.00"));
+                    onlinePayment.setMethod("CARD");
+                    onlinePayment.setStatus("SUCCESS");
+                    onlinePayment.setCreatedAt(bookingDateTime);
+                    paymentRecordRepository.save(onlinePayment);
+
+                    if (b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED) {
+                        PaymentRecord cashPayment = new PaymentRecord();
+                        cashPayment.setPaymentId(UUID.randomUUID());
+                        cashPayment.setInvoiceId(inv.getInvoiceId());
+                        cashPayment.setCenterId(center.getCenterId());
+                        cashPayment.setAmount(inv.getTotal().subtract(new BigDecimal("1000.00")));
+                        cashPayment.setMethod("CASH");
+                        cashPayment.setStatus("SUCCESS");
+                        cashPayment.setProcessedAt(bookingDateTime.plusHours(2).plusMinutes(5));
+                        cashPayment.setCreatedAt(bookingDateTime.plusHours(2).plusMinutes(5));
+                        paymentRecordRepository.save(cashPayment);
+                    }
+                }
+            }
+
+            updateCustomerMetricsForOwner(owner);
+            log.info("[SUCCESS] 180-day history generated ({} bookings) for owner {}", totalSeedBookings, owner.getEmail());
+        } catch (Exception e) {
+            log.error("[ERROR] Failed to seed history for owner {}: {}", owner.getEmail(), e.getMessage(), e);
         }
     }
 }
