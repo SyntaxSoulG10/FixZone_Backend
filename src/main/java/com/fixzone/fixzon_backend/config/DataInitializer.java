@@ -678,71 +678,141 @@ public class DataInitializer implements CommandLineRunner {
             }
         }
 
+        // Determine brands supported by this center to decide which packages to seed
+        String[] supportedBrands = sc.getSupportedVehicleBrands();
+        java.util.Set<String> centerBrands = new java.util.HashSet<>();
+        if (supportedBrands != null) {
+            for (String b : supportedBrands) {
+                if (b != null) {
+                    centerBrands.add(b.trim().toLowerCase());
+                }
+            }
+        }
+        // If center has no brands configured, default to a couple of common ones to ensure some packages are seeded
+        if (centerBrands.isEmpty()) {
+            centerBrands.add("toyota");
+            centerBrands.add("nissan");
+        }
+
+        List<String> keepPackageNames = new java.util.ArrayList<>();
+
         // 1. Toyota Genuine Periodic Maintenance (Car / Sedan)
-        createPackageIfNotExists(sc, "Toyota Genuine Periodic Maintenance", "CAR", "Toyota",
-                "Engine Oil & Filter Replacement (up to 4L),30-Point Computer ECU Diagnostic Scan,4-Wheel Brake Pad Cleaning & Inspection,Underbody Wash & Anti-Rust Inspection,Coolant & Fluid Top-Up,Interior Cabin Deep Vacuuming,Tire Shine & Alloy Wheel Dressing",
-                "Complete 30-point periodic maintenance covering synthetic engine lubrication, safety diagnostics, 4-wheel brake inspection, and exterior body detailing for Toyota sedans and hatchbacks.",
-                new BigDecimal("18500.00"), 120);
+        if (centerBrands.contains("toyota")) {
+            createPackageIfNotExists(sc, "Toyota Genuine Periodic Maintenance", "CAR", "Toyota",
+                    "Engine Oil & Filter Replacement (up to 4L),30-Point Computer ECU Diagnostic Scan,4-Wheel Brake Pad Cleaning & Inspection,Underbody Wash & Anti-Rust Inspection,Coolant & Fluid Top-Up,Interior Cabin Deep Vacuuming,Tire Shine & Alloy Wheel Dressing",
+                    "Complete 30-point periodic maintenance covering synthetic engine lubrication, safety diagnostics, 4-wheel brake inspection, and exterior body detailing for Toyota sedans and hatchbacks.",
+                    new BigDecimal("18500.00"), 120);
+            keepPackageNames.add("Toyota Genuine Periodic Maintenance");
+        }
 
         // 2. Honda VTEC & Hybrid Performance Tune-Up (Car / Sedan)
-        createPackageIfNotExists(sc, "Honda VTEC & Hybrid Performance Tune-Up", "CAR", "Honda",
-                "High-Voltage Inverter Coolant Flush,Hybrid Battery Cell Voltage Analysis,30-Point Computer ECU Diagnostic Scan,12V Battery Health & Alternator Test,Electric Brake Actuator Calibration,Spark Plug Calibration & Cleaning",
-                "Specialized hybrid and performance care for Honda Vezel, Fit, Civic, and Accord by certified high-voltage technicians.",
-                new BigDecimal("19500.00"), 120);
+        if (centerBrands.contains("honda")) {
+            createPackageIfNotExists(sc, "Honda VTEC & Hybrid Performance Tune-Up", "CAR", "Honda",
+                    "High-Voltage Inverter Coolant Flush,Hybrid Battery Cell Voltage Analysis,30-Point Computer ECU Diagnostic Scan,12V Battery Health & Alternator Test,Electric Brake Actuator Calibration,Spark Plug Calibration & Cleaning",
+                    "Specialized hybrid and performance care for Honda Vezel, Fit, Civic, and Accord by certified high-voltage technicians.",
+                    new BigDecimal("19500.00"), 120);
+            keepPackageNames.add("Honda VTEC & Hybrid Performance Tune-Up");
+        }
 
         // 3. Nissan Executive SUV & 4x4 Major Service (SUV / 4x4)
-        createPackageIfNotExists(sc, "Nissan Executive SUV & 4x4 Major Service", "SUV", "Nissan",
-                "Full Synthetic Oil Replacement (up to 7L),Genuine Oil & Air Filter Replacement,4-Wheel Caliper Greasing & Brake Check,Differential & Transfer Case Fluid Check,Heavy-Duty Underbody Degrease,30-Point Computer ECU Diagnostic Scan",
-                "Heavy-duty periodic service engineered for Nissan Patrol, X-Trail, Qashqai & Navara with genuine filters, drivetrain inspection, and ECU health scanning.",
-                new BigDecimal("26500.00"), 150);
+        if (centerBrands.contains("nissan")) {
+            createPackageIfNotExists(sc, "Nissan Executive SUV & 4x4 Major Service", "SUV", "Nissan",
+                    "Full Synthetic Oil Replacement (up to 7L),Genuine Oil & Air Filter Replacement,4-Wheel Caliper Greasing & Brake Check,Differential & Transfer Case Fluid Check,Heavy-Duty Underbody Degrease,30-Point Computer ECU Diagnostic Scan",
+                    "Heavy-duty periodic service engineered for Nissan Patrol, X-Trail, Qashqai & Navara with genuine filters, drivetrain inspection, and ECU health scanning.",
+                    new BigDecimal("26500.00"), 150);
+            keepPackageNames.add("Nissan Executive SUV & 4x4 Major Service");
+        }
 
         // 4. Suzuki Express Economy Lube & Filter Care (Car / Hatchback)
-        createPackageIfNotExists(sc, "Suzuki Express Economy Lube & Filter Care", "CAR", "Suzuki",
-                "Engine Oil Replacement (up to 4L),Genuine Oil Filter Replacement,15-Point Safety Health Check,Windshield Washer Fluid Top-up,Battery Health & Alternator Test,Complimentary Exterior Foam Wash",
-                "Quick-turnaround lube service using OEM Suzuki filters and premium lubricants with safety checks for Alto, Wagon R, Swift & Spacia.",
-                new BigDecimal("9500.00"), 45);
+        if (centerBrands.contains("suzuki")) {
+            createPackageIfNotExists(sc, "Suzuki Express Economy Lube & Filter Care", "CAR", "Suzuki",
+                    "Engine Oil Replacement (up to 4L),Genuine Oil Filter Replacement,15-Point Safety Health Check,Windshield Washer Fluid Top-up,Battery Health & Alternator Test,Complimentary Exterior Foam Wash",
+                    "Quick-turnaround lube service using OEM Suzuki filters and premium lubricants with safety checks for Alto, Wagon R, Swift & Spacia.",
+                    new BigDecimal("9500.00"), 45);
+            keepPackageNames.add("Suzuki Express Economy Lube & Filter Care");
+        }
 
         // 5. Mitsubishi Super Select 4WD & Pajero Drivetrain Service (SUV / 4x4)
-        createPackageIfNotExists(sc, "Mitsubishi Super Select 4WD Drivetrain Service", "SUV", "Mitsubishi",
-                "Full Synthetic Oil Replacement (up to 7L),Differential & Transfer Case Fluid Check,Heavy-Duty Underbody Degrease,Suspension Bush & Leaf Spring Test,Brake Caliper Pin Lubrication",
-                "Specialized off-road drivetrain and suspension health service for Mitsubishi Montero, Pajero Sport, and Outlander.",
-                new BigDecimal("27500.00"), 150);
+        if (centerBrands.contains("mitsubishi")) {
+            createPackageIfNotExists(sc, "Mitsubishi Super Select 4WD Drivetrain Service", "SUV", "Mitsubishi",
+                    "Full Synthetic Oil Replacement (up to 7L),Differential & Transfer Case Fluid Check,Heavy-Duty Underbody Degrease,Suspension Bush & Leaf Spring Test,Brake Caliper Pin Lubrication",
+                    "Specialized off-road drivetrain and suspension health service for Mitsubishi Montero, Pajero Sport, and Outlander.",
+                    new BigDecimal("27500.00"), 150);
+            keepPackageNames.add("Mitsubishi Super Select 4WD Drivetrain Service");
+        }
 
         // 6. Hyundai & Kia Smartstream Engine Diagnostic Care (Car / Sedan)
-        createPackageIfNotExists(sc, "Hyundai & Kia Smartstream Engine Care", "CAR", "Hyundai",
-                "30-Point Computer ECU Diagnostic Scan,Engine Oil & Filter Replacement (up to 4L),Spark Plug Check & Calibration,Starter Motor & Charging System Test,Interior Cabin Deep Vacuuming",
-                "Tailored diagnostic calibration and lubrication package for Hyundai Tucson, Elantra, Ioniq, and Kia Sportage & Seltos.",
-                new BigDecimal("17000.00"), 90);
+        if (centerBrands.contains("hyundai") || centerBrands.contains("kia")) {
+            createPackageIfNotExists(sc, "Hyundai & Kia Smartstream Engine Care", "CAR", "Hyundai",
+                    "30-Point Computer ECU Diagnostic Scan,Engine Oil & Filter Replacement (up to 4L),Spark Plug Check & Calibration,Starter Motor & Charging System Test,Interior Cabin Deep Vacuuming",
+                    "Tailored diagnostic calibration and lubrication package for Hyundai Tucson, Elantra, Ioniq, and Kia Sportage & Seltos.",
+                    new BigDecimal("17000.00"), 90);
+            keepPackageNames.add("Hyundai & Kia Smartstream Engine Care");
+        }
 
         // 7. BMW & European Luxury Precision Diagnostics & Service (Car / Luxury Sedan)
-        createPackageIfNotExists(sc, "BMW & European Luxury Precision Diagnostics", "CAR", "BMW",
-                "Engine Oil & Filter Replacement (up to 4L),30-Point Computer ECU Diagnostic Scan,4-Wheel Brake Pad Cleaning & Inspection,Coolant & Fluid Top-Up,Brake & Clutch Fluid Inspection,Interior Cabin Deep Vacuuming",
-                "Precision diagnostic health check, Condition Based Service (CBS) reset, synthetic LL-04 oil and OEM microfilter replacement for German luxury cars.",
-                new BigDecimal("34500.00"), 150);
+        if (centerBrands.contains("bmw")) {
+            createPackageIfNotExists(sc, "BMW & European Luxury Precision Diagnostics", "CAR", "BMW",
+                    "Engine Oil & Filter Replacement (up to 4L),30-Point Computer ECU Diagnostic Scan,4-Wheel Brake Pad Cleaning & Inspection,Coolant & Fluid Top-Up,Brake & Clutch Fluid Inspection,Interior Cabin Deep Vacuuming",
+                    "Precision diagnostic health check, Condition Based Service (CBS) reset, synthetic LL-04 oil and OEM microfilter replacement for German luxury cars.",
+                    new BigDecimal("34500.00"), 150);
+            keepPackageNames.add("BMW & European Luxury Precision Diagnostics");
+        }
 
         // 8. Mercedes-Benz Star Diagnostic & Safety Service (Car / Luxury Sedan)
-        createPackageIfNotExists(sc, "Mercedes-Benz Star Diagnostic & Safety Service", "CAR", "Mercedes-Benz",
-                "30-Point Computer ECU Diagnostic Scan,Engine Oil & Filter Replacement (up to 4L),4-Wheel Brake Pad Cleaning & Inspection,Coolant Top-up & Radiator Test,High-Pressure Underbody Wash & Degrease",
-                "Specialized Star Diagnosis scan, transmission inspection, brake fluid flush, and luxury detailing for Mercedes-Benz C, E, and S-Class.",
-                new BigDecimal("38000.00"), 180);
+        if (centerBrands.contains("mercedes-benz") || centerBrands.contains("mercedes")) {
+            createPackageIfNotExists(sc, "Mercedes-Benz Star Diagnostic & Safety Service", "CAR", "Mercedes-Benz",
+                    "30-Point Computer ECU Diagnostic Scan,Engine Oil & Filter Replacement (up to 4L),4-Wheel Brake Pad Cleaning & Inspection,Coolant Top-up & Radiator Test,High-Pressure Underbody Wash & Degrease",
+                    "Specialized Star Diagnosis scan, transmission inspection, brake fluid flush, and luxury detailing for Mercedes-Benz C, E, and S-Class.",
+                    new BigDecimal("38000.00"), 180);
+            keepPackageNames.add("Mercedes-Benz Star Diagnostic & Safety Service");
+        }
 
         // 9. Commercial Van & Passenger Fleet Service (Van / Minibus)
-        createPackageIfNotExists(sc, "Commercial Van & Passenger Fleet Service", "VAN", "Toyota",
-                "Diesel/Petrol Engine Oil (up to 6L),Genuine Oil & Fuel Filter Replacement,Heavy Duty Brake Inspection,Suspension Bush & Leaf Spring Test,Radiator Coolant Flush & Pressure Test,Electrical System Scan",
-                "Tailored for commercial vans and fleet transports (Toyota KDH / HiAce, Nissan Caravan, Every) to maximize operational uptime and fuel efficiency.",
-                new BigDecimal("22000.00"), 120);
+        if (centerBrands.contains("toyota")) {
+            createPackageIfNotExists(sc, "Commercial Van & Passenger Fleet Service", "VAN", "Toyota",
+                    "Diesel/Petrol Engine Oil (up to 6L),Genuine Oil & Fuel Filter Replacement,Heavy Duty Brake Inspection,Suspension Bush & Leaf Spring Test,Radiator Coolant Flush & Pressure Test,Electrical System Scan",
+                    "Tailored for commercial vans and fleet transports (Toyota KDH / HiAce, Nissan Caravan, Every) to maximize operational uptime and fuel efficiency.",
+                    new BigDecimal("22000.00"), 120);
+            keepPackageNames.add("Commercial Van & Passenger Fleet Service");
+        }
 
         // 10. Pro Motorcycle & Scooter Precision Care (Motorcycle / Scooter)
-        createPackageIfNotExists(sc, "Pro Motorcycle & Scooter Precision Care", "BIKE", "Yamaha",
-                "Engine Oil Replacement,Brake Pad & Shoe Inspection,Drive Chain Cleaning & Lubrication,Spark Plug Calibration & Cleaning,Tire Pressure & Safety Check",
-                "Specialized 2-wheeler precision care for scooters and sport bikes (Yamaha, Honda, TVS, Bajaj) with drive chain alignment and brake tuning.",
-                new BigDecimal("6500.00"), 60);
+        if (centerBrands.contains("yamaha") || centerBrands.contains("honda")) {
+            createPackageIfNotExists(sc, "Pro Motorcycle & Scooter Precision Care", "BIKE", "Yamaha",
+                    "Engine Oil Replacement,Brake Pad & Shoe Inspection,Drive Chain Cleaning & Lubrication,Spark Plug Calibration & Cleaning,Tire Pressure & Safety Check",
+                    "Specialized 2-wheeler precision care for scooters and sport bikes (Yamaha, Honda, TVS, Bajaj) with drive chain alignment and brake tuning.",
+                    new BigDecimal("6500.00"), 60);
+            keepPackageNames.add("Pro Motorcycle & Scooter Precision Care");
+        }
 
         // 11. Universal All-Makes Multi-Point Care (Universal / All Makes)
         createPackageIfNotExists(sc, "Universal All-Makes Multi-Point Care", "CAR", "ALL",
                 "Engine Oil Replacement (up to 4L),Genuine Oil Filter Replacement,15-Point Safety Health Check,Windshield Washer Fluid Top-up,Battery Health & Alternator Test,Foam Body Wash & Wax Polish",
                 "Universal multi-point safety inspection, engine lubrication, battery testing, and foam wash suitable for all vehicle makes and models.",
                 new BigDecimal("11500.00"), 60);
+        keepPackageNames.add("Universal All-Makes Multi-Point Care");
+
+        // Clean up excess packages that were seeded previously by the system but are no longer matching
+        List<ServicePackage> dbPackages = servicePackageRepository.findByServiceCenter_CenterId(sc.getCenterId());
+        List<ServicePackage> obsoletePackages = new java.util.ArrayList<>();
+        for (ServicePackage p : dbPackages) {
+            if ("system".equals(p.getCreatedBy()) && !keepPackageNames.contains(p.getName())) {
+                obsoletePackages.add(p);
+            }
+        }
+        if (!obsoletePackages.isEmpty()) {
+            log.info(">>> Deleting {} excess/obsolete service packages from DB <<<", obsoletePackages.size());
+            try {
+                servicePackageRepository.deleteAll(obsoletePackages);
+            } catch (Exception e) {
+                log.warn("Database constraints prevented deletion of some obsolete packages. Marking them inactive instead: {}", e.getMessage());
+                for (ServicePackage p : obsoletePackages) {
+                    p.setIsActive(false);
+                }
+                servicePackageRepository.saveAll(obsoletePackages);
+            }
+        }
     }
 
     private void createPackageIfNotExists(ServiceCenter sc, String name, String vehicleType, String vehicleBrand, String type, String desc, BigDecimal price, int duration) {
