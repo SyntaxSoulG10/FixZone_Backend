@@ -3,6 +3,7 @@ package com.fixzone.fixzon_backend.service;
 import com.fixzone.fixzon_backend.DTO.InvoiceDTO;
 import com.fixzone.fixzon_backend.model.Customer;
 import com.fixzone.fixzon_backend.model.Invoice;
+import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.CustomerRepository;
 import com.fixzone.fixzon_backend.repository.InvoiceRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +30,9 @@ class InvoiceServiceTest {
 
     @Mock
     private CustomerRepository customerRepository;
+
+    @Mock
+    private BookingRepository bookingRepository;
 
     @InjectMocks
     private InvoiceService invoiceService;

@@ -58,6 +58,9 @@ public class ServiceCenter {
     @Column(name = "updated_by", length = 100)
     private String updatedBy;
 
+    @Column(name = "service_lanes_count")
+    private Integer serviceLanesCount = 1;
+
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "supported_vehicle_brands", columnDefinition = "text[]")
     private String[] supportedVehicleBrands;

@@ -337,6 +337,10 @@ public class ServiceCenterService {
         existing.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
         existing.setGoogleMapsUrl(dto.getGoogleMapsUrl());
 
+        if (dto.getServiceLanesCount() != null && dto.getServiceLanesCount() >= 1) {
+            existing.setServiceLanesCount(dto.getServiceLanesCount());
+        }
+
         // Update service center image / logo if provided
         if (dto.getImageUrl() != null) {
             if (dto.getImageUrl().startsWith("data:image") || dto.getImageUrl().contains(";base64,")) {
@@ -351,6 +355,21 @@ public class ServiceCenterService {
             }
         }
 
+        return mapEntityToDto(serviceCenterRepository.save(existing));
+    }
+
+    public ServiceCenterDTO updateServiceLanesCount(UUID id, int lanesCount) {
+        if (id == null) {
+            throw new IllegalArgumentException("Center ID cannot be null");
+        }
+        if (lanesCount < 1) {
+            throw new IllegalArgumentException("Service lanes count must be at least 1");
+        }
+
+        ServiceCenter existing = serviceCenterRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Service center not found with id: " + id));
+
+        existing.setServiceLanesCount(lanesCount);
         return mapEntityToDto(serviceCenterRepository.save(existing));
     }
 
@@ -480,6 +499,7 @@ public class ServiceCenterService {
         center.setCreatedBy(dto.getCreatedBy());
         center.setUpdatedBy(dto.getUpdatedBy());
         center.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
+        center.setServiceLanesCount(dto.getServiceLanesCount() != null ? dto.getServiceLanesCount() : 1);
         center.setGoogleMapsUrl(dto.getGoogleMapsUrl());
         center.setImageUrl(dto.getImageUrl());
         return center;

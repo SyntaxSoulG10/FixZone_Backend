@@ -37,6 +37,27 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     """)
     List<UUID> findTrustedCenterIds(@Param("customerId") UUID customerId);
 
+    @Query("""
+    SELECT b FROM Booking b
+    WHERE b.centerId = :centerId
+    AND b.bookingDate = :date
+    AND (
+        b.status = 'CONFIRMED'
+        OR b.status = 'COMPLETED'
+        OR b.status = 'IN_PROGRESS'
+        OR (
+            b.status = 'PENDING_PAYMENT'
+            AND (b.expiresAt IS NULL OR b.expiresAt > :now)
+        )
+    )
+    ORDER BY b.bookingTime ASC
+    """)
+    List<Booking> findActiveBookingsForCenterAndDate(
+            @Param("centerId") UUID centerId,
+            @Param("date") LocalDate date,
+            @Param("now") LocalDateTime now
+    );
+
     // NEW: Smart slot locking (with expiry)
     @Query("""
     SELECT COUNT(b) > 0 FROM Booking b

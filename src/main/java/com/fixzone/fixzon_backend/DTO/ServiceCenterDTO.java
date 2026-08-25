@@ -60,4 +60,5 @@ public class ServiceCenterDTO {
     private BigDecimal revenue;
     private Integer mechanicsCount;
     private Integer currentCapacity;
+    private Integer serviceLanesCount = 1;
 }

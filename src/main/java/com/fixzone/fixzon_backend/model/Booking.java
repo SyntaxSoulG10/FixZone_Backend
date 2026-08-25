@@ -48,6 +48,15 @@ public class Booking {
     @Column(name = "booking_time", nullable = false)
     private LocalTime bookingTime;
 
+    @Column(name = "duration_mins")
+    private Integer durationMins;
+
+    @Column(name = "end_time")
+    private LocalTime endTime;
+
+    @Column(name = "assigned_lane")
+    private Integer assignedLane;
+
     @Column(name = "special_request", length = 1000)
     private String specialRequest;
 

@@ -33,6 +33,10 @@ class BookingServiceTest {
     @Mock CustomerRepository customerRepository;
     @Mock OwnerRepository ownerRepository;
     @Mock EmailService emailService;
+    @Mock SchedulingService schedulingService;
+    @Mock UserRepository userRepository;
+    @Mock NotificationService notificationService;
+    @Mock BookingStatusHistoryRepository bookingStatusHistoryRepository;
 
     @InjectMocks BookingService bookingService;
 
@@ -89,6 +93,9 @@ class BookingServiceTest {
         confirmedBooking.setGatewaySessionId("cs_test_session");
         confirmedBooking.setBookingFee(new BigDecimal("2000.00"));
         confirmedBooking.setExpiresAt(LocalDateTime.now().plusHours(1));
+
+        lenient().when(schedulingService.isSlotAvailable(any(), any(), any(), anyInt(), any())).thenReturn(true);
+        lenient().when(schedulingService.resolvePackageDuration(any())).thenReturn(60);
     }
 
     // ── createBooking() ──────────────────────────────────────────────────────
@@ -213,15 +220,14 @@ class BookingServiceTest {
     }
 
     @Test
-    @DisplayName("Throws when booking is already cancelled")
-    void throwsOnAlreadyCancelled() {
+    @DisplayName("Returns existing booking when already cancelled")
+    void handlesAlreadyCancelled() {
         confirmedBooking.setStatus(BookingStatus.CANCELLED);
         when(bookingRepository.findById(confirmedBooking.getBookingId()))
                 .thenReturn(Optional.of(confirmedBooking));
 
-        assertThatThrownBy(() -> bookingService.cancelBooking(confirmedBooking.getBookingId()))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("already cancelled");
+        BookingResponseDTO result = bookingService.cancelBooking(confirmedBooking.getBookingId());
+        assertThat(result.getStatus()).isEqualTo(BookingStatus.CANCELLED);
     }
 
     // ── rescheduleBooking() ──────────────────────────────────────────────────
@@ -231,7 +237,6 @@ class BookingServiceTest {
     void rescheduleSuccess() {
         when(bookingRepository.findById(confirmedBooking.getBookingId()))
                 .thenReturn(Optional.of(confirmedBooking));
-        when(bookingRepository.existsActiveSlot(any(), any(), any(), any())).thenReturn(false);
         when(bookingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(serviceCenterRepository.findById(centerId)).thenReturn(Optional.of(serviceCenter));
 
@@ -263,7 +268,7 @@ class BookingServiceTest {
     void throwsWhenSlotTaken() {
         when(bookingRepository.findById(confirmedBooking.getBookingId()))
                 .thenReturn(Optional.of(confirmedBooking));
-        when(bookingRepository.existsActiveSlot(any(), any(), any(), any())).thenReturn(true);
+        when(schedulingService.isSlotAvailable(any(), any(), any(), anyInt(), any())).thenReturn(false);
 
         assertThatThrownBy(() -> bookingService.rescheduleBooking(
                 confirmedBooking.getBookingId(), LocalDate.now().plusDays(10), LocalTime.of(14, 0)))
@@ -335,17 +340,16 @@ class BookingServiceTest {
     }
 
     @Test
-    @DisplayName("getAvailableSlots excludes taken slot")
+    @DisplayName("getAvailableSlots delegates to schedulingService")
     void availableSlotsExcludeTaken() {
-        when(bookingRepository.existsActiveSlot(eq(centerId), any(), any(), any())).thenReturn(false);
-        when(bookingRepository.existsActiveSlot(eq(centerId), any(), eq(LocalTime.of(10, 0)), any()))
-                .thenReturn(true);
+        LocalDate date = LocalDate.now().plusDays(1);
+        when(schedulingService.getAvailableStartTimes(centerId, date, null))
+                .thenReturn(List.of("08:00 AM", "09:15 AM", "10:30 AM", "01:00 PM"));
 
-        List<String> slots = bookingService.getAvailableSlots(centerId, LocalDate.now().plusDays(1));
+        List<String> slots = bookingService.getAvailableSlots(centerId, date);
 
-        assertThat(slots).doesNotContain("10:00-11:00");
-        assertThat(slots).contains("09:00-10:00");
-        assertThat(slots).hasSize(9);
+        assertThat(slots).contains("08:00 AM", "09:15 AM");
+        assertThat(slots).hasSize(4);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

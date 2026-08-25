@@ -183,4 +183,59 @@ public class ServiceCenterController {
         serviceCenterService.deleteServiceCenter(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{id}/lanes")
+    public ResponseEntity<ServiceCenterDTO> updateServiceLanes(
+            @PathVariable UUID id,
+            @RequestBody java.util.Map<String, Object> payload) {
+
+        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Integer lanesCount = null;
+        if (payload != null) {
+            if (payload.containsKey("serviceLanesCount")) {
+                lanesCount = ((Number) payload.get("serviceLanesCount")).intValue();
+            } else if (payload.containsKey("lanesCount")) {
+                lanesCount = ((Number) payload.get("lanesCount")).intValue();
+            } else if (payload.containsKey("count")) {
+                lanesCount = ((Number) payload.get("count")).intValue();
+            }
+        }
+
+        if (lanesCount == null || lanesCount < 1) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Service lanes count must be at least 1");
+        }
+
+        ServiceCenterDTO existingCenter = serviceCenterService.getServiceCenterById(id);
+        if (existingCenter == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String email = auth.getName();
+        boolean isManager = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_SERVICE_MANAGER")
+                        || a.getAuthority().equalsIgnoreCase("MANAGER")
+                        || a.getAuthority().equalsIgnoreCase("ROLE_MANAGER"));
+
+        if (isManager) {
+            ManagerDTO manager = managerService.getManagerByEmail(email);
+            if (manager == null || manager.getManagedCenterId() == null || !manager.getManagedCenterId().equals(id)) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        HttpStatus.FORBIDDEN, "Access Denied: You do not manage this service center");
+            }
+        } else {
+            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+            if (owner == null || !owner.getUserId().equals(existingCenter.getOwnerId())) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        HttpStatus.FORBIDDEN, "Access Denied: You do not have permission to manage lanes for this service center");
+            }
+        }
+
+        ServiceCenterDTO updated = serviceCenterService.updateServiceLanesCount(id, lanesCount);
+        return ResponseEntity.ok(updated);
+    }
 }

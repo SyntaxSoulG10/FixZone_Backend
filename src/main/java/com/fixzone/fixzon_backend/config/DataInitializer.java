@@ -98,6 +98,10 @@ public class DataInitializer implements CommandLineRunner {
             stmt.execute("ALTER TABLE vehicles ALTER COLUMN image_url TYPE TEXT");
             stmt.execute("ALTER TABLE service_packages ALTER COLUMN type TYPE TEXT");
             stmt.execute("ALTER TABLE service_centers ADD COLUMN IF NOT EXISTS image_url TEXT");
+            stmt.execute("ALTER TABLE service_centers ADD COLUMN IF NOT EXISTS service_lanes_count INTEGER DEFAULT 1");
+            stmt.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS duration_mins INTEGER");
+            stmt.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS end_time TIME");
+            stmt.execute("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS assigned_lane INTEGER");
         } catch (Exception e) {
             log.info("Schema migration note: {}", e.getMessage());
         }
