@@ -32,6 +32,11 @@ class BookingServiceSubscriptionValidationTest {
     @Mock private CustomerRepository customerRepository;
     @Mock private OwnerRepository ownerRepository;
     @Mock private Authentication authentication;
+    @Mock private SchedulingService schedulingService;
+    @Mock private UserRepository userRepository;
+    @Mock private NotificationService notificationService;
+    @Mock private BookingStatusHistoryRepository bookingStatusHistoryRepository;
+    @Mock private EmailService emailService;
 
     @InjectMocks
     private BookingService bookingService;
@@ -45,6 +50,9 @@ class BookingServiceSubscriptionValidationTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(schedulingService.isSlotAvailable(any(), any(), any(), anyInt(), any())).thenReturn(true);
+        lenient().when(schedulingService.resolvePackageDuration(any())).thenReturn(60);
+
         packageId = UUID.randomUUID();
         ownerId = UUID.randomUUID();
 

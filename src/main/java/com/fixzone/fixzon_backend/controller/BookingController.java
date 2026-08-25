@@ -86,8 +86,19 @@ public class BookingController {
     @GetMapping("/available-slots")
     public ResponseEntity<List<String>> getAvailableSlots(
             @RequestParam UUID centerId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(bookingService.getAvailableSlots(centerId, date));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) UUID packageId
+    ) {
+        return ResponseEntity.ok(bookingService.getAvailableStartTimes(centerId, date, packageId));
+    }
+
+    @GetMapping("/available-start-times")
+    public ResponseEntity<List<String>> getAvailableStartTimes(
+            @RequestParam UUID centerId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) UUID packageId
+    ) {
+        return ResponseEntity.ok(bookingService.getAvailableStartTimes(centerId, date, packageId));
     }
 
     @GetMapping("/active")
@@ -172,11 +183,17 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.editExistingBooking(id, request));
     }
 
+    @PutMapping("/{id}/assign-lane")
+    public ResponseEntity<BookingResponseDTO> assignLane(
+            @PathVariable UUID id,
+            @RequestParam Integer laneNumber) {
+        return ResponseEntity.ok(bookingService.assignLane(id, laneNumber));
+    }
+
     @GetMapping("/{id}/status-history")
     public ResponseEntity<List<com.fixzone.fixzon_backend.DTO.booking.BookingStatusHistoryDTO>> getBookingStatusHistory(
             @PathVariable UUID id) {
         return ResponseEntity.ok(bookingService.getBookingStatusHistory(id));
     }
-
     // Legacy endpoints removed
 }

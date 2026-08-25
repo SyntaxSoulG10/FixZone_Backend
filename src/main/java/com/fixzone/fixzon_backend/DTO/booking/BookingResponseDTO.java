@@ -59,5 +59,7 @@ public class BookingResponseDTO {
     private String vehicleName;
     private String plateNumber;
     private Integer estimatedDurationMins;
+    private Integer durationMins;
     private LocalTime endTime;
+    private Integer assignedLane;
 }

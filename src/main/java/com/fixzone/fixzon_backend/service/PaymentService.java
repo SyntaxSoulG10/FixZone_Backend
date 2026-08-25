@@ -38,6 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalTime;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Optional;
@@ -498,10 +499,8 @@ public class PaymentService {
                     booking.setBookingDate(java.time.LocalDate.parse(payment.getDate()));
 
                     String timeStr = payment.getTimeSlot();
-                    if (timeStr != null && timeStr.contains("-")) {
-                        timeStr = timeStr.split("-")[0].trim();
-                    }
-                    booking.setBookingTime(java.time.LocalTime.parse(timeStr));
+                    LocalTime parsedTime = parseTimeSafely(timeStr);
+                    booking.setBookingTime(parsedTime);
                     booking.setGatewaySessionId(sessionId);
                     booking.setBookingFee(BigDecimal.valueOf(payment.getAmount()));
                     booking.setCenterId(payment.getCenterId());
@@ -509,6 +508,10 @@ public class PaymentService {
 
                     servicePackageRepository.findById(payment.getServicePackageId()).ifPresent(pkg -> {
                         booking.setEstimatedCost(pkg.getBasePrice());
+                        if (pkg.getEstimatedDurationMins() != null) {
+                            booking.setDurationMins(pkg.getEstimatedDurationMins());
+                            booking.setEndTime(parsedTime.plusMinutes(pkg.getEstimatedDurationMins()));
+                        }
                     });
                 }
 
@@ -718,18 +721,18 @@ public class PaymentService {
             }
 
             String timeStr = payment.getTimeSlot();
-            if (timeStr != null) {
-                if (timeStr.contains("-")) {
-                    timeStr = timeStr.split("-")[0].trim();
-                }
-                booking.setBookingTime(java.time.LocalTime.parse(timeStr));
-            }
+            LocalTime parsedTime = parseTimeSafely(timeStr);
+            booking.setBookingTime(parsedTime);
             booking.setGatewaySessionId(gatewaySessionId);
             booking.setBookingFee(BigDecimal.valueOf(payment.getAmount()));
             
             if (payment.getServicePackageId() != null) {
                 servicePackageRepository.findById(payment.getServicePackageId()).ifPresent(pkg -> {
                     booking.setEstimatedCost(pkg.getBasePrice());
+                    if (pkg.getEstimatedDurationMins() != null) {
+                        booking.setDurationMins(pkg.getEstimatedDurationMins());
+                        booking.setEndTime(parsedTime.plusMinutes(pkg.getEstimatedDurationMins()));
+                    }
                 });
             }
         }
@@ -738,6 +741,28 @@ public class PaymentService {
         Booking savedBooking = bookingRepository.save(booking);
 
         sendPaymentSuccessNotifications(savedBooking, payment);
+    }
+
+    private LocalTime parseTimeSafely(String timeStr) {
+        if (timeStr == null || timeStr.isBlank()) {
+            return LocalTime.of(8, 0);
+        }
+        String cleaned = timeStr.trim();
+        if (cleaned.contains("-")) {
+            cleaned = cleaned.split("-")[0].trim();
+        }
+        try {
+            if (cleaned.toUpperCase().contains("AM") || cleaned.toUpperCase().contains("PM")) {
+                return LocalTime.parse(cleaned, java.time.format.DateTimeFormatter.ofPattern("hh:mm a", java.util.Locale.ENGLISH));
+            }
+            if (cleaned.length() == 5) {
+                return LocalTime.parse(cleaned, java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+            }
+            return LocalTime.parse(cleaned);
+        } catch (Exception e) {
+            log.warn("Could not parse time '{}', falling back to 08:00: {}", timeStr, e.getMessage());
+            return LocalTime.of(8, 0);
+        }
     }
 
     private void sendPaymentSuccessNotifications(Booking booking, Payment payment) {

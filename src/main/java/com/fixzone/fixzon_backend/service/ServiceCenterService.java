@@ -480,6 +480,7 @@ public class ServiceCenterService {
         center.setCreatedBy(dto.getCreatedBy());
         center.setUpdatedBy(dto.getUpdatedBy());
         center.setSupportedVehicleBrands(dto.getSupportedVehicleBrands());
+        center.setServiceLanesCount(dto.getServiceLanesCount() != null ? dto.getServiceLanesCount() : 1);
         center.setGoogleMapsUrl(dto.getGoogleMapsUrl());
         center.setImageUrl(dto.getImageUrl());
         return center;

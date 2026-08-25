@@ -43,6 +43,7 @@ public class BookingService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final com.fixzone.fixzon_backend.repository.BookingStatusHistoryRepository bookingStatusHistoryRepository;
+    private final SchedulingService schedulingService;
 
     public BookingService(BookingRepository bookingRepository,
             ServiceCenterRepository serviceCenterRepository,
@@ -54,7 +55,8 @@ public class BookingService {
             OwnerRepository ownerRepository,
             NotificationService notificationService,
             EmailService emailService,
-            com.fixzone.fixzon_backend.repository.BookingStatusHistoryRepository bookingStatusHistoryRepository) {
+            com.fixzone.fixzon_backend.repository.BookingStatusHistoryRepository bookingStatusHistoryRepository,
+            SchedulingService schedulingService) {
         this.bookingRepository = bookingRepository;
         this.serviceCenterRepository = serviceCenterRepository;
         this.servicePackageRepository = servicePackageRepository;
@@ -66,6 +68,7 @@ public class BookingService {
         this.notificationService = notificationService;
         this.emailService = emailService;
         this.bookingStatusHistoryRepository = bookingStatusHistoryRepository;
+        this.schedulingService = schedulingService;
     }
 
     @Transactional(readOnly = true)
@@ -166,6 +169,28 @@ public class BookingService {
             booking.setBookingId(UUID.randomUUID());
         }
 
+        // Set duration and end time
+        int durationMins = booking.getDurationMins() != null ? booking.getDurationMins()
+                : schedulingService.resolvePackageDuration(booking.getPackageId());
+        booking.setDurationMins(durationMins);
+        if (booking.getBookingTime() != null) {
+            booking.setEndTime(booking.getBookingTime().plusMinutes(durationMins));
+        }
+
+        // Validate booking schedule against working hours, lunch break, and multi-lane capacity
+        if (booking.getCenterId() != null && booking.getBookingDate() != null && booking.getBookingTime() != null) {
+            boolean available = schedulingService.isSlotAvailable(
+                    booking.getCenterId(),
+                    booking.getBookingDate(),
+                    booking.getBookingTime(),
+                    durationMins,
+                    null
+            );
+            if (!available) {
+                throw new RuntimeException("Selected time slot is not available or outside working hours");
+            }
+        }
+
         // NOTE: We intentionally do NOT fall back to a DEFAULT_TENANT_ID here.
         // If tenantId is null it means the branch has no owner — the payment service
         // will throw a clear error when the customer tries to pay.
@@ -212,15 +237,28 @@ public class BookingService {
             throw new RuntimeException("Cannot reschedule within 3 days of booking date");
         }
 
-        // Check if the new slot is available (excluding this booking's own record)
-        if (isSlotTakenExcludingBooking(booking.getCenterId(), newDate, newTime, booking.getBookingId())) {
-            log.warn(">>> RESCHEDULE DENIED: Slot already taken at {}", newTime);
+        // Check if the new slot is available via SchedulingService
+        int durationMins = booking.getDurationMins() != null ? booking.getDurationMins()
+                : schedulingService.resolvePackageDuration(booking.getPackageId());
+
+        boolean available = schedulingService.isSlotAvailable(
+                booking.getCenterId(),
+                newDate,
+                newTime,
+                durationMins,
+                booking.getBookingId()
+        );
+
+        if (!available) {
+            log.warn(">>> RESCHEDULE DENIED: Slot not available at {}", newTime);
             throw new RuntimeException("The selected slot is no longer available");
         }
 
         log.info(">>> RESCHEDULE APPROVED: Moving to {} at {}", newDate, newTime);
         booking.setBookingDate(newDate);
         booking.setBookingTime(newTime);
+        booking.setDurationMins(durationMins);
+        booking.setEndTime(newTime.plusMinutes(durationMins));
         booking.setRescheduleCount((booking.getRescheduleCount() == null ? 0 : booking.getRescheduleCount()) + 1);
         Booking saved = bookingRepository.save(booking);
 
@@ -445,18 +483,20 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<String> getAvailableSlots(UUID centerId, LocalDate date) {
-        // Standard hours: 08:00 to 18:00 (hourly ranges)
-        List<String> allSlots = List.of(
-                "08:00-09:00", "09:00-10:00", "10:00-11:00", "11:00-12:00",
-                "12:00-13:00", "13:00-14:00", "14:00-15:00", "15:00-16:00",
-                "16:00-17:00", "17:00-18:00");
+        return getAvailableStartTimes(centerId, date, null);
+    }
 
-        return allSlots.stream()
-                .filter(slotStr -> {
-                    String startTime = slotStr.split("-")[0];
-                    return !isSlotTaken(centerId, date, LocalTime.parse(startTime));
-                })
-                .collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public List<String> getAvailableStartTimes(UUID centerId, LocalDate date, UUID packageId) {
+        return schedulingService.getAvailableStartTimes(centerId, date, packageId);
+    }
+
+    @Transactional
+    public BookingResponseDTO assignLane(UUID bookingId, Integer laneNumber) {
+        Booking booking = bookingRepository.findById(Objects.requireNonNull(bookingId, "ID must not be null"))
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        booking.setAssignedLane(laneNumber);
+        return mapToResponseDTO(bookingRepository.save(booking));
     }
 
     @Transactional
@@ -728,29 +768,39 @@ public class BookingService {
         }
 
         // 2. Service Package & Duration / End Time Calculation
+        int resolvedDuration = 60;
+        if (booking.getDurationMins() != null && booking.getDurationMins() > 0) {
+            resolvedDuration = booking.getDurationMins();
+        }
+
         if (booking.getPackageId() != null) {
             var pkgOpt = servicePackageRepository.findById(booking.getPackageId());
             if (pkgOpt.isPresent()) {
                 var pkg = pkgOpt.get();
                 dto.setPackageName(pkg.getName());
                 dto.setPackageDescription(pkg.getDescription());
-                dto.setEstimatedDurationMins(pkg.getEstimatedDurationMins());
-                if (booking.getBookingTime() != null) {
-                    int duration = pkg.getEstimatedDurationMins() != null ? pkg.getEstimatedDurationMins() : 60;
-                    dto.setEndTime(booking.getBookingTime().plusMinutes(duration));
+                if (pkg.getEstimatedDurationMins() != null) {
+                    dto.setEstimatedDurationMins(pkg.getEstimatedDurationMins());
+                    if (booking.getDurationMins() == null) {
+                        resolvedDuration = pkg.getEstimatedDurationMins();
+                    }
                 }
             } else {
                 dto.setPackageName("Package");
-                if (booking.getBookingTime() != null) {
-                    dto.setEndTime(booking.getBookingTime().plusMinutes(60));
-                }
             }
         } else {
             dto.setPackageName("Package");
-            if (booking.getBookingTime() != null) {
-                dto.setEndTime(booking.getBookingTime().plusMinutes(60));
-            }
         }
+
+        dto.setDurationMins(resolvedDuration);
+        dto.setEstimatedDurationMins(resolvedDuration);
+        if (booking.getEndTime() != null) {
+            dto.setEndTime(booking.getEndTime());
+        } else if (booking.getBookingTime() != null) {
+            dto.setEndTime(booking.getBookingTime().plusMinutes(resolvedDuration));
+        }
+
+        dto.setAssignedLane(booking.getAssignedLane());
 
         // 3. Customer Full Name from User/Customer entity
         if (booking.getCustomerId() != null) {
