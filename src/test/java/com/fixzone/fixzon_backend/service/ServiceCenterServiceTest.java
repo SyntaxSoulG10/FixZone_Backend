@@ -166,4 +166,23 @@ class ServiceCenterServiceTest {
         verify(serviceCenterRepository, times(1)).deleteById(centerId);
         verify(servicePackageRepository, times(1)).deleteAll(anyList());
     }
+
+    @Test
+    void updateServiceLanesCount_ShouldUpdateCountAndReturnDTO() {
+        when(serviceCenterRepository.findById(centerId)).thenReturn(Optional.of(center));
+        when(serviceCenterRepository.save(any(ServiceCenter.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ServiceCenterDTO result = serviceCenterService.updateServiceLanesCount(centerId, 4);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getServiceLanesCount()).isEqualTo(4);
+        verify(serviceCenterRepository, times(1)).save(any(ServiceCenter.class));
+    }
+
+    @Test
+    void updateServiceLanesCount_ShouldThrowWhenCountLessThanOne() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            serviceCenterService.updateServiceLanesCount(centerId, 0);
+        });
+    }
 }
