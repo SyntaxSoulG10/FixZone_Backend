@@ -616,6 +616,9 @@ public class BookingService {
         }
 
         booking.setStatus(newStatus);
+        if (newStatus == BookingStatus.CONFIRMED || newStatus == BookingStatus.PENDING || newStatus == BookingStatus.CANCELLED) {
+            booking.setAssignedLane(null);
+        }
         Booking saved = bookingRepository.save(booking);
 
         // Record history log
