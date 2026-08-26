@@ -121,62 +121,20 @@ public class DataInitializer implements CommandLineRunner {
             log.warn("Schema migration reports table note: {}", e.getMessage());
         }
 
-        // JDBC CLEANUP: Delete obsolete packages and their bookings/invoices/payments for all service centers
+        // JDBC CLEANUP: Dissociate and delete obsolete packages for all service centers without deleting bookings/invoices
         try (java.sql.Connection conn = dataSource.getConnection()) {
             java.sql.Statement stmt = conn.createStatement();
-            // Delete payments referencing invoices that reference bookings referencing obsolete packages
+            // Set package_id to NULL in bookings for obsolete packages
             stmt.executeUpdate(
-                "DELETE FROM payment_records WHERE invoice_id IN (" +
-                "  SELECT invoice_id FROM invoices WHERE booking_id IN (" +
-                "    SELECT booking_id FROM bookings WHERE package_id NOT IN (" +
-                "      SELECT package_id FROM service_packages WHERE name IN (" +
-                "        'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
-                "      )" +
-                "    )" +
-                "  )" +
-                ")"
-            );
-            // Delete invoices referencing bookings referencing obsolete packages
-            stmt.executeUpdate(
-                "DELETE FROM invoices WHERE booking_id IN (" +
-                "  SELECT booking_id FROM bookings WHERE package_id NOT IN (" +
-                "    SELECT package_id FROM service_packages WHERE name IN (" +
-                "      'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
-                "    )" +
-                "  )" +
-                ")"
-            );
-            // Delete booking histories referencing bookings referencing obsolete packages
-            stmt.executeUpdate(
-                "DELETE FROM booking_history WHERE booking_id IN (" +
-                "  SELECT booking_id FROM bookings WHERE package_id NOT IN (" +
-                "    SELECT package_id FROM service_packages WHERE name IN (" +
-                "      'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
-                "    )" +
-                "  )" +
-                ")"
-            );
-            // Delete status histories
-            stmt.executeUpdate(
-                "DELETE FROM booking_status_history WHERE booking_id IN (" +
-                "  SELECT booking_id FROM bookings WHERE package_id NOT IN (" +
-                "    SELECT package_id FROM service_packages WHERE name IN (" +
-                "      'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
-                "    )" +
-                "  )" +
-                ")"
-            );
-            // Delete bookings referencing obsolete packages
-            stmt.executeUpdate(
-                "DELETE FROM bookings WHERE package_id NOT IN (" +
+                "UPDATE bookings SET package_id = NULL WHERE package_id NOT IN (" +
                 "  SELECT package_id FROM service_packages WHERE name IN (" +
                 "    'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
                 "  )" +
                 ")"
             );
-            // Delete payments referencing obsolete packages
+            // Set service_package_id to NULL in payments for obsolete packages
             stmt.executeUpdate(
-                "DELETE FROM payments WHERE service_package_id NOT IN (" +
+                "UPDATE payments SET service_package_id = NULL WHERE service_package_id NOT IN (" +
                 "  SELECT package_id FROM service_packages WHERE name IN (" +
                 "    'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
                 "  )" +
@@ -188,7 +146,7 @@ public class DataInitializer implements CommandLineRunner {
                 "  'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
                 ")"
             );
-            log.info(">>> JDBC CLEANUP: Deleted {} obsolete packages and their dependent records from database <<<", deletedPkgs);
+            log.info(">>> JDBC CLEANUP: Deleted {} obsolete packages from database <<<", deletedPkgs);
         } catch (Exception e) {
             log.warn("JDBC package cleanup note: {}", e.getMessage());
         }
