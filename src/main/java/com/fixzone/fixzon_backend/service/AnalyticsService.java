@@ -86,7 +86,19 @@ public class AnalyticsService {
             centersMap = serviceCenterRepository.findAll().stream()
                     .collect(Collectors.toMap(ServiceCenter::getCenterId, Function.identity()));
         } else {
-            centersMap = ownerRepository.findByOwnerCode(companyCode)
+            Optional<Owner> ownerOpt = ownerRepository.findByOwnerCode(companyCode);
+            if (ownerOpt.isEmpty()) {
+                ownerOpt = ownerRepository.findByEmailIgnoreCase(companyCode)
+                        .or(() -> ownerRepository.findByEmail(companyCode))
+                        .or(() -> {
+                            try {
+                                return ownerRepository.findById(UUID.fromString(companyCode));
+                            } catch (Exception ignored) {
+                                return Optional.empty();
+                            }
+                        });
+            }
+            centersMap = ownerOpt
                     .map(owner -> serviceCenterRepository.findByOwner_UserId(owner.getUserId()))
                     .orElse(List.of())
                     .stream().collect(Collectors.toMap(ServiceCenter::getCenterId, Function.identity()));
@@ -95,12 +107,22 @@ public class AnalyticsService {
         Set<UUID> targetIds = filterCenterId != null ? Set.of(filterCenterId) : centersMap.keySet();
         
         if (targetIds == null || targetIds.isEmpty()) {
+            List<AnalyticsDTO.MonthlyDataDTO> emptyRevenue = new ArrayList<>();
+            List<AnalyticsDTO.MonthlyGrowthDTO> emptyGrowth = new ArrayList<>();
+            LocalDateTime monthIter = LocalDateTime.now().minusMonths(5);
+            for (int i = 0; i < 6; i++) {
+                String label = monthIter.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                emptyRevenue.add(new AnalyticsDTO.MonthlyDataDTO(label, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+                emptyGrowth.add(new AnalyticsDTO.MonthlyGrowthDTO(label, 0, 0));
+                monthIter = monthIter.plusMonths(1);
+            }
+
             return new AnalyticsDTO(
                     BigDecimal.ZERO, "+0%", 0L, "+0%",
                     0L, "+0%", BigDecimal.ZERO, "+0%",
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("hh:mm a")),
                     BigDecimal.ZERO, BigDecimal.ZERO,
-                    List.of(), List.of(), List.of(), List.of(), List.of()
+                    emptyRevenue, emptyGrowth, List.of(), List.of(), List.of()
             );
         }
         
@@ -154,6 +176,43 @@ public class AnalyticsService {
                     
                     return new AnalyticsDTO.MonthlyGrowthDTO(label, newCount, active);
                 }).collect(Collectors.toList());
+
+        // Ensure last 6 months are present in monthly overview
+        if ("monthly".equalsIgnoreCase(period)) {
+            Map<String, AnalyticsDTO.MonthlyDataDTO> map = revenueChart.stream()
+                    .collect(Collectors.toMap(AnalyticsDTO.MonthlyDataDTO::getName, Function.identity(), (a,b) -> a));
+            
+            List<AnalyticsDTO.MonthlyDataDTO> filledChart = new ArrayList<>();
+            LocalDateTime monthIter = LocalDateTime.now().minusMonths(5);
+            for (int i = 0; i < 6; i++) {
+                String label = monthIter.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                if (map.containsKey(label)) {
+                    filledChart.add(map.get(label));
+                } else {
+                    filledChart.add(new AnalyticsDTO.MonthlyDataDTO(label, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+                }
+                monthIter = monthIter.plusMonths(1);
+            }
+            revenueChart = filledChart;
+        }
+
+        if ("monthly".equalsIgnoreCase(period)) {
+            Map<String, AnalyticsDTO.MonthlyGrowthDTO> map = customerGrowth.stream()
+                    .collect(Collectors.toMap(AnalyticsDTO.MonthlyGrowthDTO::getName, Function.identity(), (a,b) -> a));
+            
+            List<AnalyticsDTO.MonthlyGrowthDTO> filledGrowth = new ArrayList<>();
+            LocalDateTime monthIter = LocalDateTime.now().minusMonths(5);
+            for (int i = 0; i < 6; i++) {
+                String label = monthIter.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                if (map.containsKey(label)) {
+                    filledGrowth.add(map.get(label));
+                } else {
+                    filledGrowth.add(new AnalyticsDTO.MonthlyGrowthDTO(label, 0, 0));
+                }
+                monthIter = monthIter.plusMonths(1);
+            }
+            customerGrowth = filledGrowth;
+        }
 
         List<AnalyticsDTO.ServiceBreakdownDTO> serviceMix = finalBookings.stream()
                 .filter(b -> b.getPackageId() != null)
