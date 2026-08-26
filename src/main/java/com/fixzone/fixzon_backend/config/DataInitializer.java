@@ -174,6 +174,14 @@ public class DataInitializer implements CommandLineRunner {
                 "  )" +
                 ")"
             );
+            // Delete payments referencing obsolete packages
+            stmt.executeUpdate(
+                "DELETE FROM payments WHERE service_package_id NOT IN (" +
+                "  SELECT package_id FROM service_packages WHERE name IN (" +
+                "    'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
+                "  )" +
+                ")"
+            );
             // Finally, delete the obsolete packages themselves
             int deletedPkgs = stmt.executeUpdate(
                 "DELETE FROM service_packages WHERE name NOT IN (" +
