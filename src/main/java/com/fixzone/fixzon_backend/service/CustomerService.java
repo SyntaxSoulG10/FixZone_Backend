@@ -11,6 +11,10 @@ import org.springframework.stereotype.Service;
 
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
+import com.fixzone.fixzon_backend.repository.BookingRepository;
+import com.fixzone.fixzon_backend.repository.InvoiceRepository;
+import com.fixzone.fixzon_backend.model.Invoice;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -22,13 +26,19 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final ServiceCenterRepository serviceCenterRepository;
     private final OwnerRepository ownerRepository;
+    private final BookingRepository bookingRepository;
+    private final InvoiceRepository invoiceRepository;
 
     public CustomerService(CustomerRepository customerRepository, 
                            ServiceCenterRepository serviceCenterRepository, 
-                           OwnerRepository ownerRepository) {
+                           OwnerRepository ownerRepository,
+                           BookingRepository bookingRepository,
+                           InvoiceRepository invoiceRepository) {
         this.customerRepository = customerRepository;
         this.serviceCenterRepository = serviceCenterRepository;
         this.ownerRepository = ownerRepository;
+        this.bookingRepository = bookingRepository;
+        this.invoiceRepository = invoiceRepository;
     }
 
     public List<CustomerDTO> getAllCustomers() {
@@ -50,7 +60,24 @@ public class CustomerService {
                                 .collect(Collectors.toList());
                         if (centerIds.isEmpty()) return List.<CustomerDTO>of();
                         return customerRepository.findCustomersByCenterIds(centerIds).stream()
-                                .map(this::convertToDTO)
+                                .map(customer -> {
+                                    CustomerDTO dto = convertToDTO(customer);
+                                    
+                                    // Count only the bookings for this customer at the owner's service centers
+                                    long tenantVisits = bookingRepository.findByCustomerId(customer.getUserId()).stream()
+                                            .filter(b -> centerIds.contains(b.getCenterId()))
+                                            .count();
+                                    dto.setVisits((int) tenantVisits);
+
+                                    // Sum only the paid invoices for this customer at the owner's service centers
+                                    BigDecimal tenantTotalSpent = invoiceRepository.findByIssuedToCustomerId(customer.getUserId()).stream()
+                                            .filter(i -> centerIds.contains(i.getCenterId()) && "PAID".equalsIgnoreCase(i.getStatus()))
+                                            .map(Invoice::getTotal)
+                                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                                    dto.setTotalSpent(tenantTotalSpent);
+
+                                    return dto;
+                                })
                                 .collect(Collectors.toList());
                     })
                     .orElse(List.of());
