@@ -891,7 +891,6 @@ public class DataInitializer implements CommandLineRunner {
 
             String[] locations = { "Colombo", "Kandy", "Galle" };
             List<ServiceCenter> centers = new ArrayList<>();
-            List<ServicePackage> packages = new ArrayList<>();
             List<Manager> managers = new ArrayList<>();
 
             if (serviceCenterRepository.findByOwner_UserId(owner.getUserId()).size() < 3) {
