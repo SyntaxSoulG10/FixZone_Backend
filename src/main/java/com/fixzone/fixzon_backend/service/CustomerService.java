@@ -63,18 +63,23 @@ public class CustomerService {
                                 .map(customer -> {
                                     CustomerDTO dto = convertToDTO(customer);
                                     
-                                    // Count only the bookings for this customer at the owner's service centers
-                                    long tenantVisits = bookingRepository.findByCustomerId(customer.getUserId()).stream()
-                                            .filter(b -> centerIds.contains(b.getCenterId()))
-                                            .count();
-                                    dto.setVisits((int) tenantVisits);
-
                                     // Sum only the paid invoices for this customer at the owner's service centers
                                     BigDecimal tenantTotalSpent = invoiceRepository.findByIssuedToCustomerId(customer.getUserId()).stream()
                                             .filter(i -> centerIds.contains(i.getCenterId()) && "PAID".equalsIgnoreCase(i.getStatus()))
                                             .map(Invoice::getTotal)
                                             .reduce(BigDecimal.ZERO, BigDecimal::add);
                                     dto.setTotalSpent(tenantTotalSpent);
+
+                                    // Count only the bookings for this customer at the owner's service centers
+                                    long tenantVisits = bookingRepository.findByCustomerId(customer.getUserId()).stream()
+                                            .filter(b -> centerIds.contains(b.getCenterId()))
+                                            .count();
+                                    
+                                    // If visits is 0 but they spent money, make it at least 1
+                                    if (tenantVisits == 0 && tenantTotalSpent.compareTo(BigDecimal.ZERO) > 0) {
+                                        tenantVisits = 1;
+                                    }
+                                    dto.setVisits((int) tenantVisits);
 
                                     return dto;
                                 })
