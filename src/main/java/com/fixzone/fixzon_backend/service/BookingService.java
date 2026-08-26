@@ -222,19 +222,25 @@ public class BookingService {
     }
 
     @Transactional
+    public BookingResponseDTO rescheduleBooking(UUID id, LocalDate newDate, String newTimeStr) {
+        LocalTime newTime = parseTimeSafely(newTimeStr);
+        return rescheduleBooking(id, newDate, newTime);
+    }
+
+    @Transactional
     public BookingResponseDTO rescheduleBooking(UUID id, LocalDate newDate, LocalTime newTime) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
 
         if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
-            throw new RuntimeException("Cannot reschedule a cancelled or completed booking");
+            throw new IllegalArgumentException("Cannot reschedule a cancelled or completed booking");
         }
 
         // Rule: Must be at least 3 days before the original booking date
         long daysBetween = ChronoUnit.DAYS.between(LocalDate.now(), booking.getBookingDate());
         if (daysBetween < AppConstants.RESCHEDULE_MIN_DAYS_LEFT) {
             log.warn(">>> RESCHEDULE DENIED: Only {} days left.", daysBetween);
-            throw new RuntimeException("Cannot reschedule within 3 days of booking date");
+            throw new IllegalArgumentException("Cannot reschedule within 3 days of booking date");
         }
 
         // Check if the new slot is available via SchedulingService
@@ -251,7 +257,7 @@ public class BookingService {
 
         if (!available) {
             log.warn(">>> RESCHEDULE DENIED: Slot not available at {}", newTime);
-            throw new RuntimeException("The selected slot is no longer available");
+            throw new IllegalArgumentException("The selected slot is no longer available");
         }
 
         log.info(">>> RESCHEDULE APPROVED: Moving to {} at {}", newDate, newTime);
@@ -847,5 +853,27 @@ public class BookingService {
 
         dto.setIsOnline(booking.getGatewaySessionId() != null && !booking.getGatewaySessionId().isEmpty());
         return dto;
+    }
+
+    private LocalTime parseTimeSafely(String timeStr) {
+        if (timeStr == null || timeStr.isBlank()) {
+            return LocalTime.of(8, 0);
+        }
+        String cleaned = timeStr.trim();
+        if (cleaned.contains("-")) {
+            cleaned = cleaned.split("-")[0].trim();
+        }
+        try {
+            if (cleaned.toUpperCase().contains("AM") || cleaned.toUpperCase().contains("PM")) {
+                return LocalTime.parse(cleaned, java.time.format.DateTimeFormatter.ofPattern("hh:mm a", java.util.Locale.ENGLISH));
+            }
+            if (cleaned.length() == 5) {
+                return LocalTime.parse(cleaned, java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+            }
+            return LocalTime.parse(cleaned);
+        } catch (Exception e) {
+            log.warn("Could not parse reschedule time '{}', fallback to 08:00: {}", timeStr, e.getMessage());
+            return LocalTime.of(8, 0);
+        }
     }
 }
