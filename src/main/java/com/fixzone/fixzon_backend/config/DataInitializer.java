@@ -241,6 +241,12 @@ public class DataInitializer implements CommandLineRunner {
             try { ensureMockPackages(); } catch (Exception e) { log.warn("ensureMockPackages note: {}", e.getMessage()); }
             try { ensureSuperAdmins(); } catch (Exception e) { log.warn("ensureSuperAdmins note: {}", e.getMessage()); }
             try { ensureBookingsForManager(); } catch (Exception e) { log.warn("ensureBookingsForManager note: {}", e.getMessage()); }
+            
+            List<ServicePackage> debugPkgs = servicePackageRepository.findAll();
+            log.info(">>> DEBUG: TOTAL PACKAGES IN DB: {} <<<", debugPkgs.size());
+            for (ServicePackage p : debugPkgs) {
+                log.info(">>> PACKAGE: ID={}, Name={}, Center={}, Owner={} <<<", p.getPackageId(), p.getName(), p.getServiceCenter().getName(), p.getServiceCenter().getOwner().getEmail());
+            }
             return;
         }
 
