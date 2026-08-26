@@ -102,6 +102,89 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Schema migration note: {}", e.getMessage());
         }
 
+        // CREATE REPORTS TABLE IF NOT EXISTS
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            stmt.execute("CREATE TABLE IF NOT EXISTS reports (" +
+                    "report_id UUID PRIMARY KEY, " +
+                    "name VARCHAR(255), " +
+                    "date DATE, " +
+                    "type VARCHAR(255), " +
+                    "size VARCHAR(255), " +
+                    "download_url VARCHAR(255), " +
+                    "file_content_base64 TEXT, " +
+                    "owner_code VARCHAR(255), " +
+                    "created_at TIMESTAMP" +
+                    ")");
+            log.info(">>> Schema migration: reports table verified/created successfully <<<");
+        } catch (Exception e) {
+            log.warn("Schema migration reports table note: {}", e.getMessage());
+        }
+
+        // JDBC CLEANUP: Delete obsolete packages and their bookings/invoices/payments for all service centers
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            // Delete payments referencing invoices that reference bookings referencing obsolete packages
+            stmt.executeUpdate(
+                "DELETE FROM payment_records WHERE invoice_id IN (" +
+                "  SELECT invoice_id FROM invoices WHERE booking_id IN (" +
+                "    SELECT booking_id FROM bookings WHERE package_id NOT IN (" +
+                "      SELECT package_id FROM service_packages WHERE name IN (" +
+                "        'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
+                "      )" +
+                "    )" +
+                "  )" +
+                ")"
+            );
+            // Delete invoices referencing bookings referencing obsolete packages
+            stmt.executeUpdate(
+                "DELETE FROM invoices WHERE booking_id IN (" +
+                "  SELECT booking_id FROM bookings WHERE package_id NOT IN (" +
+                "    SELECT package_id FROM service_packages WHERE name IN (" +
+                "      'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
+                "    )" +
+                "  )" +
+                ")"
+            );
+            // Delete booking histories referencing bookings referencing obsolete packages
+            stmt.executeUpdate(
+                "DELETE FROM booking_history WHERE booking_id IN (" +
+                "  SELECT booking_id FROM bookings WHERE package_id NOT IN (" +
+                "    SELECT package_id FROM service_packages WHERE name IN (" +
+                "      'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
+                "    )" +
+                "  )" +
+                ")"
+            );
+            // Delete status histories
+            stmt.executeUpdate(
+                "DELETE FROM booking_status_history WHERE booking_id IN (" +
+                "  SELECT booking_id FROM bookings WHERE package_id NOT IN (" +
+                "    SELECT package_id FROM service_packages WHERE name IN (" +
+                "      'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
+                "    )" +
+                "  )" +
+                ")"
+            );
+            // Delete bookings referencing obsolete packages
+            stmt.executeUpdate(
+                "DELETE FROM bookings WHERE package_id NOT IN (" +
+                "  SELECT package_id FROM service_packages WHERE name IN (" +
+                "    'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
+                "  )" +
+                ")"
+            );
+            // Finally, delete the obsolete packages themselves
+            int deletedPkgs = stmt.executeUpdate(
+                "DELETE FROM service_packages WHERE name NOT IN (" +
+                "  'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
+                ")"
+            );
+            log.info(">>> JDBC CLEANUP: Deleted {} obsolete packages and their dependent records from database <<<", deletedPkgs);
+        } catch (Exception e) {
+            log.warn("JDBC package cleanup note: {}", e.getMessage());
+        }
+
         // DROP auto_renew_enabled column if it exists
         try (java.sql.Connection conn = dataSource.getConnection()) {
             java.sql.Statement stmt = conn.createStatement();
