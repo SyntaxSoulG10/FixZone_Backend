@@ -140,6 +140,9 @@ public class NotificationService {
                 body.put("sound", "default");
                 body.put("title", title);
                 body.put("body", message);
+                body.put("priority", "high");
+                body.put("channelId", "default");
+                body.put("_displayInForeground", true);
                 if (targetUrl != null && !targetUrl.isBlank()) {
                     body.put("data", Map.of("targetUrl", targetUrl));
                 }
