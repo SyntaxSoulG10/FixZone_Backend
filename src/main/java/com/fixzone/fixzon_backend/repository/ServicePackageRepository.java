@@ -19,7 +19,7 @@ public interface ServicePackageRepository extends JpaRepository<ServicePackage, 
         SELECT sp FROM ServicePackage sp
         WHERE sp.serviceCenter.centerId = :centerId
         AND sp.isActive = true
-        AND (sp.vehicleType IS NULL OR sp.vehicleType = :vehicleType)
+        AND (sp.vehicleType IS NULL OR sp.vehicleType = 'ALL' OR sp.vehicleType = :vehicleType OR sp.vehicleType LIKE CONCAT('%,', :vehicleType, ',%') OR sp.vehicleType LIKE CONCAT(:vehicleType, ',%') OR sp.vehicleType LIKE CONCAT('%,', :vehicleType))
         """)
     List<ServicePackage> findByCenterIdAndVehicleType(
         @org.springframework.data.repository.query.Param("centerId") UUID centerId,
