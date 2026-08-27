@@ -26,7 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/managers")
 @Validated // Enables class-level validation
-@RequireRole({"ROLE_SERVICE_MANAGER", "ROLE_COMPANY_OWNER"})
+@RequireRole({"ROLE_SERVICE_MANAGER", "ROLE_COMPANY_OWNER", "ROLE_OWNER", "COMPANY_OWNER", "OWNER", "SERVICE_MANAGER", "MANAGER", "ROLE_MANAGER", "ROLE_SUPER_ADMIN", "SUPER_ADMIN"})
 public class ManagerController {
 
     private static final Logger log = LoggerFactory.getLogger(ManagerController.class);
@@ -56,19 +56,34 @@ public class ManagerController {
         String email = getCurrentUserEmail();
         log.info("Fetching context for user: {}", email);
 
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isOwner = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().toUpperCase().contains("OWNER"));
+
+        if (isOwner) {
+            OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+            if (owner == null) {
+                log.warn("Owner not found for email: {}", email);
+                return ResponseEntity.ok(List.of());
+            }
+            List<ManagerDTO> managers = managerService.getManagersByOwnerCode(owner.getOwnerCode());
+            return ResponseEntity.ok(managers != null ? managers : List.of());
+        }
+
+        // Otherwise check if a service manager is requesting their own profile
         ManagerDTO manager = managerService.getManagerByEmail(email);
         if (manager != null) {
             return ResponseEntity.ok(manager);
         }
 
-        // Otherwise, it's an owner trying to get all their managers
+        // Fallback for owner lookup
         OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
-        if (owner == null) {
-            log.warn("Owner/Manager not found for email: {}", email);
-            return ResponseEntity.ok(List.of());
+        if (owner != null) {
+            List<ManagerDTO> managers = managerService.getManagersByOwnerCode(owner.getOwnerCode());
+            return ResponseEntity.ok(managers != null ? managers : List.of());
         }
 
-        return ResponseEntity.ok(managerService.getManagersByOwnerCode(owner.getOwnerCode()));
+        return ResponseEntity.ok(List.of());
     }
 
     @GetMapping("/me")
