@@ -64,7 +64,7 @@ public class ManagerService {
      */
     public List<ManagerDTO> getManagersByOwnerCode(String code) {
         if (code == null || code.trim().isEmpty()) {
-            throw new IllegalArgumentException("Owner code cannot be null or empty");
+            return List.of();
         }
         try {
             return ownerRepository.findByOwnerCode(code)
@@ -85,7 +85,7 @@ public class ManagerService {
                     .orElse(List.of());
         } catch (Exception e) {
             log.error("Database error while retrieving managers by owner code: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to retrieve managers by owner code", e);
+            return List.of();
         }
     }
 
