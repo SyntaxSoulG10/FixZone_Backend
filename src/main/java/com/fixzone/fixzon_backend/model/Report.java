@@ -24,6 +24,8 @@ public class Report {
     @Column(columnDefinition="TEXT")
     private String description;
 
+    private String source;
+
     private java.time.LocalDateTime createdAt;
 
     public Report() {
@@ -62,6 +64,8 @@ public class Report {
     public void setFileContentBase64(String fileContentBase64) { this.fileContentBase64 = fileContentBase64; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
     public java.time.LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(java.time.LocalDateTime createdAt) { this.createdAt = createdAt; }
 }
