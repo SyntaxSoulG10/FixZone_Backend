@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.CrossOrigin;
 
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import java.util.List;
@@ -34,6 +35,12 @@ public class ReportController {
     public ResponseEntity<Report> createReport(@RequestBody Report report) {
         Report createdReport = reportService.createReport(report);
         return ResponseEntity.ok(createdReport);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Report> updateReport(@PathVariable UUID id, @RequestBody Report report) {
+        Report updatedReport = reportService.updateReport(id, report);
+        return ResponseEntity.ok(updatedReport);
     }
 
     @DeleteMapping("/{id}")

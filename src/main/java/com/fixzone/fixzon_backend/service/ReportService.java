@@ -42,7 +42,8 @@ public class ReportService {
         }
 
         if (report.getFileContentBase64() != null && !report.getFileContentBase64().isEmpty()) {
-            if (!"OPERATIONS".equals(report.getType())) {
+            boolean isOperations = report.getType() != null && report.getType().toUpperCase().contains("OPERATIONS");
+            if (!isOperations) {
                 try {
                     String uploadedUrl = imageKitService.uploadImage(report.getFileContentBase64(), report.getName().replaceAll("\\s+", "_"));
                     if (uploadedUrl != null) {
@@ -61,6 +62,19 @@ public class ReportService {
             report.setDownloadUrl("/downloads/generated-" + System.currentTimeMillis());
         }
         return reportRepository.save(report);
+    }
+
+    public Report updateReport(UUID id, Report updatedReport) {
+        return reportRepository.findById(id).map(existing -> {
+            if (updatedReport.getName() != null) existing.setName(updatedReport.getName());
+            if (updatedReport.getDate() != null) existing.setDate(updatedReport.getDate());
+            if (updatedReport.getType() != null) existing.setType(updatedReport.getType());
+            if (updatedReport.getFileContentBase64() != null) existing.setFileContentBase64(updatedReport.getFileContentBase64());
+            return reportRepository.save(existing);
+        }).orElseGet(() -> {
+            updatedReport.setId(id);
+            return reportRepository.save(updatedReport);
+        });
     }
 
     public void deleteReport(UUID id) {

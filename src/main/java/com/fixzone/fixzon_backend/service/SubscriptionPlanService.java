@@ -27,6 +27,10 @@ public class SubscriptionPlanService {
         return planRepository.findAll();
     }
 
+    public List<SubscriptionPlan> getActivePlans() {
+        return planRepository.findByIsActiveTrue();
+    }
+
     public SubscriptionPlan getPlanById(UUID id) {
         return planRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Subscription Plan not found with id: " + id));
@@ -50,6 +54,10 @@ public class SubscriptionPlanService {
     public SubscriptionPlan updatePlan(UUID id, SubscriptionPlan planDetails) {
         SubscriptionPlan plan = getPlanById(id);
         
+        if (!plan.getName().equals(planDetails.getName()) && planRepository.existsByName(planDetails.getName())) {
+            throw new RuntimeException("Plan with name " + planDetails.getName() + " already exists");
+        }
+        
         plan.setName(planDetails.getName());
         plan.setPrice(planDetails.getPrice());
         plan.setDescription(planDetails.getDescription());
@@ -72,7 +80,10 @@ public class SubscriptionPlanService {
         SubscriptionPlan plan = planRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Plan not found with id: " + id));
         String planName = plan.getName();
-        planRepository.delete(plan);
+        
+        // Soft delete to prevent foreign key constraint violations from existing subscriptions
+        plan.setIsActive(false);
+        planRepository.save(plan);
 
         // Notify all owners
         String message = "Subscription plan '" + planName + "' is no longer available. Click to review pricing options.";

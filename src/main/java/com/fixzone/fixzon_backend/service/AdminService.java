@@ -27,6 +27,14 @@ import java.util.stream.Collectors;
 @Service
 
 public class AdminService {
+    private static final java.util.Set<String> EXCLUDED_TITLES = java.util.Set.of(
+        "Booking Created", "New Booking Received", "Booking Rescheduled", "Booking Cancelled",
+        "Service Started", "Service Completed", "Booking Confirmed", "Invoice Paid",
+        "Booking Auto-Cancelled", "Payment Successful", "Booking Paid",
+        "Password Reset Requested", "Password Changed Successfully", "Password Updated",
+        "Welcome to FixZone!"
+    );
+
     private final ServiceCenterRepository serviceCenterRepository;
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
@@ -171,6 +179,13 @@ public class AdminService {
 
     public List<NotificationDTO> getAdminNotifications() {
         return notificationRepository.findAll().stream()
+                .filter(n -> n.getTitle() == null || !EXCLUDED_TITLES.contains(n.getTitle()))
+                .sorted((a, b) -> {
+                    if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
+                    if (a.getCreatedAt() == null) return 1;
+                    if (b.getCreatedAt() == null) return -1;
+                    return b.getCreatedAt().compareTo(a.getCreatedAt());
+                })
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }

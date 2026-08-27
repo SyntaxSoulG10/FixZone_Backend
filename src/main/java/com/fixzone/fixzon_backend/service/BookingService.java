@@ -165,6 +165,33 @@ public class BookingService {
                 }
             });
         }
+
+        // Validate vehicle compatibility with selected package
+        if (booking.getPackageId() != null && booking.getVehicleId() != null) {
+            com.fixzone.fixzon_backend.model.ServicePackage pkg = servicePackageRepository.findById(booking.getPackageId()).orElse(null);
+            com.fixzone.fixzon_backend.model.Vehicle vehicle = vehicleRepository.findById(booking.getVehicleId()).orElse(null);
+            if (pkg != null && vehicle != null) {
+                String pType = pkg.getVehicleType() != null ? pkg.getVehicleType().toLowerCase().trim() : "";
+                String vType = vehicle.getVehicleType() != null ? vehicle.getVehicleType().toLowerCase().trim() : "";
+                if (!pType.isEmpty() && !pType.contains("all") && !vType.isEmpty()) {
+                    boolean match = (pType.contains("car") && (vType.contains("car") || vType.contains("sedan")))
+                            || (pType.contains("suv") && (vType.contains("suv") || vType.contains("4x4")))
+                            || (pType.contains("van") && (vType.contains("van") || vType.contains("minibus")))
+                            || (pType.contains("bike") && (vType.contains("bike") || vType.contains("motor")))
+                            || pType.equals(vType);
+                    if (!match) {
+                        throw new RuntimeException("Selected vehicle (" + vehicle.getBrand() + " " + vehicle.getVehicleType() + ") is incompatible with package requirement (" + pkg.getVehicleType() + ")");
+                    }
+                }
+
+                String pBrand = pkg.getVehicleBrand() != null ? pkg.getVehicleBrand().trim().toLowerCase() : "";
+                String vBrand = vehicle.getBrand() != null ? vehicle.getBrand().trim().toLowerCase() : "";
+                if (!pBrand.isEmpty() && !pBrand.contains("all") && !vBrand.isEmpty() && !vBrand.contains(pBrand) && !pBrand.contains(vBrand)) {
+                    throw new RuntimeException("Selected vehicle brand (" + vehicle.getBrand() + ") is incompatible with package requirement (" + pkg.getVehicleBrand() + ")");
+                }
+            }
+        }
+
         if (booking.getBookingId() == null) {
             booking.setBookingId(UUID.randomUUID());
         }
@@ -215,6 +242,9 @@ public class BookingService {
                             "A new booking was placed at " + sc.getName() + ".", "INFO",
                             "/dashboard/company-owner/centers");
                 }
+                notificationService.notifyCenterManagersSafe(sc.getCenterId(), "New Booking Received",
+                        "A new booking was placed at " + sc.getName() + ".", "INFO",
+                        "/dashboard/service-manager");
             });
         }
 
@@ -222,19 +252,29 @@ public class BookingService {
     }
 
     @Transactional
+    public BookingResponseDTO rescheduleBooking(UUID id, LocalDate newDate, String newTimeStr) {
+        LocalTime newTime = parseTimeSafely(newTimeStr);
+        return rescheduleBooking(id, newDate, newTime);
+    }
+
+    @Transactional
     public BookingResponseDTO rescheduleBooking(UUID id, LocalDate newDate, LocalTime newTime) {
         Booking booking = bookingRepository.findById(Objects.requireNonNull(id, "ID must not be null"))
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
 
         if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
-            throw new RuntimeException("Cannot reschedule a cancelled or completed booking");
+            throw new IllegalArgumentException("Cannot reschedule a cancelled or completed booking");
+        }
+
+        if (booking.getBookingDate().equals(newDate) && booking.getBookingTime().equals(newTime)) {
+            throw new RuntimeException("Booking is already scheduled for this exact date and time. Please select a different date or time slot.");
         }
 
         // Rule: Must be at least 3 days before the original booking date
         long daysBetween = ChronoUnit.DAYS.between(LocalDate.now(), booking.getBookingDate());
         if (daysBetween < AppConstants.RESCHEDULE_MIN_DAYS_LEFT) {
             log.warn(">>> RESCHEDULE DENIED: Only {} days left.", daysBetween);
-            throw new RuntimeException("Cannot reschedule within 3 days of booking date");
+            throw new IllegalArgumentException("Cannot reschedule within 3 days of booking date");
         }
 
         // Check if the new slot is available via SchedulingService
@@ -251,7 +291,7 @@ public class BookingService {
 
         if (!available) {
             log.warn(">>> RESCHEDULE DENIED: Slot not available at {}", newTime);
-            throw new RuntimeException("The selected slot is no longer available");
+            throw new IllegalArgumentException("The selected slot is no longer available");
         }
 
         log.info(">>> RESCHEDULE APPROVED: Moving to {} at {}", newDate, newTime);
@@ -300,6 +340,9 @@ public class BookingService {
                                     "A booking at " + sc.getName() + " was rescheduled to " + newDate + " at " + newTime + ".",
                                     "INFO", "/dashboard/company-owner/centers");
                         }
+                        notificationService.notifyCenterManagersSafe(sc.getCenterId(), "Booking Rescheduled",
+                                "A booking at " + sc.getName() + " was rescheduled to " + newDate + " at " + newTime + ".",
+                                "INFO", "/dashboard/service-manager");
                     });
                 }
             } catch (Exception e) {
@@ -383,6 +426,9 @@ public class BookingService {
                                     "A booking at " + sc.getName() + " for " + saved.getBookingDate() + " was cancelled.",
                                     "WARNING", "/dashboard/company-owner/centers");
                         }
+                        notificationService.notifyCenterManagersSafe(sc.getCenterId(), "Booking Cancelled",
+                                "A booking at " + sc.getName() + " for " + saved.getBookingDate() + " was cancelled.",
+                                "WARNING", "/dashboard/service-manager");
                     });
                 }
             } catch (Exception e) {
@@ -847,5 +893,27 @@ public class BookingService {
 
         dto.setIsOnline(booking.getGatewaySessionId() != null && !booking.getGatewaySessionId().isEmpty());
         return dto;
+    }
+
+    private LocalTime parseTimeSafely(String timeStr) {
+        if (timeStr == null || timeStr.isBlank()) {
+            return LocalTime.of(8, 0);
+        }
+        String cleaned = timeStr.trim();
+        if (cleaned.contains("-")) {
+            cleaned = cleaned.split("-")[0].trim();
+        }
+        try {
+            if (cleaned.toUpperCase().contains("AM") || cleaned.toUpperCase().contains("PM")) {
+                return LocalTime.parse(cleaned, java.time.format.DateTimeFormatter.ofPattern("hh:mm a", java.util.Locale.ENGLISH));
+            }
+            if (cleaned.length() == 5) {
+                return LocalTime.parse(cleaned, java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+            }
+            return LocalTime.parse(cleaned);
+        } catch (Exception e) {
+            log.warn("Could not parse reschedule time '{}', fallback to 08:00: {}", timeStr, e.getMessage());
+            return LocalTime.of(8, 0);
+        }
     }
 }

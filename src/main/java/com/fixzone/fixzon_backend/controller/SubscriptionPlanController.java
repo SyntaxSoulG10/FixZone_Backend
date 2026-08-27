@@ -24,6 +24,11 @@ public class SubscriptionPlanController {
         return ResponseEntity.ok(planService.getAllPlans());
     }
 
+    @GetMapping("/active")
+    public ResponseEntity<List<SubscriptionPlan>> getActivePlans() {
+        return ResponseEntity.ok(planService.getActivePlans());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<SubscriptionPlan> getPlanById(@PathVariable UUID id) {
         return ResponseEntity.ok(planService.getPlanById(id));

@@ -28,6 +28,9 @@ public class Customer extends User {
     @Column(name = "total_spent", precision = 12, scale = 2)
     private BigDecimal totalSpent = BigDecimal.ZERO;
 
+    @Column(name = "push_token")
+    private String pushToken;
+
 
     public Customer(UUID userId, String fullName, String email, String phone, String passwordHash, String role,
             Boolean emailVerified, LocalDateTime lastLoginAt, LocalDateTime createdAt, String createdBy,

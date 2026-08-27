@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
  */
 @Service
 public class SchedulingService {
-
     // Fixed Operating Hours
     public static final LocalTime MORNING_START = LocalTime.of(8, 0);
     public static final LocalTime MORNING_END = LocalTime.of(12, 0);

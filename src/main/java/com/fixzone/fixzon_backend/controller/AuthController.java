@@ -116,6 +116,7 @@ public class AuthController {
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             java.util.Map<String, String> response = new java.util.HashMap<>();
+            response.put("message", e.getMessage());
             response.put("details", e.getMessage());
             return ResponseEntity.badRequest().body(response);
         }
@@ -137,6 +138,25 @@ public class AuthController {
             java.util.Map<String, String> response = new java.util.HashMap<>();
             response.put("message", "If the email is registered, a reset link will be sent.");
             return ResponseEntity.ok(response); // Always return OK to prevent email enumeration
+        }
+    }
+
+    @PostMapping("/verify-reset-otp")
+    public ResponseEntity<java.util.Map<String, String>> verifyResetOtp(@RequestBody java.util.Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            String token = request.get("token");
+            if (token == null || token.trim().isEmpty()) {
+                throw new IllegalArgumentException("Verification code is required");
+            }
+            authService.validateResetToken(email, token);
+            java.util.Map<String, String> response = new java.util.HashMap<>();
+            response.put("message", "Verification code is valid");
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            java.util.Map<String, String> response = new java.util.HashMap<>();
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
         }
     }
 

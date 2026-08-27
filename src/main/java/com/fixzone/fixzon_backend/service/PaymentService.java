@@ -808,6 +808,9 @@ public class PaymentService {
                             "Payment confirmed for booking at " + sc.getName() + " on " + booking.getBookingDate() + ".",
                             "SUCCESS", "/dashboard/company-owner/centers");
                 }
+                notificationService.notifyCenterManagersSafe(sc.getCenterId(), "Booking Paid",
+                        "Payment confirmed for booking at " + sc.getName() + " on " + booking.getBookingDate() + ".",
+                        "SUCCESS", "/dashboard/service-manager");
             });
         }
     }
