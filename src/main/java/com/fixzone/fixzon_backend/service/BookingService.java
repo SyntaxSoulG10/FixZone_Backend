@@ -165,6 +165,33 @@ public class BookingService {
                 }
             });
         }
+
+        // Validate vehicle compatibility with selected package
+        if (booking.getPackageId() != null && booking.getVehicleId() != null) {
+            com.fixzone.fixzon_backend.model.ServicePackage pkg = servicePackageRepository.findById(booking.getPackageId()).orElse(null);
+            com.fixzone.fixzon_backend.model.Vehicle vehicle = vehicleRepository.findById(booking.getVehicleId()).orElse(null);
+            if (pkg != null && vehicle != null) {
+                String pType = pkg.getVehicleType() != null ? pkg.getVehicleType().toLowerCase().trim() : "";
+                String vType = vehicle.getVehicleType() != null ? vehicle.getVehicleType().toLowerCase().trim() : "";
+                if (!pType.isEmpty() && !pType.contains("all") && !vType.isEmpty()) {
+                    boolean match = (pType.contains("car") && (vType.contains("car") || vType.contains("sedan")))
+                            || (pType.contains("suv") && (vType.contains("suv") || vType.contains("4x4")))
+                            || (pType.contains("van") && (vType.contains("van") || vType.contains("minibus")))
+                            || (pType.contains("bike") && (vType.contains("bike") || vType.contains("motor")))
+                            || pType.equals(vType);
+                    if (!match) {
+                        throw new RuntimeException("Selected vehicle (" + vehicle.getBrand() + " " + vehicle.getVehicleType() + ") is incompatible with package requirement (" + pkg.getVehicleType() + ")");
+                    }
+                }
+
+                String pBrand = pkg.getVehicleBrand() != null ? pkg.getVehicleBrand().trim().toLowerCase() : "";
+                String vBrand = vehicle.getBrand() != null ? vehicle.getBrand().trim().toLowerCase() : "";
+                if (!pBrand.isEmpty() && !pBrand.contains("all") && !vBrand.isEmpty() && !vBrand.contains(pBrand) && !pBrand.contains(vBrand)) {
+                    throw new RuntimeException("Selected vehicle brand (" + vehicle.getBrand() + ") is incompatible with package requirement (" + pkg.getVehicleBrand() + ")");
+                }
+            }
+        }
+
         if (booking.getBookingId() == null) {
             booking.setBookingId(UUID.randomUUID());
         }
@@ -228,6 +255,10 @@ public class BookingService {
 
         if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
             throw new RuntimeException("Cannot reschedule a cancelled or completed booking");
+        }
+
+        if (booking.getBookingDate().equals(newDate) && booking.getBookingTime().equals(newTime)) {
+            throw new RuntimeException("Booking is already scheduled for this exact date and time. Please select a different date or time slot.");
         }
 
         // Rule: Must be at least 3 days before the original booking date

@@ -145,6 +145,14 @@ public class CustomerProfileController {
         return ResponseEntity.ok(vehicleRepository.findByCustomerId(customer.getUserId()));
     }
 
+    @GetMapping("/vehicle/image-auth")
+    public ResponseEntity<?> getImageAuth(org.springframework.security.core.Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        return ResponseEntity.ok(imageKitService.getAuthenticationParameters());
+    }
+
     @GetMapping("/vehicle/{id}")
     public ResponseEntity<Vehicle> getVehicleById(@PathVariable UUID id) {
         return vehicleRepository.findById(id)
