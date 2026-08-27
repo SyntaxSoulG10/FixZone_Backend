@@ -352,4 +352,25 @@ public class CustomerProfileController {
     public ResponseEntity<Void> deletePaymentMethod(@PathVariable Long id) {
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/push-token")
+    public ResponseEntity<?> updatePushToken(org.springframework.security.core.Authentication authentication,
+                                             @RequestBody Map<String, String> request) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        Customer customer = customerRepository.findByEmail(authentication.getName()).orElse(null);
+        if (customer == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Customer not found"));
+        }
+
+        String pushToken = request.get("pushToken");
+        if (pushToken != null) {
+            customer.setPushToken(pushToken);
+            customerRepository.save(customer);
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Push token updated successfully", "pushToken", pushToken != null ? pushToken : ""));
+    }
 }

@@ -3,16 +3,16 @@ package com.fixzone.fixzon_backend.service;
 import com.fixzone.fixzon_backend.DTO.NotificationDTO;
 import com.fixzone.fixzon_backend.model.Notification;
 import com.fixzone.fixzon_backend.model.User;
+import com.fixzone.fixzon_backend.model.MobileDeviceToken;
+import com.fixzone.fixzon_backend.repository.MobileDeviceTokenRepository;
 import com.fixzone.fixzon_backend.repository.NotificationRepository;
 import com.fixzone.fixzon_backend.repository.UserRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,10 +21,12 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final MobileDeviceTokenRepository mobileDeviceTokenRepository;
 
-    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository) {
+    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository, MobileDeviceTokenRepository mobileDeviceTokenRepository) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
+        this.mobileDeviceTokenRepository = mobileDeviceTokenRepository;
     }
 
     public List<NotificationDTO> getNotificationsForUser(String email) {
@@ -110,6 +112,38 @@ public class NotificationService {
         note.setType(type);
         note.setTargetUrl(targetUrl);
         notificationRepository.save(note);
+
+        sendExpoPushNotification(recipient.getUserId(), title, message, targetUrl);
+    }
+
+    public void sendExpoPushNotification(UUID userId, String title, String message, String targetUrl) {
+        try {
+            List<MobileDeviceToken> tokens = mobileDeviceTokenRepository.findByUserIdAndActiveTrue(userId);
+            if (tokens == null || tokens.isEmpty()) return;
+
+            RestTemplate restTemplate = new RestTemplate();
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+
+            for (MobileDeviceToken dt : tokens) {
+                if (dt.getToken() == null || dt.getToken().isBlank()) continue;
+
+                Map<String, Object> body = new HashMap<>();
+                body.put("to", dt.getToken());
+                body.put("sound", "default");
+                body.put("title", title);
+                body.put("body", message);
+                if (targetUrl != null && !targetUrl.isBlank()) {
+                    body.put("data", Map.of("targetUrl", targetUrl));
+                }
+
+                org.springframework.http.HttpEntity<Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(body, headers);
+                org.springframework.http.ResponseEntity<String> response = restTemplate.postForEntity("https://exp.host/--/api/v2/push/send", entity, String.class);
+                System.out.println(">>> Expo Push API Ticket Response for user " + userId + ": " + response.getBody());
+            }
+        } catch (Exception e) {
+            System.err.println("Expo Push Notification error: " + e.getMessage());
+        }
     }
 
     public void createNotificationSafe(User recipient, String title, String message, String type, String targetUrl) {
