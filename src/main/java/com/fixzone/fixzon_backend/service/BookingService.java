@@ -215,6 +215,9 @@ public class BookingService {
                             "A new booking was placed at " + sc.getName() + ".", "INFO",
                             "/dashboard/company-owner/centers");
                 }
+                notificationService.notifyCenterManagersSafe(sc.getCenterId(), "New Booking Received",
+                        "A new booking was placed at " + sc.getName() + ".", "INFO",
+                        "/dashboard/service-manager");
             });
         }
 
@@ -306,6 +309,9 @@ public class BookingService {
                                     "A booking at " + sc.getName() + " was rescheduled to " + newDate + " at " + newTime + ".",
                                     "INFO", "/dashboard/company-owner/centers");
                         }
+                        notificationService.notifyCenterManagersSafe(sc.getCenterId(), "Booking Rescheduled",
+                                "A booking at " + sc.getName() + " was rescheduled to " + newDate + " at " + newTime + ".",
+                                "INFO", "/dashboard/service-manager");
                     });
                 }
             } catch (Exception e) {
@@ -389,6 +395,9 @@ public class BookingService {
                                     "A booking at " + sc.getName() + " for " + saved.getBookingDate() + " was cancelled.",
                                     "WARNING", "/dashboard/company-owner/centers");
                         }
+                        notificationService.notifyCenterManagersSafe(sc.getCenterId(), "Booking Cancelled",
+                                "A booking at " + sc.getName() + " for " + saved.getBookingDate() + " was cancelled.",
+                                "WARNING", "/dashboard/service-manager");
                     });
                 }
             } catch (Exception e) {

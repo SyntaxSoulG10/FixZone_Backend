@@ -3,8 +3,10 @@ package com.fixzone.fixzon_backend.service;
 import com.fixzone.fixzon_backend.DTO.NotificationDTO;
 import com.fixzone.fixzon_backend.model.Notification;
 import com.fixzone.fixzon_backend.model.User;
+import com.fixzone.fixzon_backend.model.Manager;
 import com.fixzone.fixzon_backend.repository.NotificationRepository;
 import com.fixzone.fixzon_backend.repository.UserRepository;
+import com.fixzone.fixzon_backend.repository.ManagerRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +23,12 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final ManagerRepository managerRepository;
 
-    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository) {
+    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository, ManagerRepository managerRepository) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
+        this.managerRepository = managerRepository;
     }
 
     public List<NotificationDTO> getNotificationsForUser(String email) {
@@ -155,5 +159,29 @@ public class NotificationService {
             dto.setRecipientId(note.getRecipient().getUserId());
         }
         return dto;
+    }
+
+    @Transactional
+    public void notifyCenterManagers(UUID centerId, String title, String message, String type, String targetUrl) {
+        if (centerId == null) return;
+        try {
+            List<Manager> managers = managerRepository.findByManagedCenterId(centerId);
+            if (managers != null && !managers.isEmpty()) {
+                for (Manager manager : managers) {
+                    createNotification(manager, title, message, type, targetUrl);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to notify center managers: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public void notifyCenterManagersSafe(UUID centerId, String title, String message, String type, String targetUrl) {
+        try {
+            notifyCenterManagers(centerId, title, message, type, targetUrl);
+        } catch (Exception e) {
+            System.err.println("Failed to notify center managers safely: " + e.getMessage());
+        }
     }
 }

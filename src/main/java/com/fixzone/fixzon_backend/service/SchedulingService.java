@@ -1,13 +1,10 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.model.Booking;
-
 import com.fixzone.fixzon_backend.model.ServicePackage;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
-
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,9 +25,6 @@ import java.util.stream.Collectors;
  */
 @Service
 public class SchedulingService {
-
-    
-
     // Fixed Operating Hours
     public static final LocalTime MORNING_START = LocalTime.of(8, 0);
     public static final LocalTime MORNING_END = LocalTime.of(12, 0);
