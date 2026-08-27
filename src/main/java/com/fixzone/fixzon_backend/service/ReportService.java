@@ -23,13 +23,6 @@ public class ReportService {
         return reportRepository.findAll();
     }
 
-    public List<Report> getReportsByOwnerCode(String ownerCode) {
-        if (ownerCode == null || ownerCode.trim().isEmpty()) {
-            return List.of();
-        }
-        return reportRepository.findByOwnerCode(ownerCode);
-    }
-
     public Report createReport(Report report) {
         if (report.getDate() == null) {
             report.setDate(LocalDate.now());

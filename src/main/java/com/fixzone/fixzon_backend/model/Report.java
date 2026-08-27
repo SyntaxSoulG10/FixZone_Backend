@@ -59,11 +59,4 @@ public class Report {
     public void setFileContentBase64(String fileContentBase64) { this.fileContentBase64 = fileContentBase64; }
     public java.time.LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(java.time.LocalDateTime createdAt) { this.createdAt = createdAt; }
-
-    @Column(name = "owner_code", length = 50)
-    private String ownerCode;
-
-    public String getOwnerCode() { return ownerCode; }
-    public void setOwnerCode(String ownerCode) { this.ownerCode = ownerCode; }
 }
-

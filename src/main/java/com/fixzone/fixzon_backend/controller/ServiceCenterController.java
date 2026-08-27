@@ -238,36 +238,4 @@ public class ServiceCenterController {
         ServiceCenterDTO updated = serviceCenterService.updateServiceLanesCount(id, lanesCount);
         return ResponseEntity.ok(updated);
     }
-
-    @GetMapping("/resolve-map-url")
-    public ResponseEntity<java.util.Map<String, String>> resolveMapUrl(@RequestParam String url) {
-        String currentUrl = url;
-        int redirectCount = 0;
-        int maxRedirects = 5;
-        try {
-            while (redirectCount < maxRedirects) {
-                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) java.net.URI.create(currentUrl).toURL().openConnection();
-                conn.setInstanceFollowRedirects(false);
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
-                conn.setRequestMethod("HEAD");
-                conn.connect();
-                int responseCode = conn.getResponseCode();
-                if (responseCode >= 300 && responseCode < 400) {
-                    String redirUrl = conn.getHeaderField("Location");
-                    if (redirUrl != null && !redirUrl.isEmpty()) {
-                        currentUrl = redirUrl;
-                        redirectCount++;
-                        conn.disconnect();
-                        continue;
-                    }
-                }
-                conn.disconnect();
-                break;
-            }
-            return ResponseEntity.ok(java.util.Map.of("resolvedUrl", currentUrl));
-        } catch (Exception e) {
-            return ResponseEntity.ok(java.util.Map.of("resolvedUrl", url));
-        }
-    }
 }
