@@ -45,7 +45,6 @@ public class BookingResponseDTO {
 
     // Audit
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 
     // UI Helpers
     private String serviceCenterName;
