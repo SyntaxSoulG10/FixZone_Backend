@@ -23,7 +23,7 @@ import com.fixzone.fixzon_backend.DTO.OwnerDTO;
 
 @RestController
 @RequestMapping("/api/customers")
-@RequireRole({"ROLE_SUPER_ADMIN", "ROLE_OWNER", "ROLE_SERVICE_MANAGER", "ROLE_CUSTOMER", "CUSTOMER", "COMPANY_OWNER", "OWNER"})
+@RequireRole({"ROLE_SUPER_ADMIN", "ROLE_OWNER", "ROLE_SERVICE_MANAGER", "ROLE_CUSTOMER", "CUSTOMER", "COMPANY_OWNER", "OWNER", "ROLE_COMPANY_OWNER"})
 public class CustomerController {
 
     private final CustomerService customerService;
