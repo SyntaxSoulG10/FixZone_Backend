@@ -44,15 +44,15 @@ public class AuthService {
     private String frontendUrl;
 
     public AuthService(AuthRepository authRepository,
-                       CustomerRepository customerRepository,
-                       OwnerRepository ownerRepository,
-                       SuperAdminRepository superAdminRepository,
-                       ServiceCenterRepository serviceCenterRepository,
-                       NotificationService notificationService,
-                       PasswordEncoder passwordEncoder,
-                       OtpService otpService,
-                       JwtUtil jwtUtil,
-                       EmailService emailService) {
+            CustomerRepository customerRepository,
+            OwnerRepository ownerRepository,
+            SuperAdminRepository superAdminRepository,
+            ServiceCenterRepository serviceCenterRepository,
+            NotificationService notificationService,
+            PasswordEncoder passwordEncoder,
+            OtpService otpService,
+            JwtUtil jwtUtil,
+            EmailService emailService) {
         this.authRepository = authRepository;
         this.customerRepository = customerRepository;
         this.ownerRepository = ownerRepository;
@@ -75,7 +75,9 @@ public class AuthService {
         user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
         authRepository.save(user);
 
-        String cleanFrontendUrl = frontendUrl != null ? frontendUrl.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("/+$", "") : "http://localhost:3000";
+        String cleanFrontendUrl = frontendUrl != null
+                ? frontendUrl.trim().replaceAll("^[\"']|[\"']$", "").replaceAll("/+$", "")
+                : "http://localhost:3000";
         if (!cleanFrontendUrl.startsWith("http://") && !cleanFrontendUrl.startsWith("https://")) {
             cleanFrontendUrl = "https://" + cleanFrontendUrl;
         }
@@ -87,12 +89,59 @@ public class AuthService {
                 "A password recovery verification code was requested for your account.", "INFO", null);
     }
 
+    public void validateResetToken(String email, String token) {
+        if (token == null || token.trim().isEmpty()) {
+            throw new IllegalArgumentException("Verification code is required");
+        }
+        User user = authRepository.findByResetToken(token.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid verification code"));
+
+        if (email != null && !email.isBlank() && !user.getEmail().equalsIgnoreCase(email.trim())) {
+            throw new IllegalArgumentException("Verification code does not match this email");
+        }
+
+        if (user.getResetTokenExpiry() == null || user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Verification code has expired. Please request a new code.");
+        }
+    }
+
+    private void validatePasswordComplexity(String password) {
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password is required");
+        }
+        if (password.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters");
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            throw new IllegalArgumentException("Password must contain at least 1 uppercase letter");
+        }
+        if (!password.matches(".*[a-z].*")) {
+            throw new IllegalArgumentException("Password must contain at least 1 lowercase letter");
+        }
+        if (!password.matches(".*[0-9].*")) {
+            throw new IllegalArgumentException("Password must contain at least 1 number");
+        }
+        if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
+            throw new IllegalArgumentException("Password must contain at least 1 special character");
+        }
+    }
+
     public void resetPassword(String token, String newPassword) {
-        User user = authRepository.findByResetToken(token)
+        if (token == null || token.trim().isEmpty()) {
+            throw new IllegalArgumentException("Reset token is required");
+        }
+        String cleanToken = token.trim();
+        User user = authRepository.findByResetToken(cleanToken)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
 
-        if (user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("Reset token has expired");
+        if (user.getResetTokenExpiry() == null || user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Reset token has expired. Please request a new code.");
+        }
+
+        validatePasswordComplexity(newPassword);
+
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("New password must be different from your current password");
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
@@ -101,7 +150,8 @@ public class AuthService {
         authRepository.save(user);
 
         notificationService.createNotificationSafe(user, "Password Changed Successfully",
-                "Your password has been reset successfully. If you did not perform this action, please contact support immediately.", "WARNING", null);
+                "Your password has been reset successfully. If you did not perform this action, please contact support immediately.",
+                "WARNING", null);
     }
 
     public AuthResponseDTO login(AuthRequestDTO request) {
@@ -111,7 +161,7 @@ public class AuthService {
 
         String rawEmail = request.getEmail().trim();
         String cleanEmail = rawEmail.toLowerCase();
-        
+
         User user = authRepository.findByEmailIgnoreCase(cleanEmail)
                 .or(() -> authRepository.findByEmail(rawEmail))
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
@@ -126,7 +176,8 @@ public class AuthService {
 
         if ("Suspended".equalsIgnoreCase(user.getStatus())) {
             String reason = user.getSuspensionReason() != null ? user.getSuspensionReason() : "Contact support.";
-            throw new IllegalArgumentException("Your account has been suspended by an administrator. Reason: " + reason);
+            throw new IllegalArgumentException(
+                    "Your account has been suspended by an administrator. Reason: " + reason);
         }
 
         // Automatically activate account on first successful login
@@ -155,6 +206,8 @@ public class AuthService {
         if (authRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email is already taken");
         }
+
+        validatePasswordComplexity(request.getPassword());
 
         Customer customer = new Customer();
         customer.setUserId(UUID.randomUUID());
@@ -195,6 +248,8 @@ public class AuthService {
         if (authRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email is already taken");
         }
+
+        validatePasswordComplexity(request.getPassword());
 
         Owner owner = new Owner();
         owner.setUserId(UUID.randomUUID());
@@ -245,11 +300,39 @@ public class AuthService {
 
     @org.springframework.transaction.annotation.Transactional
     public void changePassword(String email, String currentPassword, String newPassword) {
+        if (currentPassword == null || currentPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("Current password is required");
+        }
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("New password is required");
+        }
+
         User user = authRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new IllegalArgumentException("Incorrect current password");
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash()) || currentPassword.equals(newPassword)) {
+            throw new IllegalArgumentException("New password must be different from your current password");
+        }
+
+        // Validate password complexity requirements
+        if (newPassword.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters");
+        }
+        if (!newPassword.matches(".*[A-Z].*")) {
+            throw new IllegalArgumentException("Password must contain at least 1 uppercase letter");
+        }
+        if (!newPassword.matches(".*[a-z].*")) {
+            throw new IllegalArgumentException("Password must contain at least 1 lowercase letter");
+        }
+        if (!newPassword.matches(".*[0-9].*")) {
+            throw new IllegalArgumentException("Password must contain at least 1 number");
+        }
+        if (!newPassword.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
+            throw new IllegalArgumentException("Password must contain at least 1 special character");
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
@@ -308,7 +391,8 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid or expired invitation link"));
 
         if (user.getResetTokenExpiry() == null || user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("This invitation link has expired. Please request a new invitation from your company owner.");
+            throw new IllegalArgumentException(
+                    "This invitation link has expired. Please request a new invitation from your company owner.");
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));

@@ -145,6 +145,14 @@ public class CustomerProfileController {
         return ResponseEntity.ok(vehicleRepository.findByCustomerId(customer.getUserId()));
     }
 
+    @GetMapping("/vehicle/image-auth")
+    public ResponseEntity<?> getImageAuth(org.springframework.security.core.Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        return ResponseEntity.ok(imageKitService.getAuthenticationParameters());
+    }
+
     @GetMapping("/vehicle/{id}")
     public ResponseEntity<Vehicle> getVehicleById(@PathVariable UUID id) {
         return vehicleRepository.findById(id)
@@ -343,5 +351,26 @@ public class CustomerProfileController {
     @DeleteMapping("/payment-method/{id}")
     public ResponseEntity<Void> deletePaymentMethod(@PathVariable Long id) {
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/push-token")
+    public ResponseEntity<?> updatePushToken(org.springframework.security.core.Authentication authentication,
+                                             @RequestBody Map<String, String> request) {
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        Customer customer = customerRepository.findByEmail(authentication.getName()).orElse(null);
+        if (customer == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Customer not found"));
+        }
+
+        String pushToken = request.get("pushToken");
+        if (pushToken != null) {
+            customer.setPushToken(pushToken);
+            customerRepository.save(customer);
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Push token updated successfully", "pushToken", pushToken != null ? pushToken : ""));
     }
 }

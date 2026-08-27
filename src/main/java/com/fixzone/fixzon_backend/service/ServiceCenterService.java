@@ -220,6 +220,26 @@ public class ServiceCenterService {
                     }).collect(Collectors.toList());
             dto.setServicePackages(packageDtos);
 
+            if (dto.getSupportedVehicleBrands() == null || dto.getSupportedVehicleBrands().length == 0) {
+                List<String> derivedBrands = packageDtos.stream()
+                        .map(pkg -> {
+                            if (pkg.getVehicleBrand() != null && !pkg.getVehicleBrand().trim().isEmpty() && !"ALL".equalsIgnoreCase(pkg.getVehicleBrand())) {
+                                return pkg.getVehicleBrand().trim();
+                            }
+                            if (pkg.getVehicleType() != null && !pkg.getVehicleType().trim().isEmpty()) {
+                                return pkg.getVehicleType().trim().toUpperCase();
+                            }
+                            return null;
+                        })
+                        .filter(java.util.Objects::nonNull)
+                        .distinct()
+                        .collect(Collectors.toList());
+
+                if (!derivedBrands.isEmpty()) {
+                    dto.setSupportedVehicleBrands(derivedBrands.toArray(new String[0]));
+                }
+            }
+
             // Map revenue
             dto.setRevenue(revenueMap.getOrDefault(center.getCenterId(), BigDecimal.ZERO));
 
@@ -455,6 +475,26 @@ public class ServiceCenterService {
                 })
                 .collect(Collectors.toList());
         dto.setServicePackages(packages);
+
+        if (dto.getSupportedVehicleBrands() == null || dto.getSupportedVehicleBrands().length == 0) {
+            List<String> derivedBrands = packages.stream()
+                    .map(pkg -> {
+                        if (pkg.getVehicleBrand() != null && !pkg.getVehicleBrand().trim().isEmpty() && !"ALL".equalsIgnoreCase(pkg.getVehicleBrand())) {
+                            return pkg.getVehicleBrand().trim();
+                        }
+                        if (pkg.getVehicleType() != null && !pkg.getVehicleType().trim().isEmpty()) {
+                            return pkg.getVehicleType().trim().toUpperCase();
+                        }
+                        return null;
+                    })
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            if (!derivedBrands.isEmpty()) {
+                dto.setSupportedVehicleBrands(derivedBrands.toArray(new String[0]));
+            }
+        }
 
         // METRICS: Calculate real revenue from issued invoices
         BigDecimal revenue = invoiceRepository.sumTotalByCenterId(center.getCenterId());
