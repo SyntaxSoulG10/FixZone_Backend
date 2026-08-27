@@ -106,6 +106,55 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Schema migration note: {}", e.getMessage());
         }
 
+        // CREATE REPORTS TABLE IF NOT EXISTS
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            stmt.execute("CREATE TABLE IF NOT EXISTS reports (" +
+                    "report_id UUID PRIMARY KEY, " +
+                    "name VARCHAR(255), " +
+                    "date DATE, " +
+                    "type VARCHAR(255), " +
+                    "size VARCHAR(255), " +
+                    "download_url VARCHAR(255), " +
+                    "file_content_base64 TEXT, " +
+                    "owner_code VARCHAR(255), " +
+                    "created_at TIMESTAMP" +
+                    ")");
+            log.info(">>> Schema migration: reports table verified/created successfully <<<");
+        } catch (Exception e) {
+            log.warn("Schema migration reports table note: {}", e.getMessage());
+        }
+
+        // JDBC CLEANUP: Dissociate and delete obsolete packages for all service centers without deleting bookings/invoices
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            java.sql.Statement stmt = conn.createStatement();
+            // Set package_id to NULL in bookings for obsolete packages
+            stmt.executeUpdate(
+                "UPDATE bookings SET package_id = NULL WHERE package_id NOT IN (" +
+                "  SELECT package_id FROM service_packages WHERE name IN (" +
+                "    'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
+                "  )" +
+                ")"
+            );
+            // Set service_package_id to NULL in payments for obsolete packages
+            stmt.executeUpdate(
+                "UPDATE payments SET service_package_id = NULL WHERE service_package_id NOT IN (" +
+                "  SELECT package_id FROM service_packages WHERE name IN (" +
+                "    'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
+                "  )" +
+                ")"
+            );
+            // Finally, delete the obsolete packages themselves
+            int deletedPkgs = stmt.executeUpdate(
+                "DELETE FROM service_packages WHERE name NOT IN (" +
+                "  'Basic Service', 'Premium Full Service', 'Interior & Exterior Detail', 'Pro Motorcycle Care', 'Universal Multi-Point Care'" +
+                ")"
+            );
+            log.info(">>> JDBC CLEANUP: Deleted {} obsolete packages from database <<<", deletedPkgs);
+        } catch (Exception e) {
+            log.warn("JDBC package cleanup note: {}", e.getMessage());
+        }
+
         // DROP auto_renew_enabled column if it exists
         try (java.sql.Connection conn = dataSource.getConnection()) {
             java.sql.Statement stmt = conn.createStatement();
@@ -191,10 +240,29 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Existing data found (count={}) or not in create mode. Ensuring seed data only...", userCount);
             try { ensureMockCharlie(); } catch (Exception e) { log.warn("ensureMockCharlie note: {}", e.getMessage()); }
             try { ensureRajaMotors(); } catch (Exception e) { log.warn("ensureRajaMotors note: {}", e.getMessage()); }
+            try { ensureHistoryForAllOwners(); } catch (Exception e) { log.warn("ensureHistoryForAllOwners note: {}", e.getMessage()); }
             try { ensureMockManager(); } catch (Exception e) { log.warn("ensureMockManager note: {}", e.getMessage()); }
             try { ensureMockPackages(); } catch (Exception e) { log.warn("ensureMockPackages note: {}", e.getMessage()); }
             try { ensureSuperAdmins(); } catch (Exception e) { log.warn("ensureSuperAdmins note: {}", e.getMessage()); }
             try { ensureBookingsForManager(); } catch (Exception e) { log.warn("ensureBookingsForManager note: {}", e.getMessage()); }
+            
+            List<ServicePackage> debugPkgs = servicePackageRepository.findAll();
+            log.info(">>> DEBUG: TOTAL PACKAGES IN DB: {} <<<", debugPkgs.size());
+            for (ServicePackage p : debugPkgs) {
+                String centerName = "N/A";
+                String ownerEmail = "N/A";
+                try {
+                    if (p.getServiceCenter() != null) {
+                        centerName = p.getServiceCenter().getName();
+                        if (p.getServiceCenter().getOwner() != null) {
+                            ownerEmail = p.getServiceCenter().getOwner().getEmail();
+                        }
+                    }
+                } catch (Exception ignored) {
+                    // Ignore LazyInitializationException outside active transaction session
+                }
+                log.info(">>> PACKAGE: ID={}, Name={}, Center={}, Owner={} <<<", p.getPackageId(), p.getName(), centerName, ownerEmail);
+            }
             return;
         }
 
@@ -641,180 +709,32 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void seedPackagesForCenter(ServiceCenter sc) {
-        // Automatically assign vehicleBrand to any existing packages in the DB that currently have null/empty brand
-        List<ServicePackage> existingList = servicePackageRepository.findByServiceCenter_CenterId(sc.getCenterId());
-        for (ServicePackage p : existingList) {
-            if (p.getName() != null) {
-                String n = p.getName().toLowerCase();
-                if (p.getVehicleBrand() == null || p.getVehicleBrand().trim().isEmpty() || p.getVehicleBrand().equalsIgnoreCase("ALL")) {
-                    if (n.contains("toyota") || n.contains("platinum") || n.contains("full service") || n.contains("commercial") || n.contains("van") || n.contains("hybrid")) {
-                        p.setVehicleBrand("Toyota");
-                        if (p.getVehicleType() == null) p.setVehicleType(n.contains("van") ? "VAN" : "CAR");
-                    } else if (n.contains("honda") || n.contains("vtec") || n.contains("gold") || n.contains("lube") || n.contains("premium")) {
-                        p.setVehicleBrand("Honda");
-                        if (p.getVehicleType() == null) p.setVehicleType("CAR");
-                    } else if (n.contains("nissan") || n.contains("suv") || n.contains("executive") || n.contains("detail") || n.contains("interior")) {
-                        p.setVehicleBrand("Nissan");
-                        if (p.getVehicleType() == null) p.setVehicleType("SUV");
-                    } else if (n.contains("suzuki") || n.contains("basic") || n.contains("standard") || n.contains("economy") || n.contains("swift")) {
-                        p.setVehicleBrand("Suzuki");
-                        if (p.getVehicleType() == null) p.setVehicleType("CAR");
-                    } else if (n.contains("mitsubishi") || n.contains("pajero") || n.contains("4wd") || n.contains("super select")) {
-                        p.setVehicleBrand("Mitsubishi");
-                        if (p.getVehicleType() == null) p.setVehicleType("SUV");
-                    } else if (n.contains("hyundai") || n.contains("kia") || n.contains("smartstream")) {
-                        p.setVehicleBrand("Hyundai");
-                        if (p.getVehicleType() == null) p.setVehicleType("CAR");
-                    } else if (n.contains("bmw") || n.contains("luxury") || n.contains("european")) {
-                        p.setVehicleBrand("BMW");
-                        if (p.getVehicleType() == null) p.setVehicleType("CAR");
-                    } else if (n.contains("mercedes") || n.contains("benz") || n.contains("star")) {
-                        p.setVehicleBrand("Mercedes-Benz");
-                        if (p.getVehicleType() == null) p.setVehicleType("CAR");
-                    } else if (n.contains("bike") || n.contains("motorcycle") || n.contains("yamaha") || n.contains("scooter")) {
-                        p.setVehicleBrand("Yamaha");
-                        p.setVehicleType("BIKE");
-                    } else {
-                        p.setVehicleBrand("Toyota");
-                    }
+        log.info(">>> Seed exactly 5 standard packages for Service Center ID: {} <<<", sc.getCenterId());
+        
+        // Define the 5 standard packages to seed
+        createPackageIfNotExists(sc, "Basic Service", "CAR", "Toyota", "Base maintenance", "Essential oil and filter change.", new BigDecimal("8500.00"), 60);
+        createPackageIfNotExists(sc, "Premium Full Service", "CAR", "Honda", "Full maintenance package", "Oil change, filter, brake check, engine scan.", new BigDecimal("15500.00"), 120);
+        createPackageIfNotExists(sc, "Interior & Exterior Detail", "SUV", "Nissan", "Deep cleaning", "Full body wash, vacuum, and wax.", new BigDecimal("5500.00"), 90);
+        createPackageIfNotExists(sc, "Pro Motorcycle Care", "BIKE", "Yamaha", "Bike service", "Two-wheeler inspection and lubrication.", new BigDecimal("6500.00"), 60);
+        createPackageIfNotExists(sc, "Universal Multi-Point Care", "CAR", "ALL", "General Checkup", "Universal multi-point safety checks and lubrication.", new BigDecimal("11500.00"), 60);
+
+        // Clean up any other packages for this center
+        List<String> keepNames = List.of(
+            "Basic Service",
+            "Premium Full Service",
+            "Interior & Exterior Detail",
+            "Pro Motorcycle Care",
+            "Universal Multi-Point Care"
+        );
+        List<ServicePackage> dbPackages = servicePackageRepository.findByServiceCenter_CenterId(sc.getCenterId());
+        for (ServicePackage p : dbPackages) {
+            if (!keepNames.contains(p.getName())) {
+                try {
+                    servicePackageRepository.delete(p);
+                } catch (Exception e) {
+                    p.setIsActive(false);
                     servicePackageRepository.save(p);
                 }
-            }
-        }
-
-        // Determine brands supported by this center to decide which packages to seed
-        String[] supportedBrands = sc.getSupportedVehicleBrands();
-        java.util.Set<String> centerBrands = new java.util.HashSet<>();
-        if (supportedBrands != null) {
-            for (String b : supportedBrands) {
-                if (b != null) {
-                    centerBrands.add(b.trim().toLowerCase());
-                }
-            }
-        }
-        // If center has no brands configured, default to a couple of common ones to ensure some packages are seeded
-        if (centerBrands.isEmpty()) {
-            centerBrands.add("toyota");
-            centerBrands.add("nissan");
-        }
-
-        List<String> keepPackageNames = new java.util.ArrayList<>();
-
-        // 1. Toyota Genuine Periodic Maintenance (Car / Sedan)
-        if (centerBrands.contains("toyota")) {
-            createPackageIfNotExists(sc, "Toyota Genuine Periodic Maintenance", "CAR", "Toyota",
-                    "Engine Oil & Filter Replacement (up to 4L),30-Point Computer ECU Diagnostic Scan,4-Wheel Brake Pad Cleaning & Inspection,Underbody Wash & Anti-Rust Inspection,Coolant & Fluid Top-Up,Interior Cabin Deep Vacuuming,Tire Shine & Alloy Wheel Dressing",
-                    "Complete 30-point periodic maintenance covering synthetic engine lubrication, safety diagnostics, 4-wheel brake inspection, and exterior body detailing for Toyota sedans and hatchbacks.",
-                    new BigDecimal("18500.00"), 120);
-            keepPackageNames.add("Toyota Genuine Periodic Maintenance");
-        }
-
-        // 2. Honda VTEC & Hybrid Performance Tune-Up (Car / Sedan)
-        if (centerBrands.contains("honda")) {
-            createPackageIfNotExists(sc, "Honda VTEC & Hybrid Performance Tune-Up", "CAR", "Honda",
-                    "High-Voltage Inverter Coolant Flush,Hybrid Battery Cell Voltage Analysis,30-Point Computer ECU Diagnostic Scan,12V Battery Health & Alternator Test,Electric Brake Actuator Calibration,Spark Plug Calibration & Cleaning",
-                    "Specialized hybrid and performance care for Honda Vezel, Fit, Civic, and Accord by certified high-voltage technicians.",
-                    new BigDecimal("19500.00"), 120);
-            keepPackageNames.add("Honda VTEC & Hybrid Performance Tune-Up");
-        }
-
-        // 3. Nissan Executive SUV & 4x4 Major Service (SUV / 4x4)
-        if (centerBrands.contains("nissan")) {
-            createPackageIfNotExists(sc, "Nissan Executive SUV & 4x4 Major Service", "SUV", "Nissan",
-                    "Full Synthetic Oil Replacement (up to 7L),Genuine Oil & Air Filter Replacement,4-Wheel Caliper Greasing & Brake Check,Differential & Transfer Case Fluid Check,Heavy-Duty Underbody Degrease,30-Point Computer ECU Diagnostic Scan",
-                    "Heavy-duty periodic service engineered for Nissan Patrol, X-Trail, Qashqai & Navara with genuine filters, drivetrain inspection, and ECU health scanning.",
-                    new BigDecimal("26500.00"), 150);
-            keepPackageNames.add("Nissan Executive SUV & 4x4 Major Service");
-        }
-
-        // 4. Suzuki Express Economy Lube & Filter Care (Car / Hatchback)
-        if (centerBrands.contains("suzuki")) {
-            createPackageIfNotExists(sc, "Suzuki Express Economy Lube & Filter Care", "CAR", "Suzuki",
-                    "Engine Oil Replacement (up to 4L),Genuine Oil Filter Replacement,15-Point Safety Health Check,Windshield Washer Fluid Top-up,Battery Health & Alternator Test,Complimentary Exterior Foam Wash",
-                    "Quick-turnaround lube service using OEM Suzuki filters and premium lubricants with safety checks for Alto, Wagon R, Swift & Spacia.",
-                    new BigDecimal("9500.00"), 45);
-            keepPackageNames.add("Suzuki Express Economy Lube & Filter Care");
-        }
-
-        // 5. Mitsubishi Super Select 4WD & Pajero Drivetrain Service (SUV / 4x4)
-        if (centerBrands.contains("mitsubishi")) {
-            createPackageIfNotExists(sc, "Mitsubishi Super Select 4WD Drivetrain Service", "SUV", "Mitsubishi",
-                    "Full Synthetic Oil Replacement (up to 7L),Differential & Transfer Case Fluid Check,Heavy-Duty Underbody Degrease,Suspension Bush & Leaf Spring Test,Brake Caliper Pin Lubrication",
-                    "Specialized off-road drivetrain and suspension health service for Mitsubishi Montero, Pajero Sport, and Outlander.",
-                    new BigDecimal("27500.00"), 150);
-            keepPackageNames.add("Mitsubishi Super Select 4WD Drivetrain Service");
-        }
-
-        // 6. Hyundai & Kia Smartstream Engine Diagnostic Care (Car / Sedan)
-        if (centerBrands.contains("hyundai") || centerBrands.contains("kia")) {
-            createPackageIfNotExists(sc, "Hyundai & Kia Smartstream Engine Care", "CAR", "Hyundai",
-                    "30-Point Computer ECU Diagnostic Scan,Engine Oil & Filter Replacement (up to 4L),Spark Plug Check & Calibration,Starter Motor & Charging System Test,Interior Cabin Deep Vacuuming",
-                    "Tailored diagnostic calibration and lubrication package for Hyundai Tucson, Elantra, Ioniq, and Kia Sportage & Seltos.",
-                    new BigDecimal("17000.00"), 90);
-            keepPackageNames.add("Hyundai & Kia Smartstream Engine Care");
-        }
-
-        // 7. BMW & European Luxury Precision Diagnostics & Service (Car / Luxury Sedan)
-        if (centerBrands.contains("bmw")) {
-            createPackageIfNotExists(sc, "BMW & European Luxury Precision Diagnostics", "CAR", "BMW",
-                    "Engine Oil & Filter Replacement (up to 4L),30-Point Computer ECU Diagnostic Scan,4-Wheel Brake Pad Cleaning & Inspection,Coolant & Fluid Top-Up,Brake & Clutch Fluid Inspection,Interior Cabin Deep Vacuuming",
-                    "Precision diagnostic health check, Condition Based Service (CBS) reset, synthetic LL-04 oil and OEM microfilter replacement for German luxury cars.",
-                    new BigDecimal("34500.00"), 150);
-            keepPackageNames.add("BMW & European Luxury Precision Diagnostics");
-        }
-
-        // 8. Mercedes-Benz Star Diagnostic & Safety Service (Car / Luxury Sedan)
-        if (centerBrands.contains("mercedes-benz") || centerBrands.contains("mercedes")) {
-            createPackageIfNotExists(sc, "Mercedes-Benz Star Diagnostic & Safety Service", "CAR", "Mercedes-Benz",
-                    "30-Point Computer ECU Diagnostic Scan,Engine Oil & Filter Replacement (up to 4L),4-Wheel Brake Pad Cleaning & Inspection,Coolant Top-up & Radiator Test,High-Pressure Underbody Wash & Degrease",
-                    "Specialized Star Diagnosis scan, transmission inspection, brake fluid flush, and luxury detailing for Mercedes-Benz C, E, and S-Class.",
-                    new BigDecimal("38000.00"), 180);
-            keepPackageNames.add("Mercedes-Benz Star Diagnostic & Safety Service");
-        }
-
-        // 9. Commercial Van & Passenger Fleet Service (Van / Minibus)
-        if (centerBrands.contains("toyota")) {
-            createPackageIfNotExists(sc, "Commercial Van & Passenger Fleet Service", "VAN", "Toyota",
-                    "Diesel/Petrol Engine Oil (up to 6L),Genuine Oil & Fuel Filter Replacement,Heavy Duty Brake Inspection,Suspension Bush & Leaf Spring Test,Radiator Coolant Flush & Pressure Test,Electrical System Scan",
-                    "Tailored for commercial vans and fleet transports (Toyota KDH / HiAce, Nissan Caravan, Every) to maximize operational uptime and fuel efficiency.",
-                    new BigDecimal("22000.00"), 120);
-            keepPackageNames.add("Commercial Van & Passenger Fleet Service");
-        }
-
-        // 10. Pro Motorcycle & Scooter Precision Care (Motorcycle / Scooter)
-        if (centerBrands.contains("yamaha") || centerBrands.contains("honda")) {
-            createPackageIfNotExists(sc, "Pro Motorcycle & Scooter Precision Care", "BIKE", "Yamaha",
-                    "Engine Oil Replacement,Brake Pad & Shoe Inspection,Drive Chain Cleaning & Lubrication,Spark Plug Calibration & Cleaning,Tire Pressure & Safety Check",
-                    "Specialized 2-wheeler precision care for scooters and sport bikes (Yamaha, Honda, TVS, Bajaj) with drive chain alignment and brake tuning.",
-                    new BigDecimal("6500.00"), 60);
-            keepPackageNames.add("Pro Motorcycle & Scooter Precision Care");
-        }
-
-        // 11. Universal All-Makes Multi-Point Care (Universal / All Makes)
-        createPackageIfNotExists(sc, "Universal All-Makes Multi-Point Care", "CAR", "ALL",
-                "Engine Oil Replacement (up to 4L),Genuine Oil Filter Replacement,15-Point Safety Health Check,Windshield Washer Fluid Top-up,Battery Health & Alternator Test,Foam Body Wash & Wax Polish",
-                "Universal multi-point safety inspection, engine lubrication, battery testing, and foam wash suitable for all vehicle makes and models.",
-                new BigDecimal("11500.00"), 60);
-        keepPackageNames.add("Universal All-Makes Multi-Point Care");
-
-        // Clean up excess packages that were seeded previously by the system but are no longer matching
-        List<ServicePackage> dbPackages = servicePackageRepository.findByServiceCenter_CenterId(sc.getCenterId());
-        List<ServicePackage> obsoletePackages = new java.util.ArrayList<>();
-        for (ServicePackage p : dbPackages) {
-            if ("system".equals(p.getCreatedBy()) && !keepPackageNames.contains(p.getName())) {
-                obsoletePackages.add(p);
-            }
-        }
-        if (!obsoletePackages.isEmpty()) {
-            log.info(">>> Deleting {} excess/obsolete service packages from DB <<<", obsoletePackages.size());
-            try {
-                servicePackageRepository.deleteAll(obsoletePackages);
-            } catch (Exception e) {
-                log.warn("Database constraints prevented deletion of some obsolete packages. Marking them inactive instead: {}", e.getMessage());
-                for (ServicePackage p : obsoletePackages) {
-                    p.setIsActive(false);
-                }
-                servicePackageRepository.saveAll(obsoletePackages);
             }
         }
     }
@@ -947,12 +867,23 @@ public class DataInitializer implements CommandLineRunner {
             updateManagerImagesForOwner(owner);
             ensureRajaManagers(owner);
 
-            // SKIP SEEDING if history already exists, but UPDATE metrics to ensure they are
-            // accurate
-            if (historyCount > 0) {
-                log.debug("Raja Motors already has history data. Updating metrics from existing records...");
+            LocalDate latestBookingDate = bookingRepository.findLatestBookingDateByTenantId(owner.getUserId());
+            boolean isStale = (latestBookingDate == null || latestBookingDate.isBefore(LocalDate.now().minusDays(1)));
+
+            if (historyCount > 0 && !isStale) {
+                log.debug("Raja Motors already has history data up to date. Updating metrics from existing records...");
                 updateCustomerMetricsForOwner(owner);
                 return;
+            }
+
+            if (isStale && historyCount > 0) {
+                log.info("Raja Motors history data is stale. Deleting and re-seeding 180 days to match current date...");
+                List<ServiceCenter> existingCenters = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
+                for (ServiceCenter center : existingCenters) {
+                    paymentRecordRepository.deleteAll(paymentRecordRepository.findByCenterId(center.getCenterId()));
+                    invoiceRepository.deleteAll(invoiceRepository.findByCenterId(center.getCenterId()));
+                    bookingRepository.deleteAll(bookingRepository.findByCenterId(center.getCenterId()));
+                }
             }
 
             log.debug("NO HISTORY FOUND: Seeding history for Raja Motors...");
@@ -976,118 +907,50 @@ public class DataInitializer implements CommandLineRunner {
 
             String[] locations = { "Colombo", "Kandy", "Galle" };
             List<ServiceCenter> centers = new ArrayList<>();
-            List<ServicePackage> packages = new ArrayList<>();
             List<Manager> managers = new ArrayList<>();
 
             if (serviceCenterRepository.findByOwner_UserId(owner.getUserId()).size() < 3) {
-            String[] branchImages = {
-                "https://images.unsplash.com/photo-1613214149922-f1809c99b414?w=800&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=80"
-            };
-            for (int bIdx = 0; bIdx < locations.length; bIdx++) {
-                String loc = locations[bIdx];
-                ServiceCenter sc = new ServiceCenter();
-                sc.setCenterId(UUID.randomUUID());
-                sc.setOwner(owner);
-                sc.setName("Raja Motors - " + loc);
-                sc.setAddress(loc);
-                sc.setContactPhone("+94112000" + loc.length());
-                sc.setOpeningHours("08:00 - 18:00");
-                sc.setRating(new BigDecimal("4.5"));
-                sc.setIsActive(true);
-                sc.setCreatedAt(LocalDateTime.now());
-                sc.setCreatedBy("system");
-                sc.setUpdatedAt(LocalDateTime.now());
-                sc.setUpdatedBy("system");
-                sc.setSupportedVehicleBrands(new String[] {"Toyota", "Honda", "Nissan", "Suzuki"});
-                sc.setStatus("APPROVED");
-                sc.setImageUrl(branchImages[bIdx]);
-                centers.add(serviceCenterRepository.save(sc));
+                String[] branchImages = {
+                    "https://images.unsplash.com/photo-1613214149922-f1809c99b414?w=800&auto=format&fit=crop&q=80",
+                    "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=800&auto=format&fit=crop&q=80",
+                    "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=80"
+                };
+                for (int bIdx = 0; bIdx < locations.length; bIdx++) {
+                    String loc = locations[bIdx];
+                    ServiceCenter sc = new ServiceCenter();
+                    sc.setCenterId(UUID.randomUUID());
+                    sc.setOwner(owner);
+                    sc.setName("Raja Motors - " + loc);
+                    sc.setAddress(loc);
+                    sc.setContactPhone("+94112000" + loc.length());
+                    sc.setOpeningHours("08:00 - 18:00");
+                    sc.setRating(new BigDecimal("4.5"));
+                    sc.setIsActive(true);
+                    sc.setCreatedAt(LocalDateTime.now());
+                    sc.setCreatedBy("system");
+                    sc.setUpdatedAt(LocalDateTime.now());
+                    sc.setUpdatedBy("system");
+                    sc.setSupportedVehicleBrands(new String[] {"Toyota", "Honda", "Nissan", "Suzuki"});
+                    sc.setStatus("APPROVED");
+                    sc.setImageUrl(branchImages[bIdx]);
+                    centers.add(serviceCenterRepository.save(sc));
 
-                // Add 3 distinct packages per center for variety
-                ServicePackage p1 = new ServicePackage();
-                p1.setPackageId(UUID.randomUUID());
-                p1.setServiceCenter(sc);
-                p1.setName("Basic Service");
-                p1.setType("Base maintenance");
-                p1.setVehicleBrand("Toyota");
-                p1.setDescription("Essential oil and filter change.");
-                p1.setBasePrice(new BigDecimal("8500.00"));
-                p1.setEstimatedDurationMins(60);
-                p1.setIsActive(true);
-                p1.setCreatedAt(LocalDateTime.now());
-                p1.setCreatedBy("system");
-                p1.setUpdatedAt(LocalDateTime.now());
-                p1.setUpdatedBy("system");
-                packages.add(servicePackageRepository.save(p1));
-                
-                ServicePackage p2 = new ServicePackage();
-                p2.setPackageId(UUID.randomUUID());
-                p2.setServiceCenter(sc);
-                p2.setName("Premium Full Service");
-                p2.setType("Full maintenance package");
-                p2.setVehicleBrand("Honda");
-                p2.setDescription("Oil change, filter, brake check, engine scan.");
-                p2.setBasePrice(new BigDecimal("15500.00"));
-                p2.setEstimatedDurationMins(120);
-                p2.setIsActive(true);
-                p2.setCreatedAt(LocalDateTime.now());
-                p2.setCreatedBy("system");
-                p2.setUpdatedAt(LocalDateTime.now());
-                p2.setUpdatedBy("system");
-                packages.add(servicePackageRepository.save(p2));
-
-                ServicePackage p3 = new ServicePackage();
-                p3.setPackageId(UUID.randomUUID());
-                p3.setServiceCenter(sc);
-                p3.setName("Interior & Exterior Detail");
-                p3.setType("Deep cleaning");
-                p3.setVehicleBrand("Nissan");
-                p3.setDescription("Full body wash, vacuum, and wax.");
-                p3.setBasePrice(new BigDecimal("5500.00"));
-                p3.setEstimatedDurationMins(90);
-                p3.setIsActive(true);
-                p3.setCreatedAt(LocalDateTime.now());
-                p3.setCreatedBy("system");
-                p3.setUpdatedAt(LocalDateTime.now());
-                p3.setUpdatedBy("system");
-                packages.add(servicePackageRepository.save(p3));
-
-                String mgrImg = "https://images.unsplash.com/photo-1651684215020-f7a5b6610f23?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvZmlsZSUyMHBob3Rvc3xlbnwwfHwwfHx8MA%3D%3D";
-                
-                Manager mgr = new Manager(UUID.randomUUID(), loc + " Branch Manager", "manager." + loc.toLowerCase() + "@raja.lk", 
-                        "+94771000" + loc.length(), passwordEncoder.encode("manager123"), "ROLE_SERVICE_MANAGER", true, 
-                        null, LocalDateTime.now(), "system", LocalDateTime.now(), "system", 
-                        mgrImg, "MGR-" + loc.substring(0, 3).toUpperCase(), sc.getCenterId());
-                managers.add(managerRepository.save(mgr));
-            }
-        } else {
-            centers = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
-            // Ensure each center has at least some packages for seeding
-            for (ServiceCenter center : centers) {
-                List<ServicePackage> centerPackages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
-                if (centerPackages.isEmpty()) {
-                    ServicePackage p = new ServicePackage();
-                    p.setPackageId(UUID.randomUUID());
-                    p.setServiceCenter(center);
-                    p.setName("Standard Service");
-                    p.setType("Base maintenance");
-                    p.setVehicleBrand("Suzuki");
-                    p.setDescription("Essential checks and oil service.");
-                    p.setBasePrice(new BigDecimal("8500.00"));
-                    p.setEstimatedDurationMins(60);
-                    p.setIsActive(true);
-                    p.setCreatedAt(LocalDateTime.now());
-                    p.setCreatedBy("system");
-                    p.setUpdatedAt(LocalDateTime.now());
-                    p.setUpdatedBy("system");
-                    packages.add(servicePackageRepository.save(p));
-                } else {
-                    packages.addAll(centerPackages);
+                    String mgrImg = "https://images.unsplash.com/photo-1651684215020-f7a5b6610f23?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cHJvZmlsZSUyMHBob3Rvc3xlbnwwfHwwfHx8MA%3D%3D";
+                    
+                    Manager mgr = new Manager(UUID.randomUUID(), loc + " Branch Manager", "manager." + loc.toLowerCase() + "@raja.lk", 
+                            "+94771000" + loc.length(), passwordEncoder.encode("manager123"), "ROLE_SERVICE_MANAGER", true, 
+                            null, LocalDateTime.now(), "system", LocalDateTime.now(), "system", 
+                            mgrImg, "MGR-" + loc.substring(0, 3).toUpperCase(), sc.getCenterId());
+                    managers.add(managerRepository.save(mgr));
                 }
+            } else {
+                centers = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
             }
-        }
+
+            // Sync the 5 packages and delete any excess ones
+            for (ServiceCenter center : centers) {
+                seedPackagesForCenter(center);
+            }
 
             // Create some customers
             List<Customer> customers = new ArrayList<>();
@@ -1111,9 +974,9 @@ public class DataInitializer implements CommandLineRunner {
                 }
             }
 
-            // Seed 3 months of historical data
+            // Seed 6 months (180 days) of continuous historical data
             LocalDateTime now = LocalDateTime.now();
-            for (int day = 0; day < 90; day++) {
+            for (int day = 0; day < 180; day++) {
                 LocalDateTime bookingDateTime = now.minusDays(day);
 
                 // Generate 2-4 bookings per day across random centers
@@ -1308,6 +1171,230 @@ public class DataInitializer implements CommandLineRunner {
                     "SA-001");
             superAdminRepository.save(admin);
             log.info(">>> Mock Super Admin created successfully <<<");
+        }
+    }
+
+    public void forceReseedRajaMotors() {
+        ensureHistoryForAllOwners();
+    }
+
+    public void ensureHistoryForAllOwners() {
+        try {
+            List<Owner> allOwners = ownerRepository.findAll();
+            log.info("Ensuring 180-day history for all {} registered owner(s)...", allOwners.size());
+            for (Owner owner : allOwners) {
+                seedHistoryForOwner(owner);
+            }
+        } catch (Exception e) {
+            log.error("[ERROR] Failed during ensureHistoryForAllOwners: {}", e.getMessage(), e);
+        }
+    }
+
+    public void seedHistoryForOwner(Owner owner) {
+        if (owner == null) return;
+        try {
+            if (owner.getOwnerCode() == null || owner.getOwnerCode().trim().isEmpty()) {
+                owner.setOwnerCode("OWN-" + owner.getUserId().toString().substring(0, 8).toUpperCase());
+                owner = ownerRepository.save(owner);
+            }
+
+            List<ServiceCenter> centers = serviceCenterRepository.findByOwner_UserId(owner.getUserId());
+            if (centers.isEmpty()) {
+                log.info("Owner {} has no centers. Creating default center for demonstration...", owner.getEmail());
+                ServiceCenter sc = new ServiceCenter();
+                sc.setCenterId(UUID.randomUUID());
+                sc.setOwner(owner);
+                String cName = (owner.getCompanyName() != null && !owner.getCompanyName().isEmpty()) ? owner.getCompanyName() + " - Main Center" : "FixZone Auto Center";
+                sc.setName(cName);
+                sc.setAddress("Colombo");
+                sc.setContactPhone("+941120001");
+                sc.setOpeningHours("08:00 - 18:00");
+                sc.setRating(new BigDecimal("4.5"));
+                sc.setIsActive(true);
+                sc.setCreatedAt(LocalDateTime.now());
+                sc.setCreatedBy("system");
+                sc.setUpdatedAt(LocalDateTime.now());
+                sc.setUpdatedBy("system");
+                sc.setSupportedVehicleBrands(new String[] {"Toyota", "Honda", "Nissan", "Suzuki"});
+                sc.setStatus("APPROVED");
+                sc.setImageUrl("https://images.unsplash.com/photo-1613214149922-f1809c99b414?w=800&auto=format&fit=crop&q=80");
+                centers = List.of(serviceCenterRepository.save(sc));
+            }
+
+            // Ensure each center has service packages
+            List<ServicePackage> allPackages = new ArrayList<>();
+            for (ServiceCenter center : centers) {
+                List<ServicePackage> centerPackages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
+                if (centerPackages.isEmpty()) {
+                    ServicePackage p1 = new ServicePackage();
+                    p1.setPackageId(UUID.randomUUID());
+                    p1.setServiceCenter(center);
+                    p1.setName("Full Service Maintenance");
+                    p1.setType("Full maintenance");
+                    p1.setVehicleBrand("Toyota");
+                    p1.setDescription("Oil change, filter, engine diagnostics & multi-point check.");
+                    p1.setBasePrice(new BigDecimal("12500.00"));
+                    p1.setEstimatedDurationMins(90);
+                    p1.setIsActive(true);
+                    p1.setCreatedAt(LocalDateTime.now());
+                    p1.setCreatedBy("system");
+                    p1.setUpdatedAt(LocalDateTime.now());
+                    p1.setUpdatedBy("system");
+                    allPackages.add(servicePackageRepository.save(p1));
+
+                    ServicePackage p2 = new ServicePackage();
+                    p2.setPackageId(UUID.randomUUID());
+                    p2.setServiceCenter(center);
+                    p2.setName("Express Lube & Filter");
+                    p2.setType("Quick service");
+                    p2.setVehicleBrand("Honda");
+                    p2.setDescription("Fast oil & filter replacement.");
+                    p2.setBasePrice(new BigDecimal("6500.00"));
+                    p2.setEstimatedDurationMins(45);
+                    p2.setIsActive(true);
+                    p2.setCreatedAt(LocalDateTime.now());
+                    p2.setCreatedBy("system");
+                    p2.setUpdatedAt(LocalDateTime.now());
+                    p2.setUpdatedBy("system");
+                    allPackages.add(servicePackageRepository.save(p2));
+                } else {
+                    allPackages.addAll(centerPackages);
+                }
+            }
+
+            long historyCount = bookingRepository.countByTenantId(owner.getUserId());
+            LocalDate latestBookingDate = bookingRepository.findLatestBookingDateByTenantId(owner.getUserId());
+            boolean isStale = (latestBookingDate == null || latestBookingDate.isBefore(LocalDate.now().minusDays(1)));
+
+            if (historyCount > 0 && !isStale) {
+                log.debug("Owner {} already has fresh history up to {}. Skipping re-seed.", owner.getEmail(), latestBookingDate);
+                updateCustomerMetricsForOwner(owner);
+                return;
+            }
+
+            if (isStale && historyCount > 0) {
+                log.info("Owner {} history is stale (latest: {}). Clearing old records...", owner.getEmail(), latestBookingDate);
+                for (ServiceCenter center : centers) {
+                    paymentRecordRepository.deleteAll(paymentRecordRepository.findByCenterId(center.getCenterId()));
+                    invoiceRepository.deleteAll(invoiceRepository.findByCenterId(center.getCenterId()));
+                    bookingRepository.deleteAll(bookingRepository.findByCenterId(center.getCenterId()));
+                }
+            }
+
+            log.info("Generating 180 days of continuous booking & payment history for owner {}...", owner.getEmail());
+
+            // Ensure customer records exist via customerRepository
+            List<Customer> customers = customerRepository.findAll();
+            if (customers == null || customers.isEmpty()) {
+                customers = new ArrayList<>();
+                for (int i = 1; i <= 10; i++) {
+                    String cEmail = "demo.customer" + i + "@fixzonemail.com";
+                    Customer c = new Customer();
+                    c.setUserId(UUID.randomUUID());
+                    c.setFullName("Customer " + i);
+                    c.setEmail(cEmail);
+                    c.setPhone("+947712345" + (10 + i));
+                    c.setPasswordHash(passwordEncoder.encode("password123"));
+                    c.setRole("ROLE_CUSTOMER");
+                    c.setStatus("Active");
+                    c.setCreatedAt(LocalDateTime.now().minusMonths(6));
+                    c.setCustomerCode("CUST-" + (100 + i));
+                    customers.add(customerRepository.save(c));
+                }
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+            int totalSeedBookings = 0;
+            for (int day = 0; day < 180; day++) {
+                LocalDateTime bookingDateTime = now.minusDays(day);
+                int dailyBookings = 2 + (int) (Math.random() * 3);
+
+                for (int i = 0; i < dailyBookings; i++) {
+                    ServiceCenter center = centers.get((int) (Math.random() * centers.size()));
+                    Customer customer = customers.get((int) (Math.random() * customers.size()));
+
+                    List<ServicePackage> centerPackages = servicePackageRepository.findByServiceCenter_CenterIdAndIsActiveTrue(center.getCenterId());
+                    if (centerPackages == null || centerPackages.isEmpty()) centerPackages = allPackages;
+                    if (centerPackages.isEmpty()) continue;
+
+                    ServicePackage pkg = centerPackages.get((int) (Math.random() * centerPackages.size()));
+
+                    Booking b = new Booking();
+                    b.setBookingId(UUID.randomUUID());
+                    b.setTenantId(owner.getUserId());
+                    b.setCenterId(center.getCenterId());
+                    b.setCustomerId(customer.getUserId());
+                    b.setVehicleId(UUID.randomUUID());
+                    b.setPackageId(pkg.getPackageId());
+                    b.setBookingDate(bookingDateTime.toLocalDate());
+                    b.setBookingTime(LocalTime.of(9 + (int) (Math.random() * 8), 0));
+
+                    if (day > 2) {
+                        b.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED);
+                    } else if (day == 0) {
+                        b.setStatus(Math.random() > 0.5 ? com.fixzone.fixzon_backend.enums.BookingStatus.CONFIRMED : com.fixzone.fixzon_backend.enums.BookingStatus.IN_PROGRESS);
+                    } else {
+                        b.setStatus(com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED);
+                    }
+
+                    b.setEstimatedCost(pkg.getBasePrice());
+                    b.setBookingFee(new BigDecimal("1000.00"));
+                    b.setBookingFeePaid(true);
+                    b.setCreatedAt(bookingDateTime);
+                    bookingRepository.save(b);
+                    totalSeedBookings++;
+
+                    customer.setVisits((customer.getVisits() == null ? 0 : customer.getVisits()) + 1);
+
+                    Invoice inv = new Invoice();
+                    inv.setInvoiceId(UUID.randomUUID());
+                    inv.setCompanyCode(owner.getOwnerCode() != null ? owner.getOwnerCode() : "OWN-" + owner.getUserId().toString().substring(0, 6).toUpperCase());
+                    inv.setCenterId(center.getCenterId());
+                    inv.setBookingId(b.getBookingId());
+                    inv.setIssuedToCustomerId(customer.getUserId());
+                    inv.setSubtotal(pkg.getBasePrice());
+                    inv.setTax(pkg.getBasePrice().multiply(new BigDecimal("0.08")));
+                    inv.setDiscount(BigDecimal.ZERO);
+                    inv.setTotal(inv.getSubtotal().add(inv.getTax()));
+                    inv.setStatus(b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED ? "PAID" : "PENDING");
+                    inv.setIssuedAt(bookingDateTime.plusHours(2));
+                    inv.setCreatedAt(bookingDateTime.plusHours(2));
+                    invoiceRepository.save(inv);
+
+                    if ("PAID".equals(inv.getStatus())) {
+                        customer.setTotalSpent((customer.getTotalSpent() == null ? BigDecimal.ZERO : customer.getTotalSpent()).add(inv.getTotal()));
+                    }
+                    customerRepository.save(customer);
+
+                    PaymentRecord onlinePayment = new PaymentRecord();
+                    onlinePayment.setPaymentId(UUID.randomUUID());
+                    onlinePayment.setInvoiceId(inv.getInvoiceId());
+                    onlinePayment.setCenterId(center.getCenterId());
+                    onlinePayment.setAmount(new BigDecimal("1000.00"));
+                    onlinePayment.setMethod("CARD");
+                    onlinePayment.setStatus("SUCCESS");
+                    onlinePayment.setCreatedAt(bookingDateTime);
+                    paymentRecordRepository.save(onlinePayment);
+
+                    if (b.getStatus() == com.fixzone.fixzon_backend.enums.BookingStatus.COMPLETED) {
+                        PaymentRecord cashPayment = new PaymentRecord();
+                        cashPayment.setPaymentId(UUID.randomUUID());
+                        cashPayment.setInvoiceId(inv.getInvoiceId());
+                        cashPayment.setCenterId(center.getCenterId());
+                        cashPayment.setAmount(inv.getTotal().subtract(new BigDecimal("1000.00")));
+                        cashPayment.setMethod("CASH");
+                        cashPayment.setStatus("SUCCESS");
+                        cashPayment.setProcessedAt(bookingDateTime.plusHours(2).plusMinutes(5));
+                        cashPayment.setCreatedAt(bookingDateTime.plusHours(2).plusMinutes(5));
+                        paymentRecordRepository.save(cashPayment);
+                    }
+                }
+            }
+
+            updateCustomerMetricsForOwner(owner);
+            log.info("[SUCCESS] 180-day history generated ({} bookings) for owner {}", totalSeedBookings, owner.getEmail());
+        } catch (Exception e) {
+            log.error("[ERROR] Failed to seed history for owner {}: {}", owner.getEmail(), e.getMessage(), e);
         }
     }
 }
