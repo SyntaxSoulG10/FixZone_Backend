@@ -1,10 +1,13 @@
 package com.fixzone.fixzon_backend;
 
+import org.junit.jupiter.api.Disabled;
+
 import org.junit.jupiter.api.Test;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Disabled("Skipping integration test that hits external DB")
 public class DirectSeedTodayBookingsTest {
 
     @Test

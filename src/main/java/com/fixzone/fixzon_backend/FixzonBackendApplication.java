@@ -20,8 +20,12 @@ public class FixzonBackendApplication {
     private static final Logger log = LoggerFactory.getLogger(FixzonBackendApplication.class);
 
     public static void main(String[] args) {
-        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-        dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));
+        // Load environment variables from .env only when not running tests
+        String activeProfiles = System.getProperty("spring.profiles.active");
+        if (activeProfiles == null || !activeProfiles.contains("test")) {
+            Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+            dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));
+        }
         SpringApplication.run(FixzonBackendApplication.class, args);
     }
 

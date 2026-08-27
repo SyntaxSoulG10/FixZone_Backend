@@ -1,13 +1,13 @@
 package com.fixzone.fixzon_backend.service;
 
 import com.fixzone.fixzon_backend.model.Booking;
-import com.fixzone.fixzon_backend.model.ServiceCenter;
+
 import com.fixzone.fixzon_backend.model.ServicePackage;
 import com.fixzone.fixzon_backend.repository.BookingRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
 import com.fixzone.fixzon_backend.repository.ServicePackageRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 @Service
 public class SchedulingService {
 
-    private static final Logger log = LoggerFactory.getLogger(SchedulingService.class);
+    
 
     // Fixed Operating Hours
     public static final LocalTime MORNING_START = LocalTime.of(8, 0);
