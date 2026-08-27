@@ -131,7 +131,7 @@ public class BookingController {
     public ResponseEntity<BookingResponseDTO> rescheduleBooking(
             @PathVariable UUID id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate newDate,
-            @RequestParam String newTime) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime newTime) {
         return ResponseEntity.ok(bookingService.rescheduleBooking(id, newDate, newTime));
     }
 
