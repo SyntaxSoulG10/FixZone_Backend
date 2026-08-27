@@ -249,7 +249,19 @@ public class DataInitializer implements CommandLineRunner {
             List<ServicePackage> debugPkgs = servicePackageRepository.findAll();
             log.info(">>> DEBUG: TOTAL PACKAGES IN DB: {} <<<", debugPkgs.size());
             for (ServicePackage p : debugPkgs) {
-                log.info(">>> PACKAGE: ID={}, Name={}, Center={}, Owner={} <<<", p.getPackageId(), p.getName(), p.getServiceCenter().getName(), p.getServiceCenter().getOwner().getEmail());
+                String centerName = "N/A";
+                String ownerEmail = "N/A";
+                try {
+                    if (p.getServiceCenter() != null) {
+                        centerName = p.getServiceCenter().getName();
+                        if (p.getServiceCenter().getOwner() != null) {
+                            ownerEmail = p.getServiceCenter().getOwner().getEmail();
+                        }
+                    }
+                } catch (Exception ignored) {
+                    // Ignore LazyInitializationException outside active transaction session
+                }
+                log.info(">>> PACKAGE: ID={}, Name={}, Center={}, Owner={} <<<", p.getPackageId(), p.getName(), centerName, ownerEmail);
             }
             return;
         }
