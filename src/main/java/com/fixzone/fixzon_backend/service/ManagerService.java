@@ -36,6 +36,7 @@ public class ManagerService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final com.fixzone.fixzon_backend.repository.AuthRepository authRepository;
+    private final com.fixzone.fixzon_backend.repository.NotificationRepository notificationRepository;
     
     @Value("${app.manager.default-password}")
     private String defaultPassword;
@@ -49,13 +50,15 @@ public class ManagerService {
             OwnerRepository ownerRepository,
             PasswordEncoder passwordEncoder,
             EmailService emailService,
-            com.fixzone.fixzon_backend.repository.AuthRepository authRepository) {
+            com.fixzone.fixzon_backend.repository.AuthRepository authRepository,
+            com.fixzone.fixzon_backend.repository.NotificationRepository notificationRepository) {
         this.managerRepository = managerRepository;
         this.serviceCenterRepository = serviceCenterRepository;
         this.ownerRepository = ownerRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.authRepository = authRepository;
+        this.notificationRepository = notificationRepository;
     }
 
     /**
@@ -300,13 +303,25 @@ public class ManagerService {
         emailService.sendWelcomeEmail(manager.getEmail(), manager.getFullName(), defaultPassword);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void deleteManager(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("ID for deletion cannot be null");
         }
         try {
             if (managerRepository.existsById(id)) {
+                if (notificationRepository != null) {
+                    notificationRepository.deleteByRecipientUserId(id);
+                }
                 managerRepository.deleteById(id);
+                if (authRepository.existsById(id)) {
+                    authRepository.deleteById(id);
+                }
+            } else if (authRepository.existsById(id)) {
+                if (notificationRepository != null) {
+                    notificationRepository.deleteByRecipientUserId(id);
+                }
+                authRepository.deleteById(id);
             }
         } catch (Exception e) {
             log.error("Database error while deleting manager: {}", e.getMessage(), e);

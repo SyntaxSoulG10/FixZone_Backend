@@ -243,9 +243,14 @@ public class ManagerController {
             log.info("Deleting manager ID: {}", id);
             managerService.deleteManager(id);
             return ResponseEntity.noContent().build();
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (IllegalStateException e) {
             log.warn("Manager not found for deletion with ID: {}", id);
             return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Failed to delete manager with ID: {}", id, e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete manager: " + e.getMessage());
         }
     }
 
