@@ -8,6 +8,7 @@ import com.fixzone.fixzon_backend.repository.AuthRepository;
 import com.fixzone.fixzon_backend.repository.ManagerRepository;
 import com.fixzone.fixzon_backend.repository.OwnerRepository;
 import com.fixzone.fixzon_backend.repository.ServiceCenterRepository;
+import com.fixzone.fixzon_backend.repository.NotificationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +34,7 @@ public class ManagerServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private EmailService emailService;
     @Mock private AuthRepository authRepository;
+    @Mock private NotificationRepository notificationRepository;
 
     private ManagerService managerService;
 
@@ -44,7 +46,8 @@ public class ManagerServiceTest {
                 ownerRepository,
                 passwordEncoder,
                 emailService,
-                authRepository
+                authRepository,
+                notificationRepository
         );
     }
 
@@ -119,5 +122,18 @@ public class ManagerServiceTest {
         assertNotNull(newPassword);
         assertTrue(newPassword.length() >= 8);
         assertEquals("encoded_" + newPassword, manager.getPasswordHash());
+    }
+
+    @Test
+    void testDeleteManagerCleansUpNotificationsAndDeletesManager() {
+        UUID managerId = UUID.randomUUID();
+        when(managerRepository.existsById(managerId)).thenReturn(true);
+        when(authRepository.existsById(managerId)).thenReturn(true);
+
+        managerService.deleteManager(managerId);
+
+        verify(notificationRepository, times(1)).deleteByRecipientUserId(managerId);
+        verify(managerRepository, times(1)).deleteById(managerId);
+        verify(authRepository, times(1)).deleteById(managerId);
     }
 }
