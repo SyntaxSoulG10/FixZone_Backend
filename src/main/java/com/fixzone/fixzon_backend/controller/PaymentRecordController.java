@@ -1,0 +1,84 @@
+package com.fixzone.fixzon_backend.controller;
+
+import com.fixzone.fixzon_backend.DTO.OwnerDTO;
+import com.fixzone.fixzon_backend.DTO.PaymentRecordDTO;
+import com.fixzone.fixzon_backend.service.OwnerService;
+import com.fixzone.fixzon_backend.service.PaymentRecordService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/payment-records")
+public class PaymentRecordController {
+
+    // Constructor injection guarantees dependencies are met securely.
+    private final PaymentRecordService paymentRecordService;
+    private final OwnerService ownerService;
+
+    public PaymentRecordController(PaymentRecordService paymentRecordService, OwnerService ownerService) {
+        this.paymentRecordService = paymentRecordService;
+        this.ownerService = ownerService;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<PaymentRecordDTO>> getAllPayments() {
+        return ResponseEntity.ok(paymentRecordService.getAllPayments());
+    }
+
+    @GetMapping("/current")
+    public ResponseEntity<List<PaymentRecordDTO>> getCurrentOwnerPayments() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        OwnerDTO owner = ownerService.retrieveOwnerByEmail(email);
+        if (owner == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        return ResponseEntity.ok(paymentRecordService.getPaymentsByCompanyCode(owner.getOwnerCode()));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PaymentRecordDTO> getPaymentById(@PathVariable UUID id) {
+        PaymentRecordDTO payment = paymentRecordService.getPaymentById(id);
+        return payment != null ? ResponseEntity.ok(payment) : ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/invoice/{invoiceId}")
+    public ResponseEntity<List<PaymentRecordDTO>> getPaymentsByInvoice(@PathVariable UUID invoiceId) {
+        return ResponseEntity.ok(paymentRecordService.getPaymentsByInvoice(invoiceId));
+    }
+
+    @GetMapping("/center/{centerId}")
+    public ResponseEntity<List<PaymentRecordDTO>> getPaymentsByCenter(@PathVariable UUID centerId) {
+        return ResponseEntity.ok(paymentRecordService.getPaymentsByCenter(centerId));
+    }
+
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<PaymentRecordDTO>> getPaymentsByStatus(@PathVariable String status) {
+        return ResponseEntity.ok(paymentRecordService.getPaymentsByStatus(status));
+    }
+
+    @GetMapping("/method/{method}")
+    public ResponseEntity<List<PaymentRecordDTO>> getPaymentsByMethod(@PathVariable String method) {
+        return ResponseEntity.ok(paymentRecordService.getPaymentsByMethod(method));
+    }
+
+    @PostMapping
+    public ResponseEntity<PaymentRecordDTO> createPayment(@jakarta.validation.Valid @RequestBody PaymentRecordDTO dto) {
+        return ResponseEntity.status(201).body(paymentRecordService.createPayment(dto));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<PaymentRecordDTO> updatePayment(@PathVariable UUID id,
+            @jakarta.validation.Valid @RequestBody PaymentRecordDTO dto) {
+        PaymentRecordDTO updatedPayment = paymentRecordService.updatePayment(id, dto);
+        return updatedPayment != null ? ResponseEntity.ok(updatedPayment) : ResponseEntity.notFound().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePayment(@PathVariable UUID id) {
+        paymentRecordService.deletePayment(id);
+        return ResponseEntity.noContent().build();
+    }
+}

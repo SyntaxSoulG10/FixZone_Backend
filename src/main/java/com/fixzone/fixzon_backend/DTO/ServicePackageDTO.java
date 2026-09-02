@@ -1,0 +1,57 @@
+package com.fixzone.fixzon_backend.DTO;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class ServicePackageDTO {
+    private UUID packageId;
+    private UUID centerId;
+
+    @NotBlank(message = "Service name is required")
+    @jakarta.validation.constraints.Size(min = 3, max = 100, message = "Service name must be 3-100 characters")
+    private String name;
+
+    private String type;
+
+    /**
+     * Optional vehicle type restriction. Null = compatible with all vehicles.
+     * Values: "CAR", "BIKE", "VAN", "TRUCK"
+     */
+    private String vehicleType;
+
+    /**
+     * Optional vehicle brand restriction (e.g. "Toyota", "Honda", "Nissan", "Suzuki", etc.).
+     * Null or "ALL" = compatible with all brands.
+     */
+    @jakarta.validation.constraints.Size(max = 50, message = "Vehicle brand must be 50 characters or less")
+    private String vehicleBrand;
+    
+    @NotBlank(message = "Description is required")
+    @jakarta.validation.constraints.Size(min = 10, message = "Description must be at least 10 characters")
+    private String description;
+
+    private String imageUrl;
+
+    @NotNull(message = "Price is required")
+    @jakarta.validation.constraints.DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than 0")
+    private BigDecimal basePrice;
+
+    @NotNull(message = "Duration is required")
+    @jakarta.validation.constraints.Min(value = 5, message = "Minimum duration is 5 minutes")
+    @jakarta.validation.constraints.Max(value = 1440, message = "Maximum duration is 24 hours")
+    private Integer estimatedDurationMins;
+    private Boolean isActive;
+    private LocalDateTime createdAt;
+    private String createdBy;
+    private LocalDateTime updatedAt;
+    private String updatedBy;
+}

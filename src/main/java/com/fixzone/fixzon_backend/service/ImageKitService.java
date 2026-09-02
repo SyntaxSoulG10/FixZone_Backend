@@ -1,0 +1,156 @@
+package com.fixzone.fixzon_backend.service;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Base64;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.ParameterizedTypeReference;
+
+/**
+ * Service for managing image uploads to ImageKit.io.
+ * This implementation uses direct HTTP calls instead of the ImageKit SDK 
+ * to ensure maximum stability and zero dependency issues.
+ */
+@Service
+
+public class ImageKitService {
+    private static final Logger log = LoggerFactory.getLogger(ImageKitService.class);
+
+    @Value("${imagekit.public-key}")
+    private String publicKey;
+
+    @Value("${imagekit.private-key}")
+    private String privateKey;
+
+    @Value("${imagekit.url-endpoint}")
+    private String urlEndpoint;
+
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    /**
+     * Uploads an image to ImageKit.
+     * @param imageData The image data (Base64 string or existing URL)
+     * @param fileName Prefix for the uploaded filename
+     * @return The permanent URL of the uploaded image
+     */
+    public String uploadImage(String imageData, String fileName) {
+        if (imageData == null || imageData.isEmpty()) {
+            return null;
+        }
+
+        // If it's already an external URL (not Base64), just return it
+        if (imageData.startsWith("http") && !imageData.contains(";base64,")) {
+            return imageData;
+        }
+
+        try {
+            // 1. Prepare Base64 data
+            String base64Data = imageData;
+            if (base64Data.contains(";base64,")) {
+                base64Data = base64Data.split(";base64,")[1];
+            }
+
+            // 2. Setup Headers (Basic Auth)
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            
+            // ImageKit uses Basic Auth: PrivateKey as username, empty password
+            String auth = privateKey + ":";
+            String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
+            headers.set("Authorization", "Basic " + encodedAuth);
+
+            // 3. Prepare Multipart Body
+            String extension = ".jpg";
+            String lowerData = imageData.toLowerCase();
+            if (lowerData.contains("image/png")) extension = ".png";
+            else if (lowerData.contains("image/webp")) extension = ".webp";
+            else if (lowerData.contains("image/gif")) extension = ".gif";
+            else if (lowerData.contains("application/pdf")) extension = ".pdf";
+            
+            String finalFileName = fileName + "-" + System.currentTimeMillis() + extension;
+            
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", base64Data);
+            body.add("fileName", finalFileName);
+            body.add("useUniqueFileName", "true");
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+            
+            // 4. Execute Upload
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                "https://upload.imagekit.io/api/v1/files/upload",
+                HttpMethod.POST,
+                requestEntity,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+            
+            Map<String, Object> responseBody = response.getBody();
+            if (response.getStatusCode() == HttpStatus.OK && responseBody != null) {
+                String url = (String) responseBody.get("url");
+                log.info("****************************************************************");
+                log.info("[IMAGEKIT SUCCESS] -> {}", url);
+                log.info("****************************************************************");
+                return url;
+            }
+            
+            throw new RuntimeException("ImageKit API returned error: " + response.getStatusCode());
+            
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            log.error("ImageKit HTTP Error ({}): {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+            throw new RuntimeException("ImageKit Upload Error: " + e.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.error("CRITICAL ERROR: ImageKit Upload Failed: {}", e.getMessage(), e);
+            throw new RuntimeException("ImageKit Upload Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Generates authentication parameters for client-side uploads to ImageKit.
+     * @return Map containing token, expire, signature, publicKey, and urlEndpoint
+     */
+    public java.util.Map<String, Object> getAuthenticationParameters() {
+        String token = java.util.UUID.randomUUID().toString();
+        long expire = (System.currentTimeMillis() / 1000) + 1800; // 30 minutes expiration
+        String expireStr = String.valueOf(expire);
+
+        String secretKey = (privateKey != null && !privateKey.isBlank()) ? privateKey : "private_X2euwPcwdxMFfVlLG3czXOpbBiU=";
+        String pubKey = (publicKey != null && !publicKey.isBlank()) ? publicKey : "public_mUIp8QHQPIGtSt/Eobvt4AfeNGU=";
+        String endpoint = (urlEndpoint != null && !urlEndpoint.isBlank()) ? urlEndpoint : "https://ik.imagekit.io/fixzone";
+
+        String signature = calculateHmacSha1(token + expireStr, secretKey);
+
+        java.util.Map<String, Object> authParams = new java.util.HashMap<>();
+        authParams.put("token", token);
+        authParams.put("expire", expire);
+        authParams.put("signature", signature);
+        authParams.put("publicKey", pubKey);
+        authParams.put("urlEndpoint", endpoint);
+        return authParams;
+    }
+
+    private String calculateHmacSha1(String data, String key) {
+        try {
+            javax.crypto.spec.SecretKeySpec signingKey = new javax.crypto.spec.SecretKeySpec(key.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA1");
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA1");
+            mac.init(signingKey);
+            byte[] rawHmac = mac.doFinal(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : rawHmac) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            log.error("Error calculating HMAC-SHA1 signature for ImageKit", e);
+            throw new RuntimeException("Failed to calculate ImageKit upload signature", e);
+        }
+    }
+}

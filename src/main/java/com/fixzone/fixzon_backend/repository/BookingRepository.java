@@ -1,0 +1,121 @@
+package com.fixzone.fixzon_backend.repository;
+
+import com.fixzone.fixzon_backend.enums.BookingStatus;
+import com.fixzone.fixzon_backend.model.Booking;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
+
+public interface BookingRepository extends JpaRepository<Booking, UUID> {
+    
+    List<Booking> findByCenterId(UUID centerId);
+
+    List<Booking> findByCenterIdIn(Collection<UUID> centerIds);
+    List<Booking> findByCenterIdInAndBookingDateBetween(Collection<UUID> centerIds, LocalDate start, LocalDate end);
+    long countByTenantId(UUID tenantId);
+    
+    List<Booking> findByCustomerId(UUID customerId);
+    
+    List<Booking> findByStatus(BookingStatus status);
+
+    List<Booking> findByAssignedMechanicId(UUID mechanicId);
+
+    // For user booking history/tabs (pending / completed / active)
+    List<Booking> findByCustomerIdAndStatus(UUID customerId, BookingStatus status);
+
+    @Query("""
+    SELECT DISTINCT b.centerId 
+    FROM Booking b 
+    WHERE b.customerId = :customerId 
+    AND b.status = 'COMPLETED'
+    """)
+    List<UUID> findTrustedCenterIds(@Param("customerId") UUID customerId);
+
+    @Query("""
+    SELECT b FROM Booking b
+    WHERE b.centerId = :centerId
+    AND b.bookingDate = :date
+    AND (
+        b.status = 'CONFIRMED'
+        OR b.status = 'COMPLETED'
+        OR b.status = 'IN_PROGRESS'
+        OR (
+            b.status = 'PENDING_PAYMENT'
+            AND (b.expiresAt IS NULL OR b.expiresAt > :now)
+        )
+    )
+    ORDER BY b.bookingTime ASC
+    """)
+    List<Booking> findActiveBookingsForCenterAndDate(
+            @Param("centerId") UUID centerId,
+            @Param("date") LocalDate date,
+            @Param("now") LocalDateTime now
+    );
+
+    // NEW: Smart slot locking (with expiry)
+    @Query("""
+    SELECT COUNT(b) > 0 FROM Booking b
+    WHERE b.centerId = :centerId
+    AND b.bookingDate = :date
+    AND b.bookingTime = :time
+    AND (
+        b.status = 'CONFIRMED'
+        OR b.status = 'COMPLETED'
+        OR (
+            b.status = 'PENDING_PAYMENT'
+            AND b.expiresAt > :now
+        )
+    )
+    """)
+    boolean existsActiveSlot(
+            @Param("centerId") UUID centerId,
+            @Param("date") LocalDate date,
+            @Param("time") LocalTime time,
+            @Param("now") LocalDateTime now
+    );
+
+    @Query("""
+    SELECT COUNT(b) > 0 FROM Booking b
+    WHERE b.centerId = :centerId
+    AND b.bookingDate = :date
+    AND b.bookingTime = :time
+    AND b.bookingId <> :excludeBookingId
+    AND (
+        b.status = 'CONFIRMED'
+        OR b.status = 'COMPLETED'
+        OR (
+            b.status = 'PENDING_PAYMENT'
+            AND b.expiresAt > :now
+        )
+    )
+    """)
+    boolean existsActiveSlotExcludingBooking(
+            @Param("centerId") UUID centerId,
+            @Param("date") LocalDate date,
+            @Param("time") LocalTime time,
+            @Param("excludeBookingId") UUID excludeBookingId,
+            @Param("now") LocalDateTime now
+    );
+
+    // OPTIONAL: Expired bookings finder (5-min payment window passed)
+    @Query("""
+    SELECT b FROM Booking b
+    WHERE b.status = 'PENDING_PAYMENT'
+    AND b.expiresAt < :now
+    """)
+    List<Booking> findExpiredBookings(@Param("now") LocalDateTime now);
+
+    // Confirmed bookings whose service date has already passed
+    @Query("""
+    SELECT b FROM Booking b
+    WHERE b.status = 'CONFIRMED'
+    AND b.bookingDate < :today
+    """)
+    List<Booking> findConfirmedPastBookings(@Param("today") LocalDate today);
+}
