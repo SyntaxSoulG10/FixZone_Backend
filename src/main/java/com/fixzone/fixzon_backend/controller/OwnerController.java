@@ -77,7 +77,7 @@ public class OwnerController {
 
     @PutMapping("/current")
     public ResponseEntity<OwnerDTO> modifyCurrentOwnerDetails(
-            @jakarta.validation.Valid @RequestBody OwnerDTO updatedOwnerData) {
+            @RequestBody OwnerDTO updatedOwnerData) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         OwnerDTO currentOwner = ownerService.retrieveOwnerByEmail(email);
 
@@ -95,7 +95,7 @@ public class OwnerController {
 
     @PutMapping("/{ownerId}")
     public ResponseEntity<OwnerDTO> modifyOwnerDetails(@PathVariable UUID ownerId,
-            @jakarta.validation.Valid @RequestBody OwnerDTO updatedOwnerData) {
+            @RequestBody OwnerDTO updatedOwnerData) {
         org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean isSuperAdmin = auth != null && auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN") || a.getAuthority().equals("SUPER_ADMIN"));

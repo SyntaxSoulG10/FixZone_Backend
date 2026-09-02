@@ -31,6 +31,16 @@ public class ReportService {
             report.setSize(String.format("%.1f MB", Math.random() * 5 + 0.1));
         }
 
+        if (report.getSource() == null || report.getSource().isEmpty()) {
+            if (report.getFileContentBase64() != null && !report.getFileContentBase64().isEmpty()) {
+                report.setSource("EXTERNAL");
+            } else if ("External".equalsIgnoreCase(report.getType())) {
+                report.setSource("EXTERNAL");
+            } else {
+                report.setSource("GENERATED");
+            }
+        }
+
         if (report.getFileContentBase64() != null && !report.getFileContentBase64().isEmpty()) {
             boolean isOperations = report.getType() != null && report.getType().toUpperCase().contains("OPERATIONS");
             if (!isOperations) {

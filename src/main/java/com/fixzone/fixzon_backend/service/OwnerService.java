@@ -206,9 +206,14 @@ public class OwnerService {
                 // 5. Banner image update
                 if (updatedOwnerData.getBannerImageUrl() != null && !updatedOwnerData.getBannerImageUrl().equals(existingOwner.getBannerImageUrl())) {
                     log.info("[OWNER] Detected change in Banner Image. Length: {}", updatedOwnerData.getBannerImageUrl().length());
-                    String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getBannerImageUrl(), AppConstants.OWNER_BANNER_PREFIX + existingOwner.getUserId());
-                    existingOwner.setBannerImageUrl(uploadedUrl);
-                    log.info("[OWNER] Banner updated to: {}", uploadedUrl);
+                    try {
+                        String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getBannerImageUrl(), AppConstants.OWNER_BANNER_PREFIX + existingOwner.getUserId());
+                        existingOwner.setBannerImageUrl(uploadedUrl != null ? uploadedUrl : updatedOwnerData.getBannerImageUrl());
+                        log.info("[OWNER] Banner updated to: {}", existingOwner.getBannerImageUrl());
+                    } catch (Exception e) {
+                        log.warn("[OWNER] ImageKit banner upload failed, preserving provided image: {}", e.getMessage());
+                        existingOwner.setBannerImageUrl(updatedOwnerData.getBannerImageUrl());
+                    }
                 }
 
                 // 6. Full Name validation (Required, 2-100 chars)
@@ -236,9 +241,14 @@ public class OwnerService {
                 // 8. Profile picture update
                 if (updatedOwnerData.getProfilePictureUrl() != null && !updatedOwnerData.getProfilePictureUrl().equals(existingOwner.getProfilePictureUrl())) {
                     log.info("[OWNER] Detected change in Profile Picture. Length: {}", updatedOwnerData.getProfilePictureUrl().length());
-                    String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getProfilePictureUrl(), AppConstants.OWNER_PROFILE_PREFIX + existingOwner.getUserId());
-                    existingOwner.setProfilePictureUrl(uploadedUrl);
-                    log.info("[OWNER] Profile picture updated to: {}", uploadedUrl);
+                    try {
+                        String uploadedUrl = imageKitService.uploadImage(updatedOwnerData.getProfilePictureUrl(), AppConstants.OWNER_PROFILE_PREFIX + existingOwner.getUserId());
+                        existingOwner.setProfilePictureUrl(uploadedUrl != null ? uploadedUrl : updatedOwnerData.getProfilePictureUrl());
+                        log.info("[OWNER] Profile picture updated to: {}", existingOwner.getProfilePictureUrl());
+                    } catch (Exception e) {
+                        log.warn("[OWNER] ImageKit profile picture upload failed, preserving provided image: {}", e.getMessage());
+                        existingOwner.setProfilePictureUrl(updatedOwnerData.getProfilePictureUrl());
+                    }
                 }
 
                 if (updatedOwnerData.getStatus() != null) {
