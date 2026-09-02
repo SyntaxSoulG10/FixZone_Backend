@@ -41,14 +41,14 @@ public class AuthController {
 
     @Operation(summary = "Register a new Customer account")
     @PostMapping("/register/customer")
-    public ResponseEntity<AuthResponseDTO> registerCustomer(@RequestBody RegisterCustomerDTO request) {
+    public ResponseEntity<AuthResponseDTO> registerCustomer(@jakarta.validation.Valid @RequestBody RegisterCustomerDTO request) {
         AuthResponseDTO response = authService.registerCustomer(request);
         return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Register a new Service Center Owner account")
     @PostMapping("/register/owner")
-    public ResponseEntity<AuthResponseDTO> registerOwner(@RequestBody RegisterOwnerDTO request) {
+    public ResponseEntity<AuthResponseDTO> registerOwner(@jakarta.validation.Valid @RequestBody RegisterOwnerDTO request) {
         AuthResponseDTO response = authService.registerOwner(request);
         return ResponseEntity.ok(response);
     }

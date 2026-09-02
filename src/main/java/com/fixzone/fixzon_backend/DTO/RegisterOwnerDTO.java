@@ -16,7 +16,8 @@ public class RegisterOwnerDTO {
     private String fullName;
 
     @jakarta.validation.constraints.NotBlank(message = "Email is required")
-    @jakarta.validation.constraints.Email(message = "Invalid email format")
+    @jakarta.validation.constraints.Email(message = "Please provide a valid email address (e.g. ananan33@gmail.com)")
+    @jakarta.validation.constraints.Pattern(regexp = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", message = "Invalid email format")
     private String email;
 
     @jakarta.validation.constraints.NotBlank(message = "Password is required")

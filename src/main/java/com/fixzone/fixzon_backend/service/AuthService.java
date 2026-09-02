@@ -203,7 +203,15 @@ public class AuthService {
     }
 
     public AuthResponseDTO registerCustomer(RegisterCustomerDTO request) {
-        if (authRepository.findByEmail(request.getEmail()).isPresent()) {
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        if (!cleanEmail.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")) {
+            throw new IllegalArgumentException("Please provide a valid email address (e.g. ananan33@gmail.com)");
+        }
+
+        if (authRepository.findByEmail(cleanEmail).isPresent()) {
             throw new IllegalArgumentException("Email is already taken");
         }
 
@@ -211,10 +219,10 @@ public class AuthService {
 
         Customer customer = new Customer();
         customer.setUserId(UUID.randomUUID());
-        customer.setFullName(request.getFullName());
-        customer.setEmail(request.getEmail());
+        customer.setFullName(request.getFullName().trim());
+        customer.setEmail(cleanEmail);
         if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
-            customer.setPhone(request.getPhone());
+            customer.setPhone(request.getPhone().trim());
         }
         customer.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         customer.setRole(Role.ROLE_CUSTOMER.name());
@@ -245,7 +253,15 @@ public class AuthService {
 
     @org.springframework.transaction.annotation.Transactional
     public AuthResponseDTO registerOwner(RegisterOwnerDTO request) {
-        if (authRepository.findByEmail(request.getEmail()).isPresent()) {
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        if (!cleanEmail.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")) {
+            throw new IllegalArgumentException("Please provide a valid email address (e.g. ananan33@gmail.com)");
+        }
+
+        if (authRepository.findByEmail(cleanEmail).isPresent()) {
             throw new IllegalArgumentException("Email is already taken");
         }
 
@@ -253,15 +269,15 @@ public class AuthService {
 
         Owner owner = new Owner();
         owner.setUserId(UUID.randomUUID());
-        owner.setFullName(request.getFullName());
-        owner.setEmail(request.getEmail());
+        owner.setFullName(request.getFullName().trim());
+        owner.setEmail(cleanEmail);
         owner.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         owner.setRole(Role.ROLE_COMPANY_OWNER.name());
         owner.setEmailVerified(false);
         owner.setStatus(AppConstants.STATUS_ACTIVE);
         owner.setOwnerCode(AppConstants.OWNER_PREFIX + System.currentTimeMillis());
-        owner.setCompanyName(request.getCompanyName());
-        owner.setCompanyNumber(request.getCompanyNumber());
+        owner.setCompanyName(request.getCompanyName().trim());
+        owner.setCompanyNumber(request.getCompanyNumber().trim());
         owner.setSubscriptionStatus("TRIAL_ACTIVE");
         owner.setTrialEndsAt(LocalDateTime.now().plusDays(30));
 
